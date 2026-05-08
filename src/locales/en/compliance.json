@@ -1,0 +1,22 @@
+{
+  "compliance.edit.header.title": "Edit Compliance Report",
+  "compliance.edit.header.description": "Update certificate details and validity",
+  "compliance.edit.header.back": "Back to Report",
+  "compliance.edit.toasts.loadError": "Failed to load compliance report",
+  "compliance.edit.toasts.updateError": "Failed to update compliance report",
+  "compliance.edit.toasts.updateSuccess": "Compliance report updated successfully",
+  "compliance.edit.notFound.title": "Report Not Found",
+  "compliance.edit.notFound.description": "The compliance report you're looking for doesn't exist or you don't have access.",
+  "compliance.edit.notFound.backButton": "Back to Compliance Reports",
+  "compliance.form.propertyAndType.title": "Property & Compliance Type",
+  "compliance.form.propertyAndType.description": "Select the property and type of compliance certificate",
+  "compliance.form.costandAdd.title": "Cost & Additional Notes",
+  "compliance.form.costandAdd.description": "Optional information about estimated cost and any remarks",
+  "compliance.form.support.title": "Supporting Documents",
+  "compliance.form.support.description": "Upload certificate, inspection report, photos, etc.",
+  "compliance.form.Img.title": "Property Compliance Document",
+  "compliance.form.Img.title.placeholder": "Upload compliance documents"
+
+
+  
+}

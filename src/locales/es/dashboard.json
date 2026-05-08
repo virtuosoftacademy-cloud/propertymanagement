@@ -1,0 +1,168 @@
+{
+  "dashboard.greeting.morning": "Buenos días",
+  "dashboard.greeting.afternoon": "Buenas tardes",
+  "dashboard.greeting.evening": "Buenas noches",
+
+  "dashboard.header.subtitle": "Esto es lo que está pasando con tu cartera de propiedades",
+
+  "dashboard.actions.refresh": "Actualizar",
+  "dashboard.actions.analytics": "Analíticas",
+  "dashboard.actions.retry": "Reintentar",
+
+  "dashboard.error.unavailable.title": "Panel no disponible",
+  "dashboard.error.unavailable.description": "{error} — intenta actualizar la página.",
+
+  "dashboard.error.staleData.title": "Algunos datos pueden estar desactualizados",
+  "dashboard.error.staleData.description": "{error} — intenta actualizar para obtener las métricas más recientes.",
+
+  "dashboard.alerts.overduePayments.title": "Pagos vencidos",
+  "dashboard.alerts.overduePayments.message.withCount": "{count} inquilinos tienen pagos vencidos por más de 5 días",
+  "dashboard.alerts.overduePayments.message.zero": "No hay pagos vencidos en este momento",
+
+  "dashboard.alerts.urgentMaintenance.title": "Mantenimiento urgente",
+  "dashboard.alerts.urgentMaintenance.message.withCount": "{count} solicitudes de mantenimiento urgentes requieren atención inmediata",
+  "dashboard.alerts.urgentMaintenance.message.zero": "No hay solicitudes de mantenimiento urgentes",
+
+  "dashboard.alerts.expiringLeases.title": "Contratos por vencer",
+  "dashboard.alerts.expiringLeases.message.withCount": "{count} contratos vencen en los próximos 30 días",
+  "dashboard.alerts.expiringLeases.message.zero": "No hay contratos por vencer pronto",
+
+  "dashboard.alerts.pendingApplications.title": "Solicitudes pendientes",
+  "dashboard.alerts.pendingApplications.message.withCount": "{count} solicitudes de inquilino en espera de revisión",
+
+  "dashboard.cards.totalProperties.title": "Propiedades totales",
+  "dashboard.cards.totalProperties.description": "Propiedades activas en la cartera",
+
+  "dashboard.cards.occupancyRate.title": "Tasa de ocupación",
+  "dashboard.cards.occupancyRate.description": "{occupied} de {total} unidades ocupadas",
+
+  "dashboard.cards.monthlyRevenue.title": "Ingresos mensuales",
+  "dashboard.cards.monthlyRevenue.description": "Monto cobrado este mes",
+
+  "dashboard.cards.collectionRate.title": "Tasa de cobro",
+  "dashboard.cards.collectionRate.description": "Eficiencia en el cobro de pagos",
+
+  "dashboard.cards.activeTenants.title": "Inquilinos activos",
+  "dashboard.cards.activeTenants.description": "{count} solicitudes pendientes",
+
+  "dashboard.cards.maintenanceRequests.title": "Solicitudes de mantenimiento",
+  "dashboard.cards.maintenanceRequests.description": "{count} urgentes",
+
+  "dashboard.cards.vacantUnits.title": "Unidades vacantes",
+  "dashboard.cards.vacantUnits.description": "{rate} tasa de vacancia",
+
+  "dashboard.cards.averageRent.title": "Alquiler promedio",
+  "dashboard.cards.averageRent.description": "Promedio mensual por unidad",
+
+  "dashboard.cards.leaseRenewals.title": "Renovaciones de contrato",
+  "dashboard.cards.leaseRenewals.description": "Vencen en los próximos 30 días",
+
+  "dashboard.cards.recentEvents.title": "Eventos recientes",
+  "dashboard.cards.recentEvents.description": "{count} actividades urgentes",
+
+  "dashboard.charts.revenueExpenses.title": "Ingresos y gastos",
+  "dashboard.charts.revenueExpenses.description": "Rendimiento financiero mensual",
+  "dashboard.charts.revenueExpenses.legend.revenue": "Ingresos totales",
+  "dashboard.charts.revenueExpenses.legend.expenses": "Gastos totales",
+  "dashboard.charts.revenueExpenses.empty": "No hay datos disponibles para este período",
+
+  "dashboard.charts.propertyDistribution.title": "Distribución de propiedades",
+  "dashboard.charts.propertyDistribution.description": "Distribución por tipo de propiedad",
+  "dashboard.charts.propertyDistribution.total": "Total",
+
+  "dashboard.paymentStatus.title": "Estado de pagos",
+  "dashboard.paymentStatus.description": "Cobros del mes actual",
+  "dashboard.paymentStatus.collected": "Cobrado",
+  "dashboard.paymentStatus.pending": "Pendiente",
+  "dashboard.paymentStatus.overdue": "Vencido",
+
+  "dashboard.recentActivity.title": "Actividad reciente",
+  "dashboard.recentActivity.description": "Últimas actualizaciones de tu cartera",
+  "dashboard.recentActivity.empty": "Aún no hay actividad reciente.",
+
+  "dashboard.tasks.title": "Próximas tareas",
+  "dashboard.tasks.description": "Tareas importantes que requieren atención",
+  "dashboard.tasks.empty": "No hay nada programado por ahora.",
+  "dashboard.tasks.datePending": "Fecha pendiente",
+
+  "dashboard.priority.high": "Alta",
+  "dashboard.priority.urgent": "Urgente",
+  "dashboard.priority.medium": "Media",
+  "dashboard.priority.low": "Baja",
+
+  "dashboard.time.justNow": "Justo ahora",
+  "dashboard.time.minutesAgo": "Hace {count} min",
+  "dashboard.time.hoursAgo": "Hace {count} h",
+  "dashboard.time.daysAgo": "Hace {count} d",
+
+  "dashboard.mobile.header.subtitle": "Esto es lo que está pasando con tus propiedades",
+
+  "dashboard.mobile.stats.properties": "Propiedades",
+  "dashboard.mobile.stats.tenants": "Inquilinos",
+  "dashboard.mobile.stats.monthlyRevenue": "Ingresos mensuales",
+  "dashboard.mobile.stats.pendingIssues": "Incidencias pendientes",
+
+  "dashboard.mobile.quickActions.title": "Acciones rápidas",
+  "dashboard.mobile.quickActions.description": "Tareas y accesos directos comunes",
+
+  "dashboard.mobile.quickActions.addProperty.title": "Agregar propiedad",
+  "dashboard.mobile.quickActions.addProperty.description": "Registrar nueva propiedad",
+
+  "dashboard.mobile.quickActions.addTenant.title": "Agregar inquilino",
+  "dashboard.mobile.quickActions.addTenant.description": "Incorporar nuevo inquilino",
+
+  "dashboard.mobile.quickActions.collectPayment.title": "Registrar pago",
+  "dashboard.mobile.quickActions.collectPayment.description": "Registrar pago",
+
+  "dashboard.mobile.quickActions.maintenance.title": "Mantenimiento",
+  "dashboard.mobile.quickActions.maintenance.description": "Crear orden de trabajo",
+
+  "dashboard.mobile.metrics.occupancyRate.title": "Tasa de ocupación",
+  "dashboard.mobile.metrics.occupancyRate.change": "+2.1 % respecto al mes anterior",
+
+  "dashboard.mobile.metrics.overduePayments.title": "Pagos vencidos",
+  "dashboard.mobile.metrics.overduePayments.description": "Requiere atención",
+
+  "dashboard.mobile.recentActivity.title": "Actividad reciente",
+  "dashboard.mobile.recentActivity.description": "Últimas actualizaciones y notificaciones",
+  "dashboard.mobile.recentActivity.viewAll": "Ver todo",
+
+  "dashboard.tenant.welcome": "Bienvenido a tu panel de inquilino",
+  "dashboard.tenant.activeLeases": "Contratos activos",
+  "dashboard.tenant.totalLeases": "{count} contratos en total",
+  "dashboard.tenant.outstandingPayments": "Pagos pendientes",
+  "dashboard.tenant.totalPayments": "{count} pagos en total",
+  "dashboard.tenant.maintenanceRequests": "Solicitudes de mantenimiento",
+  "dashboard.tenant.openRequests": "Solicitudes abiertas",
+  "dashboard.tenant.notifications": "Notificaciones",
+  "dashboard.tenant.unreadMessages": "Mensajes no leídos",
+  "dashboard.tenant.leaseSnapshot": "Resumen del contrato",
+  "dashboard.tenant.leaseSnapshotDescription": "Detalles esenciales de tu contrato",
+  "dashboard.tenant.property": "Propiedad",
+  "dashboard.tenant.leasePeriod": "Período del contrato",
+  "dashboard.tenant.monthlyRent": "Alquiler mensual",
+  "dashboard.tenant.leaseType": "Tipo de contrato",
+  "dashboard.tenant.leaseId": "ID del contrato",
+  "dashboard.tenant.noLeaseMessage": "Cuando un contrato esté disponible, aparecerá aquí con la información clave.",
+  "dashboard.tenant.latestActivity": "Última actividad",
+  "dashboard.tenant.latestActivityDescription": "Notificaciones recientes y actualizaciones de mantenimiento",
+  "dashboard.tenant.allCaughtUp": "¡Estás al día!",
+  "dashboard.tenant.recentPayments": "Pagos recientes",
+  "dashboard.tenant.noRecentPayments": "No hay pagos recientes",
+  "dashboard.tenant.paidOn": "Pagado el {date}",
+  "dashboard.tenant.upcomingPayments": "Próximos pagos",
+  "dashboard.tenant.noUpcomingPayments": "No hay próximos pagos",
+  "dashboard.tenant.dueOn": "Vence el {date}",
+  "dashboard.tenant.unableToLoad": "No se pudo cargar el panel",
+  "dashboard.tenant.loadError": "Se produjo un error al cargar los datos del panel.",
+  "dashboard.tenant.tryAgain": "Intentar de nuevo",
+  "dashboard.tenant.dashboardRefreshed": "Panel actualizado",
+  "dashboard.tenant.failedToLoad": "Error al cargar los datos del panel",
+
+  "dashboard.tenant.status.active": "Activo",
+  "dashboard.tenant.status.expired": "Vencido",
+  "dashboard.tenant.status.upcoming": "Próximo",
+  "dashboard.tenant.status.terminated": "Terminado",
+  "dashboard.tenant.activityType.notification": "Notificación",
+  "dashboard.tenant.activityType.maintenance": "Mantenimiento"
+}
