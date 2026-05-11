@@ -33,7 +33,9 @@ import {
 import {
   ComplianceStatus,
   ComplianceCategory,
-  COMPLIANCE_CATEGORY_LABELS,
+  ComplianceCategoryLabels,
+  ComplianceReportDetail,
+  IComplianceDocument,
 } from "@/types";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { ComplianceDetailSkeleton } from "@/components/compliance/compliance-skeleton";
@@ -42,46 +44,7 @@ import { ComplianceActions } from "@/components/compliance/compliance-actions";
 // ────────────────────────────────────────────────
 // Types
 // ────────────────────────────────────────────────
-interface ComplianceDocument {
-  url: string;
-  name?: string;
-  size?: number;
-  mimeType?: string;
-  uploadedAt?: string;
-}
 
-interface ComplianceReportDetail {
-  _id: string;
-  category: ComplianceCategory;
-  issueDate: string;
-  expiryDate: string;
-  estimatedCost?: number;
-  status: ComplianceStatus;
-  notes?: string;
-  documents?: ComplianceDocument[];
-  createdAt: string;
-  updatedAt: string;
-  daysUntilExpiry?: number | null;
-  validityDuration?: number | null;
-  isExpired?: boolean;
-  isExpiringSoon?: boolean;
-  propertyId: {
-    _id: string;
-    name: string;
-    address: {
-      street: string;
-      city: string;
-      state: string;
-      zipCode: string;
-    };
-  } | null;
-  createdBy?: {
-    _id: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  } | null;
-}
 
 // ────────────────────────────────────────────────
 // Component
@@ -184,9 +147,9 @@ export default function ComplianceReportDetailPage() {
 
   const formatStatusLabel = (status: string) => status.replace("_", " ");
 
-  // const formatCategoryLabel = (category: string) =>
-  //   COMPLIANCE_CATEGORY_LABELS[category as ComplianceCategory] ||
-  //   category.split("-").join(" ");
+  const formatCategoryLabel = (category: string) =>
+    ComplianceCategoryLabels[category as ComplianceCategory] ||
+    category.split("-").join(" ");
 
   const formatCurrencyDisplay = (amount: number | undefined) => {
     if (amount == null) {
@@ -245,13 +208,13 @@ export default function ComplianceReportDetailPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const isImageDoc = (doc: ComplianceDocument) => {
+  const isImageDoc = (doc: IComplianceDocument) => {
     if (doc.mimeType) return doc.mimeType.startsWith("image/");
     if (!doc.url) return false;
     return /\.(jpe?g|png|gif|webp|svg)(\?|$)/i.test(doc.url);
   };
 
-  const getDocLabel = (doc: ComplianceDocument, index: number) => {
+  const getDocLabel = (doc: IComplianceDocument, index: number) => {
     if (doc.name) return doc.name;
     try {
       const url = new URL(doc.url);
@@ -305,7 +268,7 @@ export default function ComplianceReportDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        {/* <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight capitalize">
               {formatCategoryLabel(report.category)}
@@ -314,7 +277,7 @@ export default function ComplianceReportDetailPage() {
               Report ID: {reportIdShort}
             </p>
           </div>
-        </div> */}
+        </div>
 
         <div className="flex items-center space-x-2">
           {/* All status-affecting actions live inside ComplianceActions:
@@ -387,15 +350,15 @@ export default function ComplianceReportDetailPage() {
                 </div>
               </div>
 
-              {report.documents && report.documents.length > 0 && (
+              {report.images && report.images.length > 0 && (
                 <>
                   <Separator />
                   <div>
                     <h4 className="font-medium mb-3">
-                      Attached Documents ({report.documents.length})
+                      Attached Documents ({report.images.length})
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {report.documents.map((doc, index) => {
+                      {report.images.map((doc, index) => {
                         const label = getDocLabel(doc, index);
                         const isImage = isImageDoc(doc);
                         return (
@@ -406,7 +369,7 @@ export default function ComplianceReportDetailPage() {
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
                           >
-                            <div className="flex-shrink-0 h-10 w-10 rounded bg-muted flex items-center justify-center">
+                            <div className="shrink-0 h-10 w-10 rounded bg-muted flex items-center justify-center">
                               {isImage ? (
                                 <ImageIcon className="h-5 w-5 text-muted-foreground" />
                               ) : (

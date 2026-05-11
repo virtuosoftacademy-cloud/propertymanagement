@@ -957,13 +957,13 @@ export default function PropertyDetailsPage() {
                 </div>
                 <div className="flex items-center space-x-3">
                   <p className="text-lg font-bold text-gray-900 dark:text-white capitalize">
-                    {property?.status
+                    {property.status
                       ? t(`properties.status.${property.status}`)
                       : t("properties.details.common.notAvailable")}
                   </p>
                   {canModifyProperty() && (
                     <PropertyStatusManager
-                      currentStatus={property?.status}
+                      currentStatus={property.status}
                       onStatusUpdate={async (newStatus) => {
                         try {
                           await propertyService.updateProperty(propertyId, {

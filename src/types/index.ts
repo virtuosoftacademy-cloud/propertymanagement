@@ -3,7 +3,7 @@
  * Comprehensive TypeScript interfaces for the Property Management System
  */
 
-import mongoose,{ Document, Types } from "mongoose";
+import mongoose, { Document, Types } from "mongoose";
 
 // ============================================================================
 // USER TYPES - SINGLE COMPANY ARCHITECTURE
@@ -254,6 +254,7 @@ export interface IEmbeddedUnit {
   rentAmount: number;
   securityDeposit: number;
   status: PropertyStatus;
+  isMultiUnit: boolean;
 
   // Unit-specific features
   balcony?: boolean;
@@ -903,7 +904,7 @@ export enum ComplianceCategory {
 }
 
 // Display-friendly labels for each category (used in UI dropdowns / badges)
-export const COMPLIANCE_CATEGORY_LABELS: Record<ComplianceCategory, string> = {
+export const ComplianceCategoryLabels: Record<ComplianceCategory, string> = {
   [ComplianceCategory.FIRE_SAFETY]: "Fire Safety Certificate",
   [ComplianceCategory.ELECTRICAL]: "Electrical Safety",
   [ComplianceCategory.STRUCTURAL]: "Structural Safety",
@@ -926,8 +927,8 @@ export interface IComplianceDocument {
   url: string;
   name?: string;
   size?: number;
-  mimeType?: string;
-  uploadedAt?: Date;
+  mimeType: string;
+  uploadedAt: Date;
 }
 
 // Main interface for a ComplianceReport mongoose document
@@ -946,7 +947,7 @@ export interface IComplianceReport extends Document {
   estimatedCost?: number;
 
   // Attachments (managed by PropertyDocReport upload component)
-  documents: IComplianceDocument[];
+  images: IComplianceDocument[];
 
   // Lifecycle - auto-derived from expiryDate on save
   status: ComplianceStatus;
@@ -975,6 +976,38 @@ export interface IComplianceReport extends Document {
   ): Promise<IComplianceReport>;
 }
 
+export interface ComplianceReportDetail {
+  _id: string;
+  category: ComplianceCategory;
+  issueDate: string;
+  expiryDate: string;
+  estimatedCost?: number;
+  status: ComplianceStatus;
+  notes?: string;
+  images?: IComplianceDocument[];
+  createdAt: string;
+  updatedAt: string;
+  daysUntilExpiry?: number | null;
+  validityDuration?: number | null;
+  isExpired?: boolean;
+  isExpiringSoon?: boolean;
+  propertyId: {
+    _id: string;
+    name: string;
+    address: {
+      street: string;
+      city: string;
+      state: string;
+      zipCode: string;
+    };
+  } | null;
+  createdBy?: {
+    _id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null;
+}
 // Static methods on the ComplianceReport model
 export interface IComplianceReportModel
   extends mongoose.Model<IComplianceReport> {
@@ -991,13 +1024,13 @@ export interface ICreateComplianceReportInput {
   issueDate: string | Date;
   expiryDate: string | Date;
   notes?: string;
+  images?: IComplianceDocument[];
   estimatedCost?: number;
-  documents?: IComplianceDocument[];
 }
 
 // Payload shape for PUT /api/compliance/:id
 export interface IUpdateComplianceReportInput
-  extends Partial<ICreateComplianceReportInput> {}
+  extends Partial<ICreateComplianceReportInput> { }
 
 // Filter shape for GET /api/compliance query params
 export interface IComplianceReportFilter {

@@ -11,7 +11,7 @@ import { NextRequest } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { ComplianceReport } from "@/models";
-import { UserRole, ComplianceStatus, ComplianceCategory, COMPLIANCE_CATEGORY_LABELS} from "@/types";
+import { UserRole, ComplianceStatus, ComplianceCategoryLabels} from "@/types";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -31,11 +31,6 @@ const revokeSchema = z.object({
 const isValidId = (id: unknown): id is string =>
   typeof id === "string" && mongoose.Types.ObjectId.isValid(id);
 
-/**
- * Extract `id` from route context.
- * Handles Next.js 15 Promise-based params, Next.js 14 sync params,
- * and middleware variants that flatten params onto context.
- */
 async function extractId(context: any): Promise<string | null> {
   if (!context) return null;
   if (typeof context.id === "string") return context.id;
@@ -48,7 +43,7 @@ async function extractId(context: any): Promise<string | null> {
   return raw.id ?? null;
 }
 
-const VALID_CATEGORIES = Object.values(COMPLIANCE_CATEGORY_LABELS) as string[];
+const VALID_CATEGORIES = Object.values(ComplianceCategoryLabels) as string[];
 
 export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (_user: any, request: NextRequest, context: any) => {
@@ -98,21 +93,6 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         );
       }
 
-      // ─── Defensive: catch stale/invalid category values ────────────────
-      // If the document has a legacy category that's no longer in the enum,
-      // the save() inside revoke() will fail with a confusing validation error.
-      // Surface this clearly instead.
-      if (!VALID_CATEGORIES.includes(report.category as string)) {
-        return createErrorResponse(
-          `This report has an invalid category (${report.category}). ` +
-            `Please edit the report and select a valid category before revoking.`,
-          400
-        );
-      }
-
-      // ─── Apply revocation ──────────────────────────────────────────────
-      // The schema's revoke() instance method appends the reason to notes
-      // and sets status to REVOKED.
       try {
         await report.revoke(validation.data.reason);
       } catch (saveErr: any) {

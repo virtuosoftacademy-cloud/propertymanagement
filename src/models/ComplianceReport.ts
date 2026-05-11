@@ -5,18 +5,6 @@ import {
   ComplianceCategory,
   ComplianceStatus,
 } from "@/types";
-
-const ComplianceDocumentSchema = new Schema(
-  {
-    url: { type: String, required: [true, "Document URL is required"], trim: true },
-    name: { type: String, trim: true },
-    size: { type: Number, min: 0 },
-    mimeType: { type: String, trim: true },
-    uploadedAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
-);
-
 const ComplianceReportSchema = new Schema<IComplianceReport>(
   {
     propertyId: {
@@ -67,14 +55,14 @@ const ComplianceReportSchema = new Schema<IComplianceReport>(
       min: [0, "Estimated cost cannot be negative"],
       max: [1000000, "Estimated cost cannot exceed $1,000,000"],
     },
-    documents: {
-      type: [ComplianceDocumentSchema],
+    images: {
+      type: [String],
       default: [],
       validate: {
-        validator: function (docs: any[]) {
-          return docs.length <= 20;
+        validator: function (images: string[]) {
+          return images.length <= 10;
         },
-        message: "Cannot have more than 20 documents",
+        message: "Cannot have more than 10 images",
       },
     },
     status: {

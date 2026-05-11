@@ -15,7 +15,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
-import ComplianceReportForm from "@/components/compliance/ComplianceReport";
+import ComplianceReportForm from "@/components/forms/compliance-report-form";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 
 interface Property {

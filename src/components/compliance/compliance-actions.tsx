@@ -48,7 +48,7 @@ import {
   UserRole,
   ComplianceStatus,
   ComplianceCategory,
-  COMPLIANCE_CATEGORY_LABELS,
+  ComplianceCategoryLabels,
 } from "@/types";
 
 // ────────────────────────────────────────────────
@@ -317,7 +317,7 @@ export function ComplianceActions({
   const reportLabel =
     report.propertyId?.name ||
     (report.category &&
-      (COMPLIANCE_CATEGORY_LABELS[report.category as ComplianceCategory] ||
+      (ComplianceCategoryLabels[report.category as ComplianceCategory] ||
         String(report.category).split("-").join(" "))) ||
     "this report";
 

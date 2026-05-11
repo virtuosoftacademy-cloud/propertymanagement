@@ -366,6 +366,9 @@ export const propertyQuerySchema = z.object({
   bathrooms: z.coerce.number().min(0).optional(),
   city: z.string().optional(),
   state: z.string().optional(),
+  isMultiUnit: z.boolean().optional(),
+  amenities:z.string().optional(),
+  hasAvailableUnits:z.boolean().optional(),
   unitType: z
     .enum(["apartment", "studio", "penthouse", "loft", "room"])
     .optional(),

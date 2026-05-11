@@ -4,7 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useForm } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Card,
@@ -34,7 +34,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { FormDatePicker } from "@/components/ui/date-picker";
-import PropertyDocReport from "./PropertyDocReport";
+import PropertyDocReport from "../compliance/PropertyDocReport";
 import {
   Home,
   Calendar,
@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { useParams, useRouter } from "next/navigation";
+import { ImageUpload } from "../ui/image-upload";
 
 // ────────────────────────────────────────────────
 // Schema
@@ -53,6 +54,7 @@ const complianceReportSchema = z.object({
   issueDate: z.string().min(1, "Issue date is required"),
   expiryDate: z.string().min(1, "Expiry date is required"),
   notes: z.string().max(1000, "Notes too long").optional(),
+  images: z.array(z.string()).optional(),
   estimatedCost: z
     .number()
     .min(0, "Cost cannot be negative")
@@ -105,6 +107,9 @@ export default function ComplianceReportForm({
 }: ComplianceReportFormProps) {
   const { t } = useLocalizationContext();
   const isEditMode = mode === "edit";
+  const [uploadedImages, setUploadedImages] = useState<
+    { url: string; publicId: string }[]
+  >((initialData?.images || []).map((url) => ({ url, publicId: "" })));
 
   const form = useForm<ComplianceReportFormData>({
     resolver: zodResolver(complianceReportSchema),
@@ -114,6 +119,7 @@ export default function ComplianceReportForm({
       issueDate: initialData?.issueDate || "",
       expiryDate: initialData?.expiryDate || "",
       notes: initialData?.notes || "",
+      images: initialData?.images || [],
       estimatedCost: initialData?.estimatedCost ?? undefined,
     },
   });
@@ -420,10 +426,32 @@ export default function ComplianceReportForm({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PropertyDocReport
-                propertyId={watchedPropertyId}
-                reportId={reportId}
-                disabled={form.formState.isSubmitting}
+              <ImageUpload
+                onImagesUploaded={(newImages) => {
+                  const updatedImages = [...uploadedImages, ...newImages];
+                  setUploadedImages(updatedImages);
+                  form.setValue(
+                    "images",
+                    updatedImages.map((img) => img.url)
+                  );
+                }}
+                onImagesRemoved={(removedImages) => {
+                  const updatedImages = uploadedImages.filter(
+                    (img) =>
+                      !removedImages.some(
+                        (removed) => removed.publicId === img.publicId
+                      )
+                  );
+                  setUploadedImages(updatedImages);
+                  form.setValue(
+                    "images",
+                    updatedImages.map((img) => img.url)
+                  );
+                }}
+                existingImages={uploadedImages}
+                maxFiles={10}
+                folder="PropertyPro/maintenance"
+                quality="auto"
               />
             </CardContent>
           </Card>

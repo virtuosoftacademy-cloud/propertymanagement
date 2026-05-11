@@ -32,7 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { ComplianceActions } from "@/components/compliance/compliance-actions";
 import {
-  COMPLIANCE_CATEGORY_LABELS,
+  ComplianceCategoryLabels,
   ComplianceCategory,
   ComplianceStatus,
 } from "@/types";
@@ -257,7 +257,7 @@ export default function CompliancePage() {
     if (!category.trim()) return "—";
 
     // Look up label by exact match first
-    const label = COMPLIANCE_CATEGORY_LABELS[category as ComplianceCategory];
+    const label = ComplianceCategoryLabels[category as ComplianceCategory];
     if (label) return label;
 
     // Fall back to humanizing the slug
@@ -581,7 +581,7 @@ export default function CompliancePage() {
                 <SelectItem value="ALL">All Types</SelectItem>
                 {Object.values(ComplianceCategory).map((category) => (
                   <SelectItem key={category} value={category}>
-                    {COMPLIANCE_CATEGORY_LABELS[category]}
+                    {ComplianceCategoryLabels[category]}
                   </SelectItem>
                 ))}
               </SelectContent>

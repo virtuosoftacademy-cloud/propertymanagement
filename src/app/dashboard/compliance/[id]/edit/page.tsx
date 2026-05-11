@@ -10,7 +10,7 @@ import { useParams, useRouter } from "next/navigation";
 import { UserRole } from "@/types";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { ComplianceFormSkeleton } from "@/components/compliance/compliance-skeleton"; // ← your new skeleton
-import ComplianceReportForm from "@/components/compliance/ComplianceReport";
+import ComplianceReportForm from "@/components/forms/compliance-report-form";
 
 interface Property {
   _id: string;
