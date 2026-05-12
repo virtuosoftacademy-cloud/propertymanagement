@@ -37,7 +37,7 @@ import {
   Grid3X3,
   FileLock,
   Files,
-  FilePlusCorner, 
+  FilePlusCorner,
 } from "lucide-react";
 import { UserRole } from "@/types";
 import { useTheme } from "next-themes";
@@ -161,12 +161,12 @@ const navigationSections: NavSection[] = [
             icon: Calendar,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
           },
-          {
-            title: "nav.leases.invoices",
-            href: "/dashboard/leases/invoices",
-            icon: DollarSign,
-            roles: [UserRole.ADMIN, UserRole.MANAGER],
-          },
+          // {
+          //   title: "nav.leases.invoices",
+          //   href: "/dashboard/leases/invoices",
+          //   icon: DollarSign,
+          //   roles: [UserRole.ADMIN, UserRole.MANAGER],
+          // },
           {
             title: "nav.leases.my",
             href: "/dashboard/leases/my-leases",
@@ -250,36 +250,42 @@ const navigationSections: NavSection[] = [
     title: "nav.section.financial",
     items: [
       {
-        title: "nav.payments",
-        href: "/dashboard/payments",
+        title: "nav.leases.invoices",
+        href: "/dashboard/leases/invoices",
         icon: CreditCard,
         roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
-        children: [
-          {
-            title: "nav.payments.all",
-            href: "/dashboard/payments",
-            icon: CreditCard,
-            roles: [UserRole.ADMIN, UserRole.MANAGER],
-          },
-          {
-            title: "nav.payments.overdue",
-            href: "/dashboard/payments/overdue",
-            icon: DollarSign,
-            roles: [UserRole.ADMIN, UserRole.MANAGER],
-          },
-          {
-            title: "nav.payments.payRent",
-            href: "/dashboard/payments/pay-rent",
-            icon: CreditCard,
-            roles: [UserRole.TENANT],
-          },
-          {
-            title: "nav.payments.history",
-            href: "/dashboard/payments/history",
-            icon: BarChart3,
-            roles: [UserRole.TENANT],
-          },
-        ],
+        // children: [
+          // {
+          //   title: "nav.leases.invoices",
+          //   href: "/dashboard/leases/invoices",
+          //   icon: DollarSign,
+          //   roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
+          // },
+          // {
+          //   title: "nav.payments.all",
+          //   href: "/dashboard/payments",
+          //   icon: CreditCard,
+          //   roles: [UserRole.ADMIN, UserRole.MANAGER],
+          // },
+          // {
+          //   title: "nav.payments.overdue",
+          //   href: "/dashboard/payments/overdue",
+          //   icon: DollarSign,
+          //   roles: [UserRole.ADMIN, UserRole.MANAGER],
+          // },
+          // {
+          //   title: "nav.payments.payRent",
+          //   href: "/dashboard/payments/pay-rent",
+          //   icon: CreditCard,
+          //   roles: [UserRole.TENANT],
+          // },
+          // {
+          //   title: "nav.payments.history",
+          //   href: "/dashboard/payments/history",
+          //   icon: BarChart3,
+          //   roles: [UserRole.TENANT],
+          // },
+        // ],
       },
     ],
   },

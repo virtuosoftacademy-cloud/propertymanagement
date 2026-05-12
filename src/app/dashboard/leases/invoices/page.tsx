@@ -887,7 +887,7 @@ export default function LeaseInvoicesPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             {t("leases.actions.refresh")}
           </Button>
-          {session?.user?.role !== UserRole.TENANT && (
+          {/* {session?.user?.role !== UserRole.TENANT && (
             <>
               <Button
                 variant="outline"
@@ -905,7 +905,7 @@ export default function LeaseInvoicesPage() {
                 {t("leases.actions.createLease")}
               </Button>
             </>
-          )}
+          )} */}
         </div>
       </div>
 

@@ -264,7 +264,7 @@
 
   "leases.invoices.header.myTitle": "My Invoices",
   "leases.invoices.header.mySubtitle": "View and manage your lease invoices and payments",
-  "leases.invoices.header.title": "Lease Invoices",
+  "leases.invoices.header.title": "Invoices",
   "leases.invoices.header.subtitle": "Automatically generated invoices from lease agreements",
 
   "leases.invoices.list.title": "Invoice List",
