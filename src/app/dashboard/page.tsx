@@ -754,9 +754,9 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <select className="text-sm border rounded px-2 py-1 bg-background">
-                    <option>2024</option>
-                    <option>2023</option>
-                    <option>2022</option>
+                    <option>2026</option>
+                    <option>2027</option>
+                    <option>2028</option>
                   </select>
                 </div>
               </div>

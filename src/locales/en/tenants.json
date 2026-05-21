@@ -426,6 +426,10 @@
   "tenants.form.validation.incomePositive": "Income must be positive",
   "tenants.form.validation.creditScoreRange": "Credit score must be between 300 and 850",
   "tenants.form.validation.moveInDateRange": "Move-in date must be within reasonable range (5 years ago to 5 years from now)",
+   "tenants.form.validation.contactNameRequired": "Contact name is required",
+   "tenants.form.validation.contactRelationshipRequired": "relationship is required",
+   "tenants.form.validation.contactPhoneRequired": "phone is required",
+   "tenants.form.validation.contactEmailRequired": "Contact email is required",
 
   "tenants.statusManager.title": "Tenant Status Management",
   "tenants.statusManager.description": "Current status and available actions for {name}",

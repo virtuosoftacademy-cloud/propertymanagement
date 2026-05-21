@@ -532,7 +532,7 @@ export default function EditTenantPage() {
                           </FormItem>
                         )}
                       />
-                      <FormField
+                      {/* <FormField
                         control={form.control}
                         name="ssn"
                         render={({ field }) => (
@@ -552,7 +552,7 @@ export default function EditTenantPage() {
                             <FormMessage />
                           </FormItem>
                         )}
-                      />
+                      /> */}
                     </div>
                   </CardContent>
                 </Card>
@@ -812,32 +812,32 @@ export default function EditTenantPage() {
                                 <SelectContent>
                                   <SelectItem value="spouse">
                                     {t(
-                                      "tenants.form.fields.emergencyContactRelationship.options.spouse"
+                                      "tenants.form.fields.emergencyContactRelationship.spouse"
                                     )}
                                   </SelectItem>
                                   <SelectItem value="parent">
                                     {t(
-                                      "tenants.form.fields.emergencyContactRelationship.options.parent"
+                                      "tenants.form.fields.emergencyContactRelationship.parent"
                                     )}
                                   </SelectItem>
                                   <SelectItem value="sibling">
                                     {t(
-                                      "tenants.form.fields.emergencyContactRelationship.options.sibling"
+                                      "tenants.form.fields.emergencyContactRelationship.sibling"
                                     )}
                                   </SelectItem>
                                   <SelectItem value="child">
                                     {t(
-                                      "tenants.form.fields.emergencyContactRelationship.options.child"
+                                      "tenants.form.fields.emergencyContactRelationship.child"
                                     )}
                                   </SelectItem>
                                   <SelectItem value="friend">
                                     {t(
-                                      "tenants.form.fields.emergencyContactRelationship.options.friend"
+                                      "tenants.form.fields.emergencyContactRelationship.friend"
                                     )}
                                   </SelectItem>
                                   <SelectItem value="other">
                                     {t(
-                                      "tenants.form.fields.emergencyContactRelationship.options.other"
+                                      "tenants.form.fields.emergencyContactRelationship.other"
                                     )}
                                   </SelectItem>
                                 </SelectContent>

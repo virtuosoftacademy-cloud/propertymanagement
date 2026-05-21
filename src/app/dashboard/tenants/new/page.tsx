@@ -134,14 +134,13 @@ const createTenantSchema = (t: (key: string) => string) =>
       employmentStartDate: z.string().optional(),
 
       // Emergency Contact (All Optional)
-      emergencyContactName: z.string().optional(),
-      emergencyContactRelationship: z.string().optional(),
-      emergencyContactPhone: z.string().optional(),
+      emergencyContactName: z.string().min(1, t("tenants.form.validation.contactNameRequired")),
+      emergencyContactRelationship: z.string().min(1, t("tenants.form.validation.contactRelationshipRequired")),
+      emergencyContactPhone: z.string().min(1, t("tenants.form.validation.contactPhoneRequired")),
       emergencyContactEmail: z
         .string()
-        .email(t("tenants.form.validation.emailInvalid"))
-        .optional()
-        .or(z.literal("")),
+        .min(1, t("tenants.form.validation.contactEmailRequired"))
+        .email(t("tenants.form.validation.emailInvalid")),
 
       // Additional Information
       creditScore: z.number().min(300).max(850).optional(),
@@ -414,16 +413,14 @@ export default function NewTenantPage() {
           }
           : undefined,
         emergencyContacts:
-          data.emergencyContactName && data.emergencyContactName.trim()
-            ? [
-              {
-                name: data.emergencyContactName,
-                relationship: data.emergencyContactRelationship || "",
-                phone: data.emergencyContactPhone || "",
-                email: data.emergencyContactEmail || "",
-              },
-            ]
-            : [],
+          [
+            {
+              name: data.emergencyContactName,
+              relationship: data.emergencyContactRelationship,
+              phone: data.emergencyContactPhone,
+              email: data.emergencyContactEmail,
+            },
+          ],
         creditScore: data.creditScore,
         moveInDate: data.moveInDate || undefined,
         applicationNotes: data.notes || undefined,
@@ -1135,8 +1132,8 @@ export default function NewTenantPage() {
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
                       className={`relative border-2 border-dashed rounded-lg transition-all duration-300 ${isDragging
-                          ? "border-primary bg-primary/5 scale-[1.02]"
-                          : "border-border/60 hover:border-primary/50 bg-background/50"
+                        ? "border-primary bg-primary/5 scale-[1.02]"
+                        : "border-border/60 hover:border-primary/50 bg-background/50"
                         }`}
                     >
                       <input
@@ -1310,22 +1307,22 @@ export default function NewTenantPage() {
                     {t("tenants.form.actions.cancel")}
                   </Button>
                 </Link>
-            {/* Action Buttons */}
-            <div className="flex justify-center">
-              <Button
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Adding tenant...
-                  </>
-                ) : (
-                  "+ Add Another Tenant"
-                )}
-              </Button>
-            </div>
+                {/* Action Buttons */}
+                <div className="flex justify-center">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Adding tenant...
+                      </>
+                    ) : (
+                      "+ Add Another Tenant"
+                    )}
+                  </Button>
+                </div>
 
               </div>
             </div>
