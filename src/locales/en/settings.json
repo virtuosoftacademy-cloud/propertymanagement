@@ -78,7 +78,7 @@
   "settings.profile.basicInfo.lastName": "Last Name",
   "settings.profile.basicInfo.email": "Email Address",
   "settings.profile.basicInfo.phone": "Phone Number",
-  "settings.profile.basicInfo.phonePlaceholder": "+1 (555) 123-4567",
+  "settings.profile.basicInfo.phonePlaceholder": "020 7123 4567",
   "settings.profile.basicInfo.bio": "Bio",
   "settings.profile.basicInfo.bioPlaceholder": "Tell us about yourself...",
   "settings.profile.basicInfo.location": "Location",

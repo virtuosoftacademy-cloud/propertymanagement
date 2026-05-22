@@ -1038,7 +1038,7 @@ export default function PropertiesPage() {
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Property
             </DropdownMenuItem>
-            {property.status !== PropertyStatus.AVAILABLE && (
+            {/* {property.status !== PropertyStatus.AVAILABLE && (
               <DropdownMenuItem
                 onClick={() =>
                   handleStatusChange(property._id, PropertyStatus.AVAILABLE)
@@ -1077,7 +1077,7 @@ export default function PropertiesPage() {
                 <XCircle className="mr-2 h-4 w-4 text-red-600" />
                 Mark Unavailable
               </DropdownMenuItem>
-            )}
+            )} */}
           </DropdownMenuContent>
         </DropdownMenu>
       ),

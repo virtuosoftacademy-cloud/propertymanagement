@@ -215,7 +215,7 @@ export enum PropertyType {
 export enum PropertyStatus {
   AVAILABLE = "available",
   OCCUPIED = "occupied",
-  MAINTENANCE = "maintenance",
+  // MAINTENANCE = "maintenance",
   UNAVAILABLE = "unavailable",
 }
 

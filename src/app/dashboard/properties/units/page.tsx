@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { GlobalSearch } from "@/components/ui/global-search";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Home,
   ArrowUpDown,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -92,10 +93,10 @@ function StatusBadge({ status }: { status?: string }) {
     k === "available"
       ? "units.status.available"
       : k === "occupied"
-      ? "units.status.occupied"
-      : k === "maintenance"
-      ? "units.status.maintenance"
-      : "units.status.unavailable";
+        ? "units.status.occupied"
+        : k === "maintenance"
+          ? "units.status.maintenance"
+          : "units.status.unavailable";
   return (
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${c.bg} ${c.text} ${c.border}`}
@@ -313,6 +314,34 @@ export default function AllUnitsPage() {
     setUnitDetailsOpen(false);
     setSelectedUnit(null);
   };
+  const handleClearFilters = () => {
+    setFilters({
+      page: 1,
+      limit: 12,
+      sortBy: "createdAt",
+      sortOrder: "desc",
+    });
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return !!(
+      filters.search ||
+      filters.type ||
+      filters.status ||
+      filters.unitType ||
+      filters.bedrooms ||
+      filters.bathrooms ||
+      (filters.sortBy && filters.sortBy !== "createdAt")
+    );
+  }, [
+    filters.search,
+    filters.type,
+    filters.status,
+    filters.unitType,
+    filters.bedrooms,
+    filters.bathrooms,
+    filters.sortBy,
+  ]);
 
   const handlePageSizeChange = (pageSize: number) =>
     setFilters((p) => ({ ...p, limit: pageSize, page: 1 }));
@@ -563,7 +592,20 @@ export default function AllUnitsPage() {
                 </SelectContent>
               </Select>
 
-              <Button
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="h-10 px-3 text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  {t("properties.filters.clear")}
+                </Button>
+              )}
+              {/* <Button
                 variant="ghost"
                 size="sm"
                 onClick={toggleSortOrder}
@@ -571,7 +613,7 @@ export default function AllUnitsPage() {
               >
                 <ArrowUpDown className="h-4 w-4 mr-1" />
                 {filters.sortOrder === "asc" ? "Asc" : "Desc"}
-              </Button>
+              </Button> */}
             </div>
           </div>
         </CardHeader>
@@ -734,11 +776,10 @@ export default function AllUnitsPage() {
                   {units.map((unit, index) => (
                     <TableRow
                       key={`${unit._id}-${unit.unitId}`}
-                      className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${
-                        index % 2 === 0
-                          ? "bg-white dark:bg-gray-900/20"
-                          : "bg-gray-50/20 dark:bg-gray-800/20"
-                      }`}
+                      className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${index % 2 === 0
+                        ? "bg-white dark:bg-gray-900/20"
+                        : "bg-gray-50/20 dark:bg-gray-800/20"
+                        }`}
                     >
                       <TableCell className="py-4 px-6">
                         <div className="flex items-center space-x-3">

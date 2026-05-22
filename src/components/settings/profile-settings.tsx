@@ -673,6 +673,7 @@ export function ProfileSettings({
               <Input
                 id="phone"
                 type="tel"
+                maxLength={11}
                 placeholder={t("settings.profile.basicInfo.phonePlaceholder")}
                 {...form.register("phone")}
                 error={form.formState.errors.phone?.message}

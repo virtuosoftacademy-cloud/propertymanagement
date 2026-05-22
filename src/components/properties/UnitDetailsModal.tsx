@@ -209,8 +209,8 @@ export default function UnitDetailsModal({
         return "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400";
       case PropertyStatus.OCCUPIED:
         return "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400";
-      case PropertyStatus.MAINTENANCE:
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400";
+      // case PropertyStatus.MAINTENANCE:
+      //   return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400";
       case PropertyStatus.UNAVAILABLE:
         return "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400";
       default:
@@ -224,8 +224,8 @@ export default function UnitDetailsModal({
         return "🟢";
       case PropertyStatus.OCCUPIED:
         return "🔵";
-      case PropertyStatus.MAINTENANCE:
-        return "🟡";
+      // case PropertyStatus.MAINTENANCE:
+      //   return "🟡";
       case PropertyStatus.UNAVAILABLE:
         return "🔴";
       default:

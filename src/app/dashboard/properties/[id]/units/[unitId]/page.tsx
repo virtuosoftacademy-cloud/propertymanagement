@@ -509,8 +509,8 @@ export default function UnitDetailsPage() {
                   {t("properties.unitDetails.actions.viewProperty")}
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              {/* <DropdownMenuSeparator /> */}
+              {/* <DropdownMenuItem
                 onClick={() => handleStatusChange(PropertyStatus.AVAILABLE)}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
@@ -527,7 +527,7 @@ export default function UnitDetailsPage() {
               >
                 <Settings className="h-4 w-4 mr-2" />
                 {t("properties.unitDetails.actions.markMaintenance")}
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               {/* DISABLED: Delete functionality temporarily disabled */}
               {/* <DropdownMenuSeparator />
               <AlertDialog>

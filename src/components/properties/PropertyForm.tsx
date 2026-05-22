@@ -500,7 +500,7 @@ export function EnhancedPropertyForm({
               </Select>
             </div>
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="status">
                 {t("properties.form.fields.status.label")}
               </Label>
@@ -528,7 +528,7 @@ export function EnhancedPropertyForm({
                   {form.formState.errors.status.message}
                 </p>
               )}
-            </div>
+            </div> */}
 
             <div className="space-y-2">
               <Label htmlFor="yearBuilt">
@@ -562,7 +562,6 @@ export function EnhancedPropertyForm({
             <Textarea
               id="description"
               placeholder={t("properties.form.fields.description.placeholder")}
-              rows={3}
               {...form.register("description")}
             />
           </div>
@@ -761,7 +760,7 @@ export function EnhancedPropertyForm({
                       )}
                     />
                   </div>
-                  {/* <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label>{t("properties.form.units.fields.bedrooms")}</Label>
                     <Input
                       min={1}
@@ -774,7 +773,7 @@ export function EnhancedPropertyForm({
                         setUnits(newUnits);
                       }}
                     />
-                  </div> */}
+                  </div>
                   <div className="space-y-2">
                     <Label>{t("properties.form.units.fields.bathrooms")}</Label>
                     <Input
@@ -836,7 +835,7 @@ export function EnhancedPropertyForm({
                       }}
                     />
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label>{t("properties.form.units.fields.status")}</Label>
                     <Select
                       value={unit.status}
@@ -857,7 +856,7 @@ export function EnhancedPropertyForm({
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="space-y-2 pt-3 border-t">
