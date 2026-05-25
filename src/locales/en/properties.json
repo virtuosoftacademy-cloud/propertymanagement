@@ -206,7 +206,7 @@
   "properties.form.fields.state.label": "State/Province",
   "properties.form.fields.state.placeholder": "e.g., CA",
   "properties.form.fields.zipCode.label": "ZIP/Postal code",
-  "properties.form.fields.zipCode.placeholder": "e.g., 94105",
+  "properties.form.fields.zipCode.placeholder": "e.g., SW1A 1AA",
   "properties.form.fields.country.label": "Country",
   "properties.form.units.intro": "Configure the rental units for this property.",
   "properties.form.units.title": "Unit Management",

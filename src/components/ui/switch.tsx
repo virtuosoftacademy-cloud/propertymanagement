@@ -41,7 +41,7 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
         <span
           className={cn(
             "inline-block h-4 w-4 transform rounded-full bg-background transition-transform shadow-lg ring-0",
-            checked ? "translate-x-6" : "translate-x-1"
+            checked ? "translate-x-6" : "translate-x-1 bg-primary"
           )}
         />
       </label>

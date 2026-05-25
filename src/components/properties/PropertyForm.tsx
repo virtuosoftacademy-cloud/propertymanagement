@@ -47,6 +47,7 @@ import {
 import { PropertyType, PropertyStatus, PropertyownerType } from "@/types";
 import { ImageUpload, type UploadedImage } from "@/components/ui/image-upload";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
+import { allowAlphabetsOnly } from "@/lib/utils";
 
 // Enhanced form schema (unchanged)
 const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
@@ -80,16 +81,16 @@ const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
         .max(50),
       zipCode: z
         .string()
-        .min(1, t("properties.form.validation.zipRequired"))
+        .min(6, t("properties.form.validation.zipRequired"))
         .max(20, t("properties.form.validation.zipTooLong")),
-      country: z.string().optional().default("United States"),
+      country: z.string().regex(/^[a-zA-Z\s'-]+$/).default("United Kingdom"),
     }),
 
     yearBuilt: z
       .number()
       .min(1800, t("properties.form.validation.yearBuiltMin"))
       .max(
-        new Date().getFullYear() + 5,
+        new Date().getFullYear() + 0,
         t("properties.form.validation.yearBuiltMax")
       )
       .optional(),
@@ -303,7 +304,7 @@ export function EnhancedPropertyForm({
         city: initialData?.address?.city || "",
         state: initialData?.address?.state || "",
         zipCode: initialData?.address?.zipCode || "",
-        country: initialData?.address?.country || "United States",
+        country: initialData?.address?.country || "United Kingdom",
       },
       yearBuilt: initialData?.yearBuilt,
       amenities: initialData?.amenities || [],
@@ -599,6 +600,7 @@ export function EnhancedPropertyForm({
                   id="city"
                   placeholder={t("properties.form.fields.city.placeholder")}
                   {...form.register("address.city")}
+                  onKeyDown={allowAlphabetsOnly}
                 />
                 {form.formState.errors.address?.city && (
                   <p className="text-sm text-red-600">
@@ -614,6 +616,7 @@ export function EnhancedPropertyForm({
                 <Input
                   id="state"
                   placeholder={t("properties.form.fields.state.placeholder")}
+                  onKeyDown={allowAlphabetsOnly}
                   {...form.register("address.state")}
                 />
                 {form.formState.errors.address?.state && (
@@ -643,7 +646,9 @@ export function EnhancedPropertyForm({
                 <Label htmlFor="country">
                   {t("properties.form.fields.country.label")}
                 </Label>
-                <Input id="country" {...form.register("address.country")} />
+                <Input id="country" {...form.register("address.country")}
+                  onKeyDown={allowAlphabetsOnly}
+                />
               </div>
             </div>
           </div>

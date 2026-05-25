@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
+import { allowAlphabetsOnly, allowNumbersOnly } from "@/lib/utils";
 
 // Create tenant schema factory function to use translations
 const createTenantSchema = (t: (key: string) => string) =>
@@ -129,7 +130,7 @@ const createTenantSchema = (t: (key: string) => string) =>
       position: z.string().optional(),
       income: z
         .number()
-        .min(0, t("tenants.form.validation.incomePositive"))
+        .min(20000, t("tenants.form.validation.incomePositive"))
         .optional(),
       employmentStartDate: z.string().optional(),
 
@@ -590,6 +591,7 @@ export default function NewTenantPage() {
                                 placeholder={t("tenants.form.fields.firstName.placeholder")}
                                 className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
                                 {...field}
+                                onKeyDown={allowAlphabetsOnly}
                               />
                             </FormControl>
                             <FormMessage />
@@ -609,6 +611,7 @@ export default function NewTenantPage() {
                                 placeholder={t("tenants.form.fields.lastName.placeholder")}
                                 className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
                                 {...field}
+                                onKeyDown={allowAlphabetsOnly}
                               />
                             </FormControl>
                             <FormMessage />
@@ -649,6 +652,7 @@ export default function NewTenantPage() {
                                 placeholder={t("tenants.form.fields.phone.placeholder")}
                                 className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
                                 {...field}
+                                onKeyDown={allowNumbersOnly}
                               />
                             </FormControl>
                             <FormMessage />
@@ -881,6 +885,7 @@ export default function NewTenantPage() {
                                   type="number"
                                   placeholder={t("tenants.form.fields.income.placeholder")}
                                   className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
+                                  minLength={6}
                                   {...field}
                                   onChange={(e) =>
                                     field.onChange(
@@ -905,7 +910,7 @@ export default function NewTenantPage() {
                                 <FormDatePicker
                                   value={field.value ? new Date(field.value) : undefined}
                                   onChange={(date) =>
-                                    field.onChange(date?.toISOString().split("T")[0])
+                                    field.onChange(date?.toISOString().split("T"))
                                   }
                                   placeholder={t("tenants.form.fields.employmentStartDate.placeholder")}
                                   disabled={(date) => date > new Date()}
@@ -948,6 +953,7 @@ export default function NewTenantPage() {
                                 placeholder={t("tenants.form.fields.emergencyContactName.placeholder")}
                                 className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
                                 {...field}
+                                onKeyDown={allowAlphabetsOnly}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1011,6 +1017,7 @@ export default function NewTenantPage() {
                                 placeholder={t("tenants.form.fields.emergencyContactPhone.placeholder")}
                                 className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
                                 {...field}
+                                onKeyDown={allowNumbersOnly}
                               />
                             </FormControl>
                             <FormMessage />
