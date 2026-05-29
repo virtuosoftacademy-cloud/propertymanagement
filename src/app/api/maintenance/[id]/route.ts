@@ -165,7 +165,7 @@ export async function PUT(
     if (user.role === UserRole.TENANT) {
       // Tenants can only update their own requests
       const tenant = await ensureTenantProfile(user.id);
-      if (!tenant || !maintenanceRequest.tenantId.equals(tenant._id)) {
+      if (!tenant) {
         return createErrorResponse(
           "You can only update your own maintenance requests",
           403

@@ -56,6 +56,8 @@ import {
   Image as ImageIcon,
   X,
   CheckCircle2,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
@@ -196,6 +198,7 @@ export default function NewTenantPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [filePreviews, setFilePreviews] = useState<Record<string, string>>({});
   const [recentlyAdded, setRecentlyAdded] = useState<RecentlyAddedTenant[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
 
   const tenantSchema = createTenantSchema(t);
 
@@ -748,14 +751,27 @@ export default function NewTenantPage() {
                             <FormLabel className="text-sm font-semibold text-foreground">
                               {t("tenants.form.fields.password.label")}
                             </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="password"
-                                placeholder={t("tenants.form.fields.password.placeholder")}
-                                className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
-                                {...field}
-                              />
-                            </FormControl>
+                            <div className="relative">
+                              <FormControl>
+                                <Input
+                                  type={showPassword ? "text" : "password"}
+                                  placeholder={t("tenants.form.fields.password.placeholder")}
+                                  className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200 pr-10"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                              >
+                                {showPassword
+                                  ? <EyeOff className="h-4 w-4" />
+                                  : <Eye className="h-4 w-4" />
+                                }
+                              </button>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -768,14 +784,27 @@ export default function NewTenantPage() {
                             <FormLabel className="text-sm font-semibold text-foreground">
                               {t("tenants.form.fields.confirmPassword.label")}
                             </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="password"
-                                placeholder={t("tenants.form.fields.confirmPassword.placeholder")}
-                                className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
-                                {...field}
-                              />
-                            </FormControl>
+                             <div className="relative">
+                              <FormControl>
+                                <Input
+                                  type={showPassword ? "text" : "password"}
+                                  placeholder={t("tenants.form.fields.password.placeholder")}
+                                  className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200 pr-10"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                              >
+                                {showPassword
+                                  ? <EyeOff className="h-4 w-4" />
+                                  : <Eye className="h-4 w-4" />
+                                }
+                              </button>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}

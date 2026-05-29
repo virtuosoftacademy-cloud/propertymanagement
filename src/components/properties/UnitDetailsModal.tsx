@@ -470,7 +470,7 @@ export default function UnitDetailsModal({
                           <p className="text-sm font-medium text-gray-600 mb-1">
                             {t("properties.unitDetails.stats.squareFootage")}
                           </p>
-                          <p className="text-lg font-bold text-gray-900">
+                          <p className="text-lg font-bold text-white">
                             {formatNumber(unit.squareFootage)}{" "}
                             {t("properties.labels.squareFeetUnit")}
                           </p>
@@ -489,7 +489,7 @@ export default function UnitDetailsModal({
                           <p className="text-sm font-medium text-gray-600 mb-1">
                             {t("properties.unitDetails.stats.unitType")}
                           </p>
-                          <p className="text-lg font-bold text-gray-900 capitalize">
+                          <p className="text-lg font-bold text-white capitalize">
                             {t(`properties.units.types.${unit.unitType}`)}
                           </p>
                         </div>

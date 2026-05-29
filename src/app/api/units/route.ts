@@ -18,133 +18,147 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const { page, limit, sortBy, sortOrder, search } =
         parsePaginationParams(searchParams);
 
-      const status = searchParams.get("status") || undefined;
-      const unitType = searchParams.get("unitType") || undefined;
-      const bedrooms = searchParams.get("bedrooms")
-        ? parseInt(searchParams.get("bedrooms") as string)
-        : undefined;
-      const bathrooms = searchParams.get("bathrooms")
-        ? parseInt(searchParams.get("bathrooms") as string)
-        : undefined;
+      const status    = searchParams.get("status")   || undefined;
+      const unitType  = searchParams.get("unitType") || undefined;
+      const type      = searchParams.get("type")     || undefined;
+      const state     = searchParams.get("state")    || undefined;
+      const city      = searchParams.get("city")     || undefined;
+
       const minRent = searchParams.get("minRent")
         ? parseFloat(searchParams.get("minRent") as string)
         : undefined;
       const maxRent = searchParams.get("maxRent")
         ? parseFloat(searchParams.get("maxRent") as string)
         : undefined;
-      const type = searchParams.get("type") || undefined;
-      const state = searchParams.get("state") || undefined;
-      const city = searchParams.get("city") || undefined;
 
+      // ── Bedrooms: exact for 1–4, $gte for 5+ ─────────────────────────────
+      const bedroomsRaw = searchParams.get("bedrooms");
+      let bedroomsFilter: number | { $gte: number } | undefined;
+      if (bedroomsRaw !== null && bedroomsRaw !== "") {
+        const beds = parseInt(bedroomsRaw);
+        if (!isNaN(beds)) {
+          bedroomsFilter = beds >= 5 ? { $gte: 5 } : beds;
+        }
+      }
+
+      // ── Bathrooms: exact for 1–3, $gte for 4+ ────────────────────────────
+      const bathroomsRaw = searchParams.get("bathrooms");
+      let bathroomsFilter: number | { $gte: number } | undefined;
+      if (bathroomsRaw !== null && bathroomsRaw !== "") {
+        const baths = parseInt(bathroomsRaw);
+        if (!isNaN(baths)) {
+          bathroomsFilter = baths >= 4 ? { $gte: 4 } : baths;
+        }
+      }
+
+      // ── Property-level match ──────────────────────────────────────────────
       const match: any = { deletedAt: null };
 
       if (type && Object.values(PropertyType).includes(type as any)) {
         match.type = type;
       }
       if (state) match["address.state"] = { $regex: state, $options: "i" };
-      if (city) match["address.city"] = { $regex: city, $options: "i" };
+      if (city)  match["address.city"]  = { $regex: city,  $options: "i" };
 
+      // ── Unit-level match ──────────────────────────────────────────────────
       const unitMatch: any = {};
+
       if (status && Object.values(PropertyStatus).includes(status as any)) {
         unitMatch["units.status"] = status;
       }
-      if (unitType) unitMatch["units.unitType"] = unitType;
-      if (bedrooms !== undefined) unitMatch["units.bedrooms"] = bedrooms;
-      if (bathrooms !== undefined) unitMatch["units.bathrooms"] = bathrooms;
+      if (unitType)                   unitMatch["units.unitType"]  = unitType;
+      if (bedroomsFilter  !== undefined) unitMatch["units.bedrooms"]  = bedroomsFilter;
+      if (bathroomsFilter !== undefined) unitMatch["units.bathrooms"] = bathroomsFilter;
+
       if (minRent !== undefined || maxRent !== undefined) {
         unitMatch["units.rentAmount"] = {};
         if (minRent !== undefined) unitMatch["units.rentAmount"].$gte = minRent;
         if (maxRent !== undefined) unitMatch["units.rentAmount"].$lte = maxRent;
       }
 
+      // ── Sort ──────────────────────────────────────────────────────────────
       const sortStage: any = {};
       const sortKey =
-        sortBy === "rentAmount"
-          ? "units.rentAmount"
-          : sortBy === "squareFootage"
-          ? "units.squareFootage"
-          : sortBy === "unitNumber"
-          ? "units.unitNumber"
-          : sortBy === "status"
-          ? "units.status"
-          : sortBy === "name"
-          ? "name"
-          : "createdAt";
+        sortBy === "rentAmount"    ? "units.rentAmount"    :
+        sortBy === "squareFootage" ? "units.squareFootage" :
+        sortBy === "unitNumber"    ? "units.unitNumber"    :
+        sortBy === "status"        ? "units.status"        :
+        sortBy === "name"          ? "name"                :
+        "createdAt";
       sortStage[sortKey] = sortOrder === "asc" ? 1 : -1;
 
+      // ── Search ────────────────────────────────────────────────────────────
       const searchOr = search
         ? [
-            { name: { $regex: search, $options: "i" } },
+            { name:               { $regex: search, $options: "i" } },
             { "units.unitNumber": { $regex: search, $options: "i" } },
           ]
         : undefined;
 
+      // ── Base pipeline (shared by count + paginated queries) ───────────────
       const basePipeline: any[] = [{ $match: match }, { $unwind: "$units" }];
 
-      if (searchOr) basePipeline.push({ $match: { $or: searchOr } });
-      if (Object.keys(unitMatch).length > 0)
-        basePipeline.push({ $match: unitMatch });
+      if (searchOr)                           basePipeline.push({ $match: { $or: searchOr } });
+      if (Object.keys(unitMatch).length > 0)  basePipeline.push({ $match: unitMatch });
 
-      const totalPipeline = [...basePipeline, { $count: "total" }];
-
-      const totalResult = await Property.aggregate(totalPipeline);
+      // ── Total units count ─────────────────────────────────────────────────
+      const totalResult = await Property.aggregate([
+        ...basePipeline,
+        { $count: "total" },
+      ]);
       const total = totalResult[0]?.total || 0;
 
-      // Get total unique properties count
-      const uniquePropertiesPipeline = [
+      // ── Total unique properties count ─────────────────────────────────────
+      const uniquePropertiesResult = await Property.aggregate([
         ...basePipeline,
         { $group: { _id: "$_id" } },
         { $count: "total" },
-      ];
-      const uniquePropertiesResult = await Property.aggregate(
-        uniquePropertiesPipeline
-      );
+      ]);
       const totalProperties = uniquePropertiesResult[0]?.total || 0;
 
-      const paginatedPipeline = [
+      // ── Paginated data ────────────────────────────────────────────────────
+      const data = await Property.aggregate([
         ...basePipeline,
         { $sort: sortStage },
         { $skip: Math.max((page - 1) * limit, 0) },
         { $limit: limit },
         {
           $project: {
-            _id: 1,
-            name: 1,
-            description: 1,
-            type: 1,
-            status: 1,
-            address: 1,
-            images: 1,
-            unitId: "$units._id",
-            unitNumber: "$units.unitNumber",
-            unitType: "$units.unitType",
-            floor: "$units.floor",
-            bedrooms: "$units.bedrooms",
-            bathrooms: "$units.bathrooms",
-            squareFootage: "$units.squareFootage",
-            rentAmount: "$units.rentAmount",
+            _id:             1,
+            name:            1,
+            description:     1,
+            type:            1,
+            status:          1,
+            address:         1,
+            images:          1,
+            unitId:          "$units._id",
+            unitNumber:      "$units.unitNumber",
+            unitType:        "$units.unitType",
+            floor:           "$units.floor",
+            bedrooms:        "$units.bedrooms",
+            bathrooms:       "$units.bathrooms",
+            squareFootage:   "$units.squareFootage",
+            rentAmount:      "$units.rentAmount",
             securityDeposit: "$units.securityDeposit",
-            unitStatus: "$units.status",
-            unitImages: "$units.images",
-            createdAt: 1,
-            updatedAt: 1,
+            unitStatus:      "$units.status",
+            unitImages:      "$units.images",
+            createdAt:       1,
+            updatedAt:       1,
           },
         },
-      ];
+      ]);
 
-      const data = await Property.aggregate(paginatedPipeline);
+      const pages = Math.ceil(total / limit) || 1;
 
-      const pagination = {
+      return createSuccessResponse(data, "Units retrieved", {
         page,
         limit,
         total,
         totalProperties,
-        pages: Math.ceil(total / limit) || 1,
-        hasNext: page < Math.ceil(total / limit),
+        pages,
+        hasNext: page < pages,
         hasPrev: page > 1,
-      };
-
-      return createSuccessResponse(data, "Units retrieved", pagination);
+      });
     } catch (error) {
       return handleApiError(error);
     }

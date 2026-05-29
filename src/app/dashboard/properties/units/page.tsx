@@ -241,7 +241,13 @@ export default function AllUnitsPage() {
     propertyId: string;
     unitId: string;
   } | null>(null);
+
   const [unitDetailsOpen, setUnitDetailsOpen] = useState(false);
+
+  // Separate display values for selects so they show correctly even when
+  // the numeric filter value is the threshold (5 for beds, 4 for baths)
+  const [bedroomsSelectValue, setBedroomsSelectValue] = useState<string>("all");
+  const [bathroomsSelectValue, setBathroomsSelectValue] = useState<string>("all");
 
   const [filters, setFilters] = useState<PropertyQueryParams>({
     page: parseInt(searchParams.get("page") || "1"),
@@ -290,12 +296,35 @@ export default function AllUnitsPage() {
 
   const handleSearch = (search: string) =>
     setFilters((p) => ({ ...p, search, page: 1 }));
+
   const handleFilterChange = (
     key: keyof PropertyQueryParams,
     value: string | number | undefined
   ) => setFilters((p) => ({ ...p, [key]: value, page: 1 }));
+
+  // ── Bedrooms: send 5 as the signal for "5+"; API converts to $gte:5 ──────
+  const handleBedroomsChange = (value: string) => {
+    setBedroomsSelectValue(value);
+    if (value === "all") {
+      setFilters((p) => ({ ...p, bedrooms: undefined, page: 1 }));
+    } else {
+      setFilters((p) => ({ ...p, bedrooms: parseInt(value), page: 1 }));
+    }
+  };
+
+  // ── Bathrooms: send 4 as the signal for "4+"; API converts to $gte:4 ─────
+  const handleBathroomsChange = (value: string) => {
+    setBathroomsSelectValue(value);
+    if (value === "all") {
+      setFilters((p) => ({ ...p, bathrooms: undefined, page: 1 }));
+    } else {
+      setFilters((p) => ({ ...p, bathrooms: parseInt(value), page: 1 }));
+    }
+  };
+
   const handlePageChange = (page: number) =>
     setFilters((p) => ({ ...p, page }));
+
   const toggleSortOrder = () =>
     setFilters((p) => ({
       ...p,
@@ -314,7 +343,10 @@ export default function AllUnitsPage() {
     setUnitDetailsOpen(false);
     setSelectedUnit(null);
   };
+
   const handleClearFilters = () => {
+    setBedroomsSelectValue("all");
+    setBathroomsSelectValue("all");
     setFilters({
       page: 1,
       limit: 12,
@@ -452,6 +484,7 @@ export default function AllUnitsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              {/* Property type */}
               <Select
                 value={filters.type || "all"}
                 onValueChange={(value) =>
@@ -478,14 +511,10 @@ export default function AllUnitsPage() {
                 </SelectContent>
               </Select>
 
+              {/* Bedrooms — uses dedicated handler so 5+ sends value "5" → API uses $gte:5 */}
               <Select
-                value={filters.bedrooms?.toString() || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "bedrooms",
-                    value === "all" ? undefined : parseInt(value)
-                  )
-                }
+                value={bedroomsSelectValue}
+                onValueChange={handleBedroomsChange}
               >
                 <SelectTrigger className="w-[120px] h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                   <SelectValue
@@ -514,14 +543,10 @@ export default function AllUnitsPage() {
                 </SelectContent>
               </Select>
 
+              {/* Bathrooms — uses dedicated handler so 4+ sends value "4" → API uses $gte:4 */}
               <Select
-                value={filters.bathrooms?.toString() || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "bathrooms",
-                    value === "all" ? undefined : parseInt(value)
-                  )
-                }
+                value={bathroomsSelectValue}
+                onValueChange={handleBathroomsChange}
               >
                 <SelectTrigger className="w-[120px] h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                   <SelectValue
@@ -549,6 +574,7 @@ export default function AllUnitsPage() {
                 </SelectContent>
               </Select>
 
+              {/* Unit type */}
               <Select
                 value={filters.unitType || "all"}
                 onValueChange={(value) =>
@@ -575,6 +601,7 @@ export default function AllUnitsPage() {
                 </SelectContent>
               </Select>
 
+              {/* Sort by */}
               <Select
                 value={filters.sortBy || "createdAt"}
                 onValueChange={(value) => handleFilterChange("sortBy", value)}
@@ -592,8 +619,7 @@ export default function AllUnitsPage() {
                 </SelectContent>
               </Select>
 
-
-              {/* Clear Filters */}
+              {/* Clear filters */}
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
@@ -605,15 +631,6 @@ export default function AllUnitsPage() {
                   {t("properties.filters.clear")}
                 </Button>
               )}
-              {/* <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleSortOrder}
-                className="h-10 px-3"
-              >
-                <ArrowUpDown className="h-4 w-4 mr-1" />
-                {filters.sortOrder === "asc" ? "Asc" : "Desc"}
-              </Button> */}
             </div>
           </div>
         </CardHeader>
@@ -776,10 +793,11 @@ export default function AllUnitsPage() {
                   {units.map((unit, index) => (
                     <TableRow
                       key={`${unit._id}-${unit.unitId}`}
-                      className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${index % 2 === 0
-                        ? "bg-white dark:bg-gray-900/20"
-                        : "bg-gray-50/20 dark:bg-gray-800/20"
-                        }`}
+                      className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${
+                        index % 2 === 0
+                          ? "bg-white dark:bg-gray-900/20"
+                          : "bg-gray-50/20 dark:bg-gray-800/20"
+                      }`}
                     >
                       <TableCell className="py-4 px-6">
                         <div className="flex items-center space-x-3">
