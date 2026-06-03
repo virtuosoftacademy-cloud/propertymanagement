@@ -517,13 +517,13 @@ export function Sidebar({ className }: SidebarProps) {
             // Main parent active state (full primary styling)
             isActive &&
             level === 0 &&
-            "bg-gradient-to-r from-primary/20 to-primary-light/20 text-primary border border-primary/20 shadow-sm",
+            "bg-linear-to-r from-foreground/20 to-primary-light/20 text-foreground border border-foreground/20 shadow-sm",
             // Parent with active child (subtle primary styling)
             isParentActive &&
-            "bg-primary/10 text-primary border border-primary/10",
+            "bg-background/10 text-foreground border border-background/10",
             // Child active state (lighter styling)
             isChildActive &&
-            "bg-primary/5 text-primary border-l-2 border-primary/30 ml-6",
+            "bg-foreground/5 text-foreground border-l-2 border-foreground/30 ml-6",
             level > 0 && "ml-8 text-xs py-1.5 relative",
             isCollapsed && "justify-center px-2"
           )}
@@ -535,7 +535,7 @@ export function Sidebar({ className }: SidebarProps) {
 
           {/* Active indicator - only for main parent active state */}
           {isActive && level === 0 && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-primary to-primary-light rounded-r-full shadow-sm" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-foreground to-foreground-light rounded-r-full shadow-sm" />
           )}
 
           <item.icon
@@ -543,7 +543,7 @@ export function Sidebar({ className }: SidebarProps) {
               "h-4 w-4 transition-colors",
               isCollapsed && "h-5 w-5",
               isActive || isParentActive
-                ? "text-primary"
+                ? "text-foreground"
                 : "text-gray-600 dark:text-gray-400"
             )}
           />
@@ -553,7 +553,7 @@ export function Sidebar({ className }: SidebarProps) {
                 className={cn(
                   "flex-1 font-medium",
                   isActive || isParentActive
-                    ? "text-primary"
+                    ? "text-foreground"
                     : "text-gray-700 dark:text-gray-300"
                 )}
               >
@@ -687,7 +687,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "flex h-full flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 overflow-hidden relative transition-[width] duration-300 ease-in-out",
+        "flex h-full flex-col bg-white dark:bg-background border-r border-gray-200 dark:border-gray-800 overflow-hidden relative transition-[width] duration-300 ease-in-out",
         isCollapsed ? "w-16" : "w-64",
         className
       )}
@@ -695,7 +695,7 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Header */}
       <div
         className={cn(
-          "flex h-16 items-center flex-shrink-0 border-b border-gray-200 dark:border-gray-800 gap-2",
+          "flex h-16 items-center shrink-0 border-b border-gray-200 dark:border-gray-800 gap-2",
           isCollapsed ? "px-2" : "px-4"
         )}
       >

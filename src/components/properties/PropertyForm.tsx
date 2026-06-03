@@ -405,7 +405,7 @@ export function EnhancedPropertyForm({
 
   return (
     <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-secondary">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-xl font-semibold">
             <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30">

@@ -1153,8 +1153,8 @@ export default function PropertiesPage() {
           {/* Main Header */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-2">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
-                <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 bg-foreground/10 dark:bg-foreground/20 rounded-lg border border-blue-100 dark:border-foreground">  
+                <Building2 className="h-5 w-5 text-foreground/60 dark:text-foreground" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -1169,8 +1169,8 @@ export default function PropertiesPage() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* Bulk Actions */}
               {selectedProperties.length > 0 && (
-                <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                <div className="flex items-center gap-2 p-2 bg-foreground/50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
+                  <span className="text-sm font-medium text-foreground dark:text-foreground">
                     {t("properties.bulk.selected", {
                       values: { count: selectedProperties.length },
                     })}
