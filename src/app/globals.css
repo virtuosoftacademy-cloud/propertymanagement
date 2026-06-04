@@ -89,7 +89,7 @@
   --destructive: #ef4444;
 
   /* Glass Morphism */
-  --glass: rgba(255, 255, 255, 0.1);
+  --glass: rgba(205, 205, 205, 0.1);
   --glass-border: rgba(255, 255, 255, 0.2);
   --shadow-glass: 0 8px 32px rgba(31, 38, 135, 0.37);
 

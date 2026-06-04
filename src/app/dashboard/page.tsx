@@ -29,7 +29,6 @@ import {
   Building2,
   Home,
   Users,
-  DollarSign,
   Wrench,
   AlertTriangle,
   Calendar,
@@ -44,6 +43,7 @@ import {
   ChevronRight,
   UserCheck,
   ClipboardList,
+  PoundSterling,
 } from "lucide-react";
 import {
   PieChart as RechartsPieChart,
@@ -62,7 +62,7 @@ import { UserRole } from "@/types";
 const getActivityIcon = (type: string) => {
   switch (type) {
     case "payment":
-      return DollarSign;
+      return PoundSterling;
     case "maintenance":
       return Wrench;
     case "lease":
@@ -673,7 +673,7 @@ export default function DashboardPage() {
           title={t("dashboard.cards.monthlyRevenue.title")}
           value={formatCurrency(overview?.monthlyRevenue ?? 0)}
           description={t("dashboard.cards.monthlyRevenue.description")}
-          icon={DollarSign}
+          icon={PoundSterling}
           iconColor="success"
         />
         <AnalyticsCard
@@ -714,7 +714,7 @@ export default function DashboardPage() {
           title={t("dashboard.cards.averageRent.title")}
           value={formatCurrency(overview?.averageRent ?? 0)}
           description={t("dashboard.cards.averageRent.description")}
-          icon={DollarSign}
+          icon={PoundSterling}
           iconColor="success"
         />
         <AnalyticsCard
@@ -827,7 +827,7 @@ export default function DashboardPage() {
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: "#64748b" }}
-                    tickFormatter={(value) => `${value / 1000}k`}
+                    tickFormatter={(value) => `£{value / 1000}k`}
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {

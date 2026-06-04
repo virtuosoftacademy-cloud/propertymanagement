@@ -44,6 +44,7 @@ import {
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { useParams, useRouter } from "next/navigation";
 import { ImageUpload } from "../ui/image-upload";
+import { ComplianceCategory } from "@/types";
 
 // ────────────────────────────────────────────────
 // Schema
@@ -87,15 +88,16 @@ interface ComplianceReportFormProps {
   }>;
 }
 
-const categories = [
-  { value: "fire-safety", label: "Fire Safety Certificate" },
-  { value: "electrical", label: "Electrical Safety" },
-  { value: "structural", label: "Structural Safety" },
-  { value: "elevator", label: "Elevator / Lift Certificate" },
-  { value: "pest-control", label: "Pest Control Certificate" },
-  { value: "health-hygiene", label: "Health & Hygiene Compliance" },
-  { value: "general", label: "General Building Compliance" },
-];
+// const categories = [
+//   { value: "fire-safety", label: "Fire Safety Certificate" },
+//   { value: "electrical", label: "Electrical Safety" },
+//   { value: "structural", label: "Structural Safety" },
+//   { value: "elevator", label: "Elevator / Lift Certificate" },
+//   { value: "pest-control", label: "Pest Control Certificate" },
+//   { value: "health-hygiene", label: "Health & Hygiene Compliance" },
+//   { value: "general", label: "General Building Compliance" },
+//   { value: "hmo", label: "HMO (House in Multiple Occupation) License" },
+// ];
 
 export default function ComplianceReportForm({
   mode = "create",
@@ -177,7 +179,8 @@ export default function ComplianceReportForm({
       );
     }
   };
-
+  const { watch, setValue } = form;
+  const watchedValues = watch();
   return (
     <div className="w-full space-y-8">
       <Form {...form}>
@@ -248,8 +251,10 @@ export default function ComplianceReportForm({
                         Compliance Type <span className="text-red-500 text-xs">*</span>
                       </FormLabel>
                       <Select
-                        onValueChange={field.onChange}
-                        value={field.value || undefined}
+                        value={watchedValues.category}
+                        onValueChange={(value) =>
+                          setValue("category", value as ComplianceCategory)
+                        }
                       >
                         <FormControl>
                           <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200">
@@ -257,9 +262,9 @@ export default function ComplianceReportForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {categories.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
+                          {Object.values(ComplianceCategory).map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {t(`compliance.category.${type}`)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -350,7 +355,7 @@ export default function ComplianceReportForm({
                 {t("compliance.form.costandAdd.title") && "Cost & Additional Notes"}
               </CardTitle>
               <CardDescription className="text-base">
-                {t("compliance.form.costandAdd.description") && "Optional information about estimated cost and any remarks"}
+                {t("compliance.form.costandAdd.description") && "Optional information about actual cost and any remarks"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -360,7 +365,7 @@ export default function ComplianceReportForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Estimated Cost
+                      Actual Cost
                     </FormLabel>
                     <FormControl>
                       <Input

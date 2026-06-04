@@ -860,8 +860,8 @@ export const LOCALES: Record<string, Locale> = {
 
 export class LocalizationService {
   private static instance: LocalizationService;
-  private currentLocale: string = "en-US";
-  private currentCurrency: string = "USD";
+  private currentLocale: string = "en-GB";
+  private currentCurrency: string = "GBP";
   private exchangeRates: Map<string, ExchangeRate> = new Map();
 
   private translations: Record<string, Record<string, string>> = translations;
@@ -869,14 +869,14 @@ export class LocalizationService {
   private constructor() {
     // Initialize with browser locale if available
     if (typeof window !== "undefined") {
-      this.currentLocale = navigator.language || "en-US";
+      this.currentLocale = navigator.language || "en-GB";
       if (!LOCALES[this.currentLocale]) {
         // Fallback to language code only
         const langCode = this.currentLocale.split("-")[0];
         const fallbackLocale = Object.keys(LOCALES).find((locale) =>
           locale.startsWith(langCode)
         );
-        this.currentLocale = fallbackLocale || "en-US";
+        this.currentLocale = fallbackLocale || "en-GB";
       }
       const savedCurrency = (() => {
         try {
@@ -888,7 +888,7 @@ export class LocalizationService {
       if (savedCurrency && CURRENCIES[savedCurrency]) {
         this.currentCurrency = savedCurrency;
       } else {
-        this.currentCurrency = LOCALES[this.currentLocale]?.currency || "USD";
+        this.currentCurrency = LOCALES[this.currentLocale]?.currency || "GBP";
       }
     }
   }

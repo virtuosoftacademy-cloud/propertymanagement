@@ -107,15 +107,6 @@ async function seedDemoAccounts() {
       }
     }
 
-
-
-
-
-
-
-
-
-
   } catch (error: any) {
     console.error('❌ Error seeding demo accounts:', error.message);
     console.error(error);

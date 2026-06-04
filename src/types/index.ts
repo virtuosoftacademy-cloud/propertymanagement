@@ -205,7 +205,7 @@ export enum PropertyownerType {
 export enum PropertyType {
   APARTMENT = "apartment",
   HOUSE = "house",
-  CONDO = "condo",
+  HMO = "hmo",
   TOWNHOUSE = "townhouse",
   COMMERCIAL = "commercial",
   OFFICE = "office",
@@ -900,7 +900,7 @@ export enum ComplianceCategory {
   ELEVATOR = "elevator",
   PEST_CONTROL = "pest-control",
   HEALTH_HYGIENE = "health-hygiene",
-  GENERAL = "general",
+  HMO = "hmo-license",
 }
 
 // Display-friendly labels for each category (used in UI dropdowns / badges)
@@ -911,7 +911,7 @@ export const ComplianceCategoryLabels: Record<ComplianceCategory, string> = {
   [ComplianceCategory.ELEVATOR]: "Elevator / Lift Certificate",
   [ComplianceCategory.PEST_CONTROL]: "Pest Control Certificate",
   [ComplianceCategory.HEALTH_HYGIENE]: "Health & Hygiene Compliance",
-  [ComplianceCategory.GENERAL]: "General Building Compliance",
+  [ComplianceCategory.HMO]: "HMO License",
 };
 
 // Lifecycle status of a compliance certificate (auto-derived from expiryDate)
