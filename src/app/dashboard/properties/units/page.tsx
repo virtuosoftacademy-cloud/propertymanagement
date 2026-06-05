@@ -196,7 +196,7 @@ function UnitCard({ unit, onViewDetails }: UnitCardProps) {
           <div className="flex items-center text-lg font-semibold text-gray-900 dark:text-gray-100">
             <span>{formatCurrencyLocalized(unit.rentAmount)}</span>
             <span className="text-sm font-normal text-gray-600 dark:text-gray-400 ml-1">
-              {t("properties.available.card.perMonth")}
+              {t("properties.available.card.perNight")}
             </span>
           </div>
           <DropdownMenu>
@@ -779,7 +779,7 @@ export default function AllUnitsPage() {
                       {t("properties.available.table.details")}
                     </TableHead>
                     <TableHead className="text-left font-medium text-gray-700 dark:text-gray-300 py-3 px-4">
-                      {t("properties.available.table.rent")}
+                      {t("properties.available.table.perNight")}
                     </TableHead>
                     <TableHead className="text-left font-medium text-gray-700 dark:text-gray-300 py-3 px-4">
                       Status
@@ -888,7 +888,7 @@ export default function AllUnitsPage() {
                             {formatCurrency(unit.rentAmount)}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {t("properties.available.table.perMonth")}
+                            {t("properties.available.table.perNight")}
                           </div>
                         </div>
                       </TableCell>

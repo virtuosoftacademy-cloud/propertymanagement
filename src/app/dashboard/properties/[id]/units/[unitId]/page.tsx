@@ -602,7 +602,7 @@ export default function UnitDetailsPage() {
                   <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      {t("properties.unitDetails.stats.monthlyRent")}
+                      {t("properties.unitDetails.stats.rent")}
                     </p>
                     <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
                       {formatCurrencyLocalized(unit.rentAmount)}
@@ -1289,7 +1289,7 @@ export default function UnitDetailsPage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">
-                          {t("leases.details.financial.monthlyRent")}
+                          {t("leases.details.financial.rent")}
                         </span>
                         <span className="text-sm font-semibold">
                           {typeof lease?.terms?.rentAmount === "number"

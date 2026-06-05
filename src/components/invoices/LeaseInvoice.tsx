@@ -306,15 +306,15 @@ export function LeaseInvoice({
                     </p>
                     <p className="text-gray-600">
                       <span className="font-medium">Bedrooms:</span>{" "}
-                      {lease.propertyId?.bedrooms || "N/A"}
+                      {lease.unit?.bedrooms || "N/A"}
                     </p>
                     <p className="text-gray-600">
                       <span className="font-medium">Bathrooms:</span>{" "}
-                      {lease.propertyId?.bathrooms || "N/A"}
+                      {lease.unit?.bathrooms || "N/A"}
                     </p>
                     <p className="text-gray-600">
                       <span className="font-medium">Square Feet:</span>{" "}
-                      {lease.propertyId?.squareFootage?.toLocaleString() ||
+                      {lease.unit?.squareFootage?.toLocaleString() ||
                         "N/A"}
                     </p>
                   </div>
@@ -329,17 +329,17 @@ export function LeaseInvoice({
                 </h3>
                 <div className="space-y-2 text-sm">
                   <p className="font-medium text-gray-900">
-                    {lease.tenantId?.userId?.firstName || "N/A"}{" "}
-                    {lease.tenantId?.userId?.lastName || ""}
+                    {lease.tenantId?.firstName || "N/A"}{" "}
+                    {lease.tenantId?.lastName || ""}
                   </p>
                   <p className="flex items-center gap-2 text-gray-600">
                     <Mail className="h-4 w-4" />
-                    {lease.tenantId?.userId?.email || "N/A"}
+                    {lease.tenantId?.email || "N/A"}
                   </p>
-                  {lease.tenantId?.userId?.phone && (
+                  {lease.tenantId?.phone && (
                     <p className="flex items-center gap-2 text-gray-600">
                       <Phone className="h-4 w-4" />
-                      {lease.tenantId?.userId?.phone}
+                      {lease.tenantId?.phone}
                     </p>
                   )}
                   <div className="mt-3">
@@ -439,10 +439,10 @@ export function LeaseInvoice({
               <div className="summary-grid space-y-3">
                 <div className="summary-item flex justify-between py-3 border-b border-blue-200">
                   <span className="summary-label font-medium text-blue-900">
-                    Monthly Rent:
+                    Total Rent:
                   </span>
                   <span className="summary-value font-semibold text-blue-900">
-                    {formatCurrency(lease.terms?.rentAmount || 0)}
+                    {formatCurrency(lease.terms?.totalAmount || 0)}
                   </span>
                 </div>
                 <div className="summary-item flex justify-between py-3 border-b border-blue-200">
@@ -479,7 +479,7 @@ export function LeaseInvoice({
                   </span>
                   <span className="summary-value font-bold text-blue-900 text-lg">
                     {formatCurrency(
-                      (lease.terms?.rentAmount || 0) +
+                      (lease.terms?.totalAmount || 0) +
                         (lease.terms?.securityDeposit || 0) +
                         (lease.terms?.petDeposit || 0) +
                         (lease.terms?.lateFee || 0)

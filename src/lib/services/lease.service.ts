@@ -27,6 +27,7 @@ export interface LeaseFormData {
   status?: LeaseStatus;
   terms: {
     rentAmount: number;
+    totalAmount: number;
     securityDeposit: number;
     lateFee: number;
     petDeposit?: number;
@@ -63,6 +64,7 @@ export interface LeaseResponse {
       bedrooms: number;
       bathrooms: number;
       squareFootage: number;
+      totalAmount: number;
       rentAmount: number;
       securityDeposit: number;
       status: string;
@@ -77,6 +79,7 @@ export interface LeaseResponse {
     bathrooms: number;
     squareFootage: number;
     rentAmount: number;
+    totalAmount: number;
     securityDeposit: number;
     status: string;
   };

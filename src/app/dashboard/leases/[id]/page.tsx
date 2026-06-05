@@ -50,6 +50,7 @@ import {
   Mail,
   Settings,
   Building,
+  PoundSterling,
 } from "lucide-react";
 import { useState, useEffect, use, useCallback } from "react";
 import { LeaseStatusBadge } from "@/components/leases/LeaseStatusBadge";
@@ -128,6 +129,13 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  const getTotalDays = () => {
+    if (!lease?.startDate || !lease?.endDate) return 0;
+    const start = new Date(lease.startDate);
+    const end = new Date(lease.endDate);
+    const diffTime = end.getTime() - start.getTime();
+    return Math.max(0, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+  };
   if (loading) {
     return (
       <div className="space-y-8 animate-fade-in-up">
@@ -178,6 +186,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
   }
 
   const daysRemaining = getDaysRemaining();
+  const totalDays = getTotalDays();
 
   return (
     <div className="space-y-8 animate-fade-in-up">
@@ -223,8 +232,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
               size="sm"
               onClick={() =>
                 router.push(
-                  `/dashboard/leases/invoices?propertyId=${
-                    lease.propertyId?._id || ""
+                  `/dashboard/leases/invoices?propertyId=${lease.propertyId?._id || ""
                   }`
                 )
               }
@@ -617,10 +625,11 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                       {t("leases.details.summary.duration")}
                     </label>
                     <p>
-                      {leaseService.formatLeaseDuration(
-                        lease.startDate,
-                        lease.endDate
-                      )}
+                      {totalDays > 0
+                        ? t("leases.labels.days", {
+                          values: { days: totalDays },
+                        })
+                        : t("leases.labels.expired")}
                     </p>
                   </div>
 
@@ -630,18 +639,17 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                         {t("leases.details.summary.daysRemaining")}
                       </label>
                       <p
-                        className={`font-semibold ${
-                          daysRemaining < 30
-                            ? "text-red-600"
-                            : daysRemaining < 60
+                        className={`font-semibold ${daysRemaining < 30
+                          ? "text-red-600"
+                          : daysRemaining < 60
                             ? "text-orange-600"
                             : "text-green-600"
-                        }`}
+                          }`}
                       >
                         {daysRemaining > 0
                           ? t("leases.labels.days", {
-                              values: { days: daysRemaining },
-                            })
+                            values: { days: daysRemaining },
+                          })
                           : t("leases.labels.expired")}
                       </p>
                     </div>
@@ -666,7 +674,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3 text-lg">
                     <div className="p-2 rounded-lg bg-success/10">
-                      <DollarSign className="h-5 w-5 text-success" />
+                      <PoundSterling className="h-5 w-5 text-success" />
                     </div>
                     {t("leases.details.financial.title")}
                   </CardTitle>
@@ -675,10 +683,10 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                   <div className="grid grid-cols-1 gap-3 lg:gap-4">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
                       <span className="text-success font-semibold text-sm lg:text-base">
-                        {t("leases.details.financial.monthlyRent")}
+                        {t("leases.details.financial.totalAmount")}
                       </span>
                       <span className="font-bold text-lg lg:text-xl text-success">
-                        {formatCurrency(lease.terms.rentAmount)}
+                        {formatCurrency(lease.terms.totalAmount)}
                       </span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-warning/15 to-warning/8 border border-warning/15">

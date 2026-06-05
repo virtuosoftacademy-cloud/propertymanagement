@@ -527,10 +527,19 @@ export const leasePaymentConfigSchema = z.object({
 });
 
 export const leaseTermsSchema = z.object({
+  // Rent rate used to compute the total (rate × days between start and end)
   rentAmount: z
     .number()
     .min(0, "Rent cannot be negative")
     .max(100000, "Rent too high"),
+
+  // Auto-calculated total the form submits (rentAmount × number of days)
+  totalAmount: z
+    .number()
+    .min(0, "Total cannot be negative")
+    .max(100_000_000, "Total too high")
+    .optional(),
+
   securityDeposit: z
     .number()
     .min(0, "Security deposit cannot be negative")

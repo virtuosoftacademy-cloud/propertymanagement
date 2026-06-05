@@ -565,14 +565,14 @@ export interface ILeasePaymentConfig {
 }
 
 export interface ILeaseTerms {
-  /** monthly vs nightly pricing */
-  rentBasis: "monthly" | "nightly";      // <<< added
+  /** Rent rate used to compute the total (rate × days) */
+  rentAmount: number;
 
-  // the rest of the fields are optional because they are conditionally required
-  rentAmount?: number;
-  nightlyRate?: number;
-  billingCycle?: "daily" | "weekly" | "monthly";
+  /** Auto-calculated total (rentAmount × number of days) */
+  totalAmount?: number;
+
   securityDeposit?: number;
+  lateFee?: number;
   utilities?: string[];
   restrictions?: string[];
   paymentConfig?: ILeasePaymentConfig;

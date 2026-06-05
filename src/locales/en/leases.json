@@ -69,14 +69,14 @@
   "leases.table.propertyUnit": "Property & Unit",
   "leases.table.tenant": "Tenant",
   "leases.table.status": "Status",
-  "leases.table.rentAmount": "Rent Amount",
+  "leases.table.totalAmount": "Total Amount",
   "leases.table.startDate": "Start Date",
   "leases.table.endDate": "End Date",
   "leases.table.daysRemaining": "Days Remaining",
   "leases.table.actions": "Actions",
 
   "leases.labels.unit": "Unit",
-  "leases.labels.perMonth": "per month",
+  "leases.labels.perMonth": "per night",
   "leases.labels.days": "{days} days",
   "leases.labels.expired": "Expired",
   "leases.labels.propertyNotAvailable": "Property Not Available",
@@ -169,11 +169,12 @@
   "leases.details.summary.signedDate": "Signed Date",
 
   "leases.details.financial.title": "Financial Terms",
-  "leases.details.financial.monthlyRent": "Monthly Rent",
+  "leases.details.financial.rent": "Rent Amount",
   "leases.details.financial.securityDeposit": "Security Deposit",
   "leases.details.financial.lateFee": "Late Fee",
   "leases.details.financial.petDeposit": "Pet Deposit",
-
+  "leases.details.financial.totalAmount": "Total Amount",
+  
   "leases.details.status.title": "Status Management",
   "leases.details.status.availableActionsTitle": "Available Actions",
 

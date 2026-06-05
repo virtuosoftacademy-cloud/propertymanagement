@@ -1,11 +1,13 @@
 /**
  * PropertyPro - Simplified Lease Creation Form
- * Streamlined lease creation focusing on core fields only
+ * Streamlined lease creation focusing on core fields only.
+ * Rent is a single rate; the Total Amount is auto-calculated (read-only)
+ * from the rate x number of days between the start and end dates.
  */
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import {
   Card,
@@ -52,7 +54,7 @@ interface SimplifiedLeaseData {
   endDate: string;
 
   // Financial Terms
-  rentAmount: number;
+  rentAmount: number; // rate (per day) used to compute the total
   securityDeposit: number;
   rentDueDay: number;
 
@@ -119,6 +121,10 @@ const createInitialLeaseState = (): SimplifiedLeaseData => ({
   autoEmailInvoices: false,
 });
 
+// Number of days between two dates.
+const daysBetween = (start: Date, end: Date): number =>
+  Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+
 export default function SimplifiedLeaseCreation({
   mode = "create",
   leaseId,
@@ -152,7 +158,6 @@ export default function SimplifiedLeaseCreation({
     ? t("leases.new.form.buttons.resetChanges")
     : t("leases.new.form.buttons.resetForm");
 
-  // Fetch properties and tenants on component mount
   useEffect(() => {
     fetchProperties();
     fetchTenants();
@@ -165,25 +170,16 @@ export default function SimplifiedLeaseCreation({
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // The API returns properties directly in data.data
         const properties = Array.isArray(data.data) ? data.data : [];
-
-        // Ensure all properties have a units array (even if empty)
         const normalizedProperties = properties.map((property: any) => ({
           ...property,
           units: Array.isArray(property.units) ? property.units : [],
         }));
-
         setProperties(normalizedProperties);
       } else {
         toast.error(
           t("leases.new.form.toasts.loadPropertiesError"),
-          data.error
-            ? {
-                description: data.error,
-                duration: 5000,
-              }
-            : undefined
+          data.error ? { description: data.error, duration: 5000 } : undefined
         );
         setProperties([]);
       }
@@ -204,12 +200,7 @@ export default function SimplifiedLeaseCreation({
       } else {
         toast.error(
           t("leases.new.form.toasts.loadTenantsError"),
-          data.error
-            ? {
-                description: data.error,
-                duration: 5000,
-              }
-            : undefined
+          data.error ? { description: data.error, duration: 5000 } : undefined
         );
       }
     } catch (error) {
@@ -219,13 +210,9 @@ export default function SimplifiedLeaseCreation({
 
   const mapLeaseToFormData = (lease: LeaseResponse): SimplifiedLeaseData => {
     const propertyId =
-      typeof lease.propertyId === "string"
-        ? lease.propertyId
-        : lease.propertyId?._id || "";
+      typeof lease.propertyId === "string" ? lease.propertyId : lease.propertyId?._id || "";
     const tenantId =
-      typeof lease.tenantId === "string"
-        ? lease.tenantId
-        : lease.tenantId?._id || "";
+      typeof lease.tenantId === "string" ? lease.tenantId : lease.tenantId?._id || "";
     const unitId =
       typeof lease.unitId === "string" ? lease.unitId : lease.unit?._id || "";
 
@@ -243,8 +230,7 @@ export default function SimplifiedLeaseCreation({
       rentDueDay: paymentConfig?.rentDueDay ?? 1,
       lateFeeAmount: lateFeeConfig?.feeAmount ?? lease.terms?.lateFee ?? 0,
       lateFeeGracePeriodDays: lateFeeConfig?.gracePeriodDays ?? 0,
-      lateFeeType:
-        lateFeeConfig?.feeType === "percentage" ? "percentage" : "fixed",
+      lateFeeType: lateFeeConfig?.feeType === "percentage" ? "percentage" : "fixed",
       autoGenerateInvoices: paymentConfig?.autoGenerateInvoices ?? true,
       autoEmailInvoices: paymentConfig?.autoEmailInvoices ?? false,
     };
@@ -304,10 +290,7 @@ export default function SimplifiedLeaseCreation({
     validateField(field, value);
   };
 
-  const setError = (
-    field: keyof SimplifiedLeaseData,
-    message: string | null
-  ) => {
+  const setError = (field: keyof SimplifiedLeaseData, message: string | null) => {
     setFieldErrors((prev) => {
       const next = { ...prev };
       if (message) next[field] = message;
@@ -321,6 +304,7 @@ export default function SimplifiedLeaseCreation({
     value: any
   ): string | null => {
     let message: string | null = null;
+
     if (field === "propertyId" && !value)
       message = t("leases.new.form.validation.propertyRequired");
     if (field === "unitId" && !value)
@@ -331,16 +315,15 @@ export default function SimplifiedLeaseCreation({
       message = t("leases.new.form.validation.startDateRequired");
     if (field === "endDate" && !value)
       message = t("leases.new.form.validation.endDateRequired");
+
     if (field === "rentAmount" && (typeof value !== "number" || value <= 0))
       message = t("leases.new.form.validation.rentPositive");
+
     if (field === "securityDeposit" && (typeof value !== "number" || value < 0))
       message = t("leases.new.form.validation.securityDepositNonNegative");
     if (field === "lateFeeAmount" && (typeof value !== "number" || value < 0))
       message = t("leases.new.form.validation.lateFeeNonNegative");
-    if (
-      field === "lateFeeGracePeriodDays" &&
-      (typeof value !== "number" || value < 0)
-    )
+    if (field === "lateFeeGracePeriodDays" && (typeof value !== "number" || value < 0))
       message = t("leases.new.form.validation.gracePeriodNonNegative");
 
     if (field === "endDate" && value && leaseData.startDate) {
@@ -353,10 +336,7 @@ export default function SimplifiedLeaseCreation({
     return message;
   };
 
-  const validateField = (
-    field: keyof SimplifiedLeaseData,
-    value: any
-  ): boolean => {
+  const validateField = (field: keyof SimplifiedLeaseData, value: any): boolean => {
     const message = getFieldErrorMessage(field, value);
     setError(field, message);
     return !message;
@@ -378,8 +358,10 @@ export default function SimplifiedLeaseCreation({
       ["lateFeeAmount", leaseData.lateFeeAmount],
       ["lateFeeGracePeriodDays", leaseData.lateFeeGracePeriodDays],
     ];
+
     const messages: string[] = [];
     const invalidFields: Array<keyof SimplifiedLeaseData> = [];
+
     checks.forEach(([f, v]) => {
       const message = getFieldErrorMessage(f, v);
       setError(f, message);
@@ -388,6 +370,7 @@ export default function SimplifiedLeaseCreation({
         messages.push(message);
       }
     });
+
     return { ok: messages.length === 0, messages, invalidFields };
   };
 
@@ -416,9 +399,7 @@ export default function SimplifiedLeaseCreation({
     }
   };
 
-  const focusFirstInvalid = (
-    invalidFields: Array<keyof SimplifiedLeaseData>
-  ) => {
+  const focusFirstInvalid = (invalidFields: Array<keyof SimplifiedLeaseData>) => {
     if (invalidFields.length > 0) {
       focusField(invalidFields[0]);
     }
@@ -430,28 +411,14 @@ export default function SimplifiedLeaseCreation({
 
   const getAvailableUnits = () => {
     const property = getSelectedProperty();
-
-    if (!property || !Array.isArray(property.units)) {
-      return [];
-    }
+    if (!property || !Array.isArray(property.units)) return [];
 
     const selectedUnitId = leaseData.unitId;
-
     const availableUnits = property.units.filter((unit) => {
-      if (!unit || typeof unit !== "object") {
-        return false;
-      }
-
-      if (!unit.unitNumber) {
-        return false;
-      }
-
-      if (mode === "edit" && unit._id === selectedUnitId) {
-        return true;
-      }
-
-      const status =
-        typeof unit.status === "string" ? unit.status.toLowerCase() : "";
+      if (!unit || typeof unit !== "object") return false;
+      if (!unit.unitNumber) return false;
+      if (mode === "edit" && unit._id === selectedUnitId) return true;
+      const status = typeof unit.status === "string" ? unit.status.toLowerCase() : "";
       return status === PropertyStatus.AVAILABLE;
     });
 
@@ -460,12 +427,8 @@ export default function SimplifiedLeaseCreation({
       selectedUnitId &&
       !availableUnits.some((unit) => unit._id === selectedUnitId)
     ) {
-      const selectedUnit = property.units.find(
-        (unit) => unit?._id === selectedUnitId
-      );
-      if (selectedUnit) {
-        return [selectedUnit, ...availableUnits];
-      }
+      const selectedUnit = property.units.find((unit) => unit?._id === selectedUnitId);
+      if (selectedUnit) return [selectedUnit, ...availableUnits];
     }
 
     return availableUnits;
@@ -480,9 +443,7 @@ export default function SimplifiedLeaseCreation({
     handleInputChange("unitId", unitId);
 
     // Auto-fill rent amount and security deposit when unit is selected
-    const selectedUnit = getAvailableUnits().find(
-      (unit) => unit._id === unitId
-    );
+    const selectedUnit = getAvailableUnits().find((unit) => unit._id === unitId);
     if (selectedUnit) {
       if (selectedUnit.rentAmount) {
         handleInputChange("rentAmount", selectedUnit.rentAmount);
@@ -492,6 +453,20 @@ export default function SimplifiedLeaseCreation({
       }
     }
   };
+
+  // Auto-calculated total = rent rate x days between start and end.
+  const pricing = useMemo(() => {
+    if (!leaseData.startDate || !leaseData.endDate) return null;
+    const start = new Date(leaseData.startDate + "T00:00:00");
+    const end = new Date(leaseData.endDate + "T00:00:00");
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return null;
+
+    const days = daysBetween(start, end);
+    const rate = leaseData.rentAmount || 0;
+    return { days, rate, total: days * rate };
+  }, [leaseData.startDate, leaseData.endDate, leaseData.rentAmount]);
+
+  const totalAmount = pricing ? pricing.total : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -520,7 +495,8 @@ export default function SimplifiedLeaseCreation({
       startDate: leaseData.startDate,
       endDate: leaseData.endDate,
       terms: {
-        rentAmount: leaseData.rentAmount,
+        rentAmount: leaseData.rentAmount, // rate
+        totalAmount, // auto-calculated total (rate x days)
         securityDeposit: leaseData.securityDeposit,
         lateFee: leaseData.lateFeeAmount,
         utilities: [],
@@ -545,84 +521,53 @@ export default function SimplifiedLeaseCreation({
     };
 
     const targetLeaseId = leaseId ?? initialLease?._id;
-    const endpoint =
-      mode === "edit" && targetLeaseId
-        ? `/api/leases/${targetLeaseId}`
-        : "/api/leases";
+    const endpoint = mode === "edit" && targetLeaseId ? `/api/leases/${targetLeaseId}` : "/api/leases";
     const method = mode === "edit" ? "PUT" : "POST";
-    const payload =
-      mode === "edit"
-        ? basePayload
-        : {
-            ...basePayload,
-            status: "active" as const,
-          };
+    const payload = mode === "edit" ? basePayload : { ...basePayload, status: "active" as const };
 
     try {
       const response = await fetch(endpoint, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(
-          result.error ||
-            result.message ||
-            t("leases.new.form.errors.saveLeaseGeneric")
-        );
+        throw new Error(result.error || result.message || t("leases.new.form.errors.saveLeaseGeneric"));
       }
 
       const resultLease = result.data?.lease ?? result.data ?? null;
       const resultLeaseId =
-        resultLease?._id ??
-        targetLeaseId ??
-        (typeof result.data?.id === "string" ? result.data.id : undefined);
+        resultLease?._id ?? targetLeaseId ?? (typeof result.data?.id === "string" ? result.data.id : undefined);
 
       if (mode === "edit") {
         toast.success(t("leases.new.form.toasts.updateSuccess"));
-
         setLeaseError(null);
-
         if (resultLease) {
           hydrateLeaseData(resultLease);
         } else if (targetLeaseId) {
           void loadLeaseDetails(targetLeaseId);
         }
-
-        if (onSuccess) {
-          onSuccess(resultLeaseId);
-        } else if (resultLeaseId) {
-          window.location.href = `/dashboard/leases/${resultLeaseId}`;
-        }
+        if (onSuccess) onSuccess(resultLeaseId);
+        else if (resultLeaseId) window.location.href = `/dashboard/leases/${resultLeaseId}`;
         return;
       }
 
       toast.success(t("leases.new.form.toasts.createSuccess"));
 
       if (result.data?.invoiceGeneration) {
-        const { invoicesGenerated, errors: invoiceErrors } =
-          result.data.invoiceGeneration;
+        const { invoicesGenerated, errors: invoiceErrors } = result.data.invoiceGeneration;
         if (invoicesGenerated > 0) {
           toast.success(
-            t("leases.new.form.toasts.invoicesGenerated", {
-              values: { count: invoicesGenerated },
-            }),
-            {
-              description: t("leases.new.form.toasts.invoicesAvailable"),
-              duration: 6000,
-            }
+            t("leases.new.form.toasts.invoicesGenerated", { values: { count: invoicesGenerated } }),
+            { description: t("leases.new.form.toasts.invoicesAvailable"), duration: 6000 }
           );
         }
         if (Array.isArray(invoiceErrors) && invoiceErrors.length > 0) {
           toast.warning(
-            t("leases.new.form.toasts.invoiceWarnings", {
-              values: { warnings: invoiceErrors.join(", ") },
-            })
+            t("leases.new.form.toasts.invoiceWarnings", { values: { warnings: invoiceErrors.join(", ") } })
           );
         }
       }
@@ -631,13 +576,9 @@ export default function SimplifiedLeaseCreation({
       setOriginalLeaseData(createInitialLeaseState());
 
       const navigateAfterCreate = () => {
-        if (onSuccess) {
-          onSuccess(resultLeaseId);
-        } else if (resultLeaseId) {
-          window.location.href = `/dashboard/leases/${resultLeaseId}`;
-        } else {
-          window.location.href = "/dashboard/leases";
-        }
+        if (onSuccess) onSuccess(resultLeaseId);
+        else if (resultLeaseId) window.location.href = `/dashboard/leases/${resultLeaseId}`;
+        else window.location.href = "/dashboard/leases";
       };
 
       setTimeout(navigateAfterCreate, 2000);
@@ -645,13 +586,8 @@ export default function SimplifiedLeaseCreation({
       const fallbackMessage = t("leases.new.form.errors.saveLeaseGeneric");
       const message = error instanceof Error ? error.message : fallbackMessage;
       toast.error(
-        mode === "edit"
-          ? t("leases.new.form.toasts.updateError")
-          : t("leases.new.form.toasts.createError"),
-        {
-          description: message,
-          duration: 5000,
-        }
+        mode === "edit" ? t("leases.new.form.toasts.updateError") : t("leases.new.form.toasts.createError"),
+        { description: message, duration: 5000 }
       );
     } finally {
       setSubmitting(false);
@@ -678,9 +614,7 @@ export default function SimplifiedLeaseCreation({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    void loadLeaseDetails(leaseId ?? initialLease?._id ?? "")
-                  }
+                  onClick={() => void loadLeaseDetails(leaseId ?? initialLease?._id ?? "")}
                 >
                   {t("leases.new.form.actions.retryLoadLease")}
                 </Button>
@@ -704,50 +638,33 @@ export default function SimplifiedLeaseCreation({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="property">
-                  {t(
-                    "leases.new.form.sections.propertyTenant.labels.property",
-                    {
-                      values: { count: properties.length },
-                    }
-                  )}
+                  {t("leases.new.form.sections.propertyTenant.labels.property", { values: { count: properties.length } })}
                 </Label>
                 <Select
                   value={leaseData.propertyId}
                   onValueChange={(value) => {
                     handleInputChange("propertyId", value);
-                    handleInputChange("unitId", ""); // Reset unit when property changes
+                    handleInputChange("unitId", "");
                   }}
                 >
                   <SelectTrigger id="propertySelect">
-                    <SelectValue
-                      placeholder={t(
-                        "leases.new.form.sections.propertyTenant.placeholders.property"
-                      )}
-                    />
+                    <SelectValue placeholder={t("leases.new.form.sections.propertyTenant.placeholders.property")} />
                   </SelectTrigger>
                   <SelectContent>
                     {properties.map((property) => (
                       <SelectItem key={property._id} value={property._id}>
-                        {property.name} - {property.address?.street},{" "}
-                        {property.address?.city}
+                        {property.name} - {property.address?.street}, {property.address?.city}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {fieldErrors.propertyId && (
-                  <p className="text-destructive text-sm">
-                    {fieldErrors.propertyId}
-                  </p>
-                )}
+                {fieldErrors.propertyId && <p className="text-destructive text-sm">{fieldErrors.propertyId}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="unit">
                   {leaseData.propertyId
-                    ? t(
-                        "leases.new.form.sections.propertyTenant.labels.unitWithCount",
-                        { values: { count: getAvailableUnits().length } }
-                      )
+                    ? t("leases.new.form.sections.propertyTenant.labels.unitWithCount", { values: { count: getAvailableUnits().length } })
                     : t("leases.new.form.sections.propertyTenant.labels.unit")}
                 </Label>
                 <Select
@@ -759,20 +676,12 @@ export default function SimplifiedLeaseCreation({
                     <SelectValue
                       placeholder={
                         !leaseData.propertyId
-                          ? t(
-                              "leases.new.form.sections.propertyTenant.placeholders.selectPropertyFirst"
-                            )
+                          ? t("leases.new.form.sections.propertyTenant.placeholders.selectPropertyFirst")
                           : loadingProperties
-                          ? t(
-                              "leases.new.form.sections.propertyTenant.placeholders.loadingUnits"
-                            )
+                          ? t("leases.new.form.sections.propertyTenant.placeholders.loadingUnits")
                           : getAvailableUnits().length === 0
-                          ? t(
-                              "leases.new.form.sections.propertyTenant.placeholders.noUnits"
-                            )
-                          : t(
-                              "leases.new.form.sections.propertyTenant.placeholders.unit"
-                            )
+                          ? t("leases.new.form.sections.propertyTenant.placeholders.noUnits")
+                          : t("leases.new.form.sections.propertyTenant.placeholders.unit")
                       }
                     />
                   </SelectTrigger>
@@ -781,59 +690,35 @@ export default function SimplifiedLeaseCreation({
                       getAvailableUnits().map((unit) => (
                         <SelectItem key={unit._id} value={unit._id}>
                           <div className="flex items-center justify-between w-full">
-                            <span>
-                              {t(
-                                "leases.new.form.sections.propertyTenant.unitLabel",
-                                { values: { unitNumber: unit.unitNumber } }
-                              )}
-                            </span>
+                            <span>{t("leases.new.form.sections.propertyTenant.unitLabel", { values: { unitNumber: unit.unitNumber } })}</span>
                             <span className="text-xs text-gray-500 ml-2">
-                              {t(
-                                "leases.new.form.sections.propertyTenant.unitSummary",
-                                {
-                                  values: {
-                                    bedrooms: unit.bedrooms ?? 0,
-                                    bathrooms: unit.bathrooms ?? 0,
-                                    rent: formatCurrency(unit.rentAmount ?? 0),
-                                    perMonth: t("leases.labels.perMonth"),
-                                  },
-                                }
-                              )}
+                              {t("leases.new.form.sections.propertyTenant.unitSummary", {
+                                values: {
+                                  bedrooms: unit.bedrooms ?? 0,
+                                  bathrooms: unit.bathrooms ?? 0,
+                                  rent: formatCurrency(unit.rentAmount ?? 0),
+                                },
+                              })}
                             </span>
                           </div>
                         </SelectItem>
                       ))
                     ) : leaseData.propertyId ? (
                       <div className="px-2 py-1 text-sm text-gray-500">
-                        {t(
-                          "leases.new.form.sections.propertyTenant.messages.noUnitsInProperty"
-                        )}
+                        {t("leases.new.form.sections.propertyTenant.messages.noUnitsInProperty")}
                       </div>
                     ) : null}
                   </SelectContent>
                 </Select>
-                {fieldErrors.unitId && (
-                  <p className="text-destructive text-sm">
-                    {fieldErrors.unitId}
-                  </p>
-                )}
+                {fieldErrors.unitId && <p className="text-destructive text-sm">{fieldErrors.unitId}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tenant">
-                {t("leases.new.form.sections.propertyTenant.labels.tenant")}
-              </Label>
-              <Select
-                value={leaseData.tenantId}
-                onValueChange={(value) => handleInputChange("tenantId", value)}
-              >
+              <Label htmlFor="tenant">{t("leases.new.form.sections.propertyTenant.labels.tenant")}</Label>
+              <Select value={leaseData.tenantId} onValueChange={(value) => handleInputChange("tenantId", value)}>
                 <SelectTrigger id="tenantSelect">
-                  <SelectValue
-                    placeholder={t(
-                      "leases.new.form.sections.propertyTenant.placeholders.tenant"
-                    )}
-                  />
+                  <SelectValue placeholder={t("leases.new.form.sections.propertyTenant.placeholders.tenant")} />
                 </SelectTrigger>
                 <SelectContent>
                   {tenants.map((tenant) => (
@@ -843,11 +728,7 @@ export default function SimplifiedLeaseCreation({
                   ))}
                 </SelectContent>
               </Select>
-              {fieldErrors.tenantId && (
-                <p className="text-destructive text-sm">
-                  {fieldErrors.tenantId}
-                </p>
-              )}
+              {fieldErrors.tenantId && <p className="text-destructive text-sm">{fieldErrors.tenantId}</p>}
             </div>
           </CardContent>
         </Card>
@@ -863,31 +744,21 @@ export default function SimplifiedLeaseCreation({
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">
-                    {t("leases.new.form.sections.selectedUnit.labels.unit")}
-                  </div>
+                  <div className="text-xs text-gray-500 mb-1">{t("leases.new.form.sections.selectedUnit.labels.unit")}</div>
                   <div className="font-medium">
-                    {getSelectedUnit()?.unitNumber} (
-                    {getSelectedUnit()?.unitType})
+                    {getSelectedUnit()?.unitNumber} ({getSelectedUnit()?.unitType})
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">
-                    {t("leases.new.form.sections.selectedUnit.labels.size")}
-                  </div>
+                  <div className="text-xs text-gray-500 mb-1">{t("leases.new.form.sections.selectedUnit.labels.size")}</div>
                   <div className="font-medium">
                     {t("leases.new.form.sections.selectedUnit.sizeValue", {
-                      values: {
-                        bedrooms: getSelectedUnit()?.bedrooms ?? 0,
-                        bathrooms: getSelectedUnit()?.bathrooms ?? 0,
-                      },
+                      values: { bedrooms: getSelectedUnit()?.bedrooms ?? 0, bathrooms: getSelectedUnit()?.bathrooms ?? 0 },
                     })}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">
-                    {t("leases.new.form.sections.selectedUnit.labels.area")}
-                  </div>
+                  <div className="text-xs text-gray-500 mb-1">{t("leases.new.form.sections.selectedUnit.labels.area")}</div>
                   <div className="font-medium">
                     {t("leases.new.form.sections.selectedUnit.areaValue", {
                       values: { area: getSelectedUnit()?.squareFootage ?? 0 },
@@ -895,23 +766,17 @@ export default function SimplifiedLeaseCreation({
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">
-                    {t("leases.new.form.sections.selectedUnit.labels.rent")}
-                  </div>
+                  <div className="text-xs text-gray-500 mb-1">{t("leases.new.form.sections.selectedUnit.labels.rent")}</div>
                   <div className="font-medium text-green-600">
                     {t("leases.new.form.sections.selectedUnit.rentValue", {
                       values: {
-                        amount: formatCurrency(
-                          getSelectedUnit()?.rentAmount ?? 0
-                        ),
-                        perMonth: t("leases.labels.perMonth"),
+                        amount: formatCurrency(getSelectedUnit()?.rentAmount ?? 0),
                       },
                     })}
                   </div>
                 </div>
               </div>
-              {(getSelectedUnit()?.rentAmount ||
-                getSelectedUnit()?.securityDeposit) && (
+              {(getSelectedUnit()?.rentAmount || getSelectedUnit()?.securityDeposit) && (
                 <div className="mt-3 text-xs text-muted-foreground flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" />
                   {t("leases.new.form.sections.selectedUnit.autoFillNote")}
@@ -928,43 +793,25 @@ export default function SimplifiedLeaseCreation({
               <Calendar className="h-5 w-5" />
               {t("leases.new.form.sections.dates.title")}
             </CardTitle>
-            <CardDescription>
-              {t("leases.new.form.sections.dates.description")}
-            </CardDescription>
+            <CardDescription>{t("leases.new.form.sections.dates.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="startDate">
-                  {t("leases.new.form.sections.dates.labels.startDate")}
-                </Label>
+                <Label htmlFor="startDate">{t("leases.new.form.sections.dates.labels.startDate")}</Label>
                 <FormDatePicker
                   id="startDatePicker"
                   key={`start-date-${leaseData.startDate}`}
-                  value={
-                    leaseData.startDate
-                      ? new Date(leaseData.startDate + "T00:00:00")
-                      : undefined
-                  }
+                  value={leaseData.startDate ? new Date(leaseData.startDate + "T00:00:00") : undefined}
                   onChange={(date) => {
                     if (date) {
-                      // Create a new date to avoid timezone issues
-                      const localDate = new Date(
-                        date.getFullYear(),
-                        date.getMonth(),
-                        date.getDate()
-                      );
-                      handleInputChange(
-                        "startDate",
-                        format(localDate, "yyyy-MM-dd")
-                      );
+                      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                      handleInputChange("startDate", format(localDate, "yyyy-MM-dd"));
                     } else {
                       handleInputChange("startDate", "");
                     }
                   }}
-                  placeholder={t(
-                    "leases.new.form.sections.dates.placeholders.startDate"
-                  )}
+                  placeholder={t("leases.new.form.sections.dates.placeholders.startDate")}
                   disabled={(date) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -975,68 +822,47 @@ export default function SimplifiedLeaseCreation({
                   fromYear={new Date().getFullYear()}
                   toYear={new Date().getFullYear() + 5}
                 />
-                {fieldErrors.startDate && (
-                  <p className="text-destructive text-sm">
-                    {fieldErrors.startDate}
-                  </p>
-                )}
+                {fieldErrors.startDate && <p className="text-destructive text-sm">{fieldErrors.startDate}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="endDate">
-                  {t("leases.new.form.sections.dates.labels.endDate")}
-                </Label>
+                <Label htmlFor="endDate">{t("leases.new.form.sections.dates.labels.endDate")}</Label>
                 <FormDatePicker
                   id="endDatePicker"
                   key={`end-date-${leaseData.endDate}-${leaseData.startDate}`}
-                  value={
-                    leaseData.endDate
-                      ? new Date(leaseData.endDate + "T00:00:00")
-                      : undefined
-                  }
+                  value={leaseData.endDate ? new Date(leaseData.endDate + "T00:00:00") : undefined}
                   onChange={(date) => {
                     if (date) {
-                      // Create a new date to avoid timezone issues
-                      const localDate = new Date(
-                        date.getFullYear(),
-                        date.getMonth(),
-                        date.getDate()
-                      );
-                      handleInputChange(
-                        "endDate",
-                        format(localDate, "yyyy-MM-dd")
-                      );
+                      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                      handleInputChange("endDate", format(localDate, "yyyy-MM-dd"));
                     } else {
                       handleInputChange("endDate", "");
                     }
                   }}
-                  placeholder={t(
-                    "leases.new.form.sections.dates.placeholders.endDate"
-                  )}
+                  placeholder={t("leases.new.form.sections.dates.placeholders.endDate")}
                   disabled={(date) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const checkDate = new Date(date);
                     checkDate.setHours(0, 0, 0, 0);
-
                     if (!leaseData.startDate) return checkDate < today;
-
-                    const startDate = new Date(
-                      leaseData.startDate + "T00:00:00"
-                    );
+                    const startDate = new Date(leaseData.startDate + "T00:00:00");
                     startDate.setHours(0, 0, 0, 0);
                     return checkDate <= startDate;
                   }}
                   fromYear={new Date().getFullYear()}
                   toYear={new Date().getFullYear() + 10}
                 />
-                {fieldErrors.endDate && (
-                  <p className="text-destructive text-sm">
-                    {fieldErrors.endDate}
-                  </p>
-                )}
+                {fieldErrors.endDate && <p className="text-destructive text-sm">{fieldErrors.endDate}</p>}
               </div>
             </div>
+
+            {/* Live duration readout from the selected dates */}
+            {pricing && (
+              <p className="text-xs text-muted-foreground">
+                {`${pricing.days} day${pricing.days === 1 ? "" : "s"} selected.`}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -1047,15 +873,14 @@ export default function SimplifiedLeaseCreation({
               <DollarSign className="h-5 w-5" />
               {t("leases.details.financial.title")}
             </CardTitle>
-            <CardDescription>
-              {t("leases.new.form.sections.financial.description")}
-            </CardDescription>
+            <CardDescription>{t("leases.new.form.sections.financial.description")}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+          <CardContent className="space-y-6">
+            {/* Rent Amount (rate) + auto-calculated Total Amount */}
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="rentAmount">
-                  {t("leases.details.financial.monthlyRent")}
+                  {t("leases.details.financial.rent") || "Rent Amount (per day)"}
                 </Label>
                 <Input
                   id="rentAmount"
@@ -1063,56 +888,53 @@ export default function SimplifiedLeaseCreation({
                   min="0"
                   step="0.01"
                   value={leaseData.rentAmount}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "rentAmount",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="2000.00"
+                  onChange={(e) => handleInputChange("rentAmount", parseFloat(e.target.value) || 0)}
+                  placeholder="40.00"
                   required
                 />
-                {fieldErrors.rentAmount && (
-                  <p className="text-destructive text-sm">
-                    {fieldErrors.rentAmount}
-                  </p>
-                )}
+                {fieldErrors.rentAmount && <p className="text-destructive text-sm">{fieldErrors.rentAmount}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="securityDeposit">
-                  {t("leases.details.financial.securityDeposit")}
+                <Label htmlFor="totalAmount">
+                  {t("leases.details.financial.totalAmount") || "Total Amount"}
                 </Label>
+                <Input
+                  id="totalAmount"
+                  type="number"
+                  value={totalAmount}
+                  readOnly
+                  disabled
+                  className="bg-muted font-medium"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {pricing && pricing.rate > 0
+                    ? `${pricing.days} days × ${formatCurrency(pricing.rate)} = ${formatCurrency(pricing.total)}`
+                    : "Set the rent amount and lease dates to calculate the total."}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="securityDeposit">{t("leases.details.financial.securityDeposit")}</Label>
                 <Input
                   id="securityDeposit"
                   type="number"
                   min="0"
                   step="0.01"
                   value={leaseData.securityDeposit}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "securityDeposit",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
+                  onChange={(e) => handleInputChange("securityDeposit", parseFloat(e.target.value) || 0)}
                   placeholder="2000.00"
                 />
-                {fieldErrors.securityDeposit && (
-                  <p className="text-destructive text-sm">
-                    {fieldErrors.securityDeposit}
-                  </p>
-                )}
+                {fieldErrors.securityDeposit && <p className="text-destructive text-sm">{fieldErrors.securityDeposit}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="rentDueDay">
-                  {t("leases.new.form.sections.financial.labels.rentDueDay")}
-                </Label>
+                <Label htmlFor="rentDueDay">{t("leases.new.form.sections.financial.labels.rentDueDay")}</Label>
                 <Select
                   value={leaseData.rentDueDay.toString()}
-                  onValueChange={(value) =>
-                    handleInputChange("rentDueDay", parseInt(value))
-                  }
+                  onValueChange={(value) => handleInputChange("rentDueDay", parseInt(value))}
                 >
                   <SelectTrigger id="rentDueDaySelect">
                     <SelectValue />
@@ -1120,10 +942,7 @@ export default function SimplifiedLeaseCreation({
                   <SelectContent>
                     {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
                       <SelectItem key={day} value={day.toString()}>
-                        {t(
-                          "leases.new.form.sections.financial.labels.rentDueDayOption",
-                          { values: { day } }
-                        )}
+                        {t("leases.new.form.sections.financial.labels.rentDueDayOption", { values: { day } })}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1140,85 +959,51 @@ export default function SimplifiedLeaseCreation({
               <AlertTriangle className="h-5 w-5" />
               {t("leases.new.form.sections.lateFees.title")}
             </CardTitle>
-            <CardDescription>
-              {t("leases.new.form.sections.lateFees.description")}
-            </CardDescription>
+            <CardDescription>{t("leases.new.form.sections.lateFees.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="lateFeeAmount">
-                  {t("leases.new.form.sections.lateFees.labels.amount")}
-                </Label>
+                <Label htmlFor="lateFeeAmount">{t("leases.new.form.sections.lateFees.labels.amount")}</Label>
                 <Input
                   id="lateFeeAmount"
                   type="number"
                   min="0"
                   step="0.01"
                   value={leaseData.lateFeeAmount}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "lateFeeAmount",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
+                  onChange={(e) => handleInputChange("lateFeeAmount", parseFloat(e.target.value) || 0)}
                   placeholder="50.00"
                 />
-                {fieldErrors.lateFeeAmount && (
-                  <p className="text-destructive text-sm">
-                    {fieldErrors.lateFeeAmount}
-                  </p>
-                )}
+                {fieldErrors.lateFeeAmount && <p className="text-destructive text-sm">{fieldErrors.lateFeeAmount}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lateFeeGracePeriodDays">
-                  {t("leases.new.form.sections.lateFees.labels.gracePeriod")}
-                </Label>
+                <Label htmlFor="lateFeeGracePeriodDays">{t("leases.new.form.sections.lateFees.labels.gracePeriod")}</Label>
                 <Input
                   id="lateFeeGracePeriodDays"
                   type="number"
                   min="0"
                   value={leaseData.lateFeeGracePeriodDays}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "lateFeeGracePeriodDays",
-                      parseInt(e.target.value) || 0
-                    )
-                  }
+                  onChange={(e) => handleInputChange("lateFeeGracePeriodDays", parseInt(e.target.value) || 0)}
                   placeholder="5"
                 />
                 {fieldErrors.lateFeeGracePeriodDays && (
-                  <p className="text-destructive text-sm">
-                    {fieldErrors.lateFeeGracePeriodDays}
-                  </p>
+                  <p className="text-destructive text-sm">{fieldErrors.lateFeeGracePeriodDays}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lateFeeType">
-                  {t("leases.new.form.sections.lateFees.labels.type")}
-                </Label>
+                <Label htmlFor="lateFeeType">{t("leases.new.form.sections.lateFees.labels.type")}</Label>
                 <Select
                   value={leaseData.lateFeeType}
-                  onValueChange={(value: "fixed" | "percentage") =>
-                    handleInputChange("lateFeeType", value)
-                  }
+                  onValueChange={(value: "fixed" | "percentage") => handleInputChange("lateFeeType", value)}
                 >
                   <SelectTrigger id="lateFeeTypeSelect">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fixed">
-                      {t(
-                        "leases.new.form.sections.lateFees.options.fixedAmount"
-                      )}
-                    </SelectItem>
-                    <SelectItem value="percentage">
-                      {t(
-                        "leases.new.form.sections.lateFees.options.percentageOfRent"
-                      )}
-                    </SelectItem>
+                    <SelectItem value="fixed">{t("leases.new.form.sections.lateFees.options.fixedAmount")}</SelectItem>
+                    <SelectItem value="percentage">{t("leases.new.form.sections.lateFees.options.percentageOfRent")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1233,16 +1018,12 @@ export default function SimplifiedLeaseCreation({
               <CheckCircle className="h-5 w-5" />
               {t("leases.new.form.sections.automation.title")}
             </CardTitle>
-            <CardDescription>
-              {t("leases.new.form.sections.automation.description")}
-            </CardDescription>
+            <CardDescription>{t("leases.new.form.sections.automation.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="autoGenerateInvoices">
-                  {t("leases.new.form.sections.automation.labels.autoGenerate")}
-                </Label>
+                <Label htmlFor="autoGenerateInvoices">{t("leases.new.form.sections.automation.labels.autoGenerate")}</Label>
                 <p className="text-sm text-muted-foreground">
                   {t("leases.new.form.sections.automation.help.autoGenerate")}
                 </p>
@@ -1250,9 +1031,7 @@ export default function SimplifiedLeaseCreation({
               <Switch
                 id="autoGenerateInvoices"
                 checked={leaseData.autoGenerateInvoices}
-                onCheckedChange={(checked) =>
-                  handleInputChange("autoGenerateInvoices", checked)
-                }
+                onCheckedChange={(checked) => handleInputChange("autoGenerateInvoices", checked)}
               />
             </div>
 
@@ -1260,9 +1039,7 @@ export default function SimplifiedLeaseCreation({
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="autoEmailInvoices">
-                  {t("leases.new.form.sections.automation.labels.autoEmail")}
-                </Label>
+                <Label htmlFor="autoEmailInvoices">{t("leases.new.form.sections.automation.labels.autoEmail")}</Label>
                 <p className="text-sm text-muted-foreground">
                   {t("leases.new.form.sections.automation.help.autoEmail")}
                 </p>
@@ -1270,9 +1047,7 @@ export default function SimplifiedLeaseCreation({
               <Switch
                 id="autoEmailInvoices"
                 checked={leaseData.autoEmailInvoices}
-                onCheckedChange={(checked) =>
-                  handleInputChange("autoEmailInvoices", checked)
-                }
+                onCheckedChange={(checked) => handleInputChange("autoEmailInvoices", checked)}
                 disabled={!leaseData.autoGenerateInvoices}
               />
             </div>
@@ -1283,11 +1058,29 @@ export default function SimplifiedLeaseCreation({
         <Card>
           <CardHeader>
             <CardTitle>{t("leases.new.form.sections.review.title")}</CardTitle>
-            <CardDescription>
-              {t("leases.new.form.sections.review.description")}
-            </CardDescription>
+            <CardDescription>{t("leases.new.form.sections.review.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Total summary from the selected date range */}
+            {pricing && pricing.rate > 0 && (
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    {`${pricing.days} days × ${formatCurrency(pricing.rate)}`}
+                  </span>
+                  <span className="text-lg font-semibold text-green-600">
+                    {formatCurrency(pricing.total)}
+                  </span>
+                </div>
+                {leaseData.securityDeposit > 0 && (
+                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Security deposit (held, not part of total)</span>
+                    <span>{formatCurrency(leaseData.securityDeposit)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {leaseData.autoGenerateInvoices && (
               <Alert>
                 <CheckCircle className="h-4 w-4" />
@@ -1296,14 +1089,10 @@ export default function SimplifiedLeaseCreation({
                     values: {
                       depositPart:
                         leaseData.securityDeposit > 0
-                          ? t(
-                              "leases.new.form.sections.review.fragments.securityDeposit"
-                            )
+                          ? t("leases.new.form.sections.review.fragments.securityDeposit")
                           : "",
                       emailPart: leaseData.autoEmailInvoices
-                        ? t(
-                            "leases.new.form.sections.review.fragments.autoEmail"
-                          )
+                        ? t("leases.new.form.sections.review.fragments.autoEmail")
                         : "",
                     },
                   })}

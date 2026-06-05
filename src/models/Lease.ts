@@ -8,6 +8,11 @@ import {
   PaymentMethod,
 } from "@/types";
 
+// NOTE: ILeaseTerms (in @/types) should declare:
+//   rentAmount: number;    // the rate
+//   totalAmount: number;   // auto-calculated total (rate x days)
+// and no longer reference rentBasis / nightlyRate / billingCycle.
+
 // ────────────────────────────────────────────────
 //              Late Fee Configuration
 // ────────────────────────────────────────────────
@@ -96,33 +101,20 @@ const LeasePaymentConfigSchema = new Schema<ILeasePaymentConfig>(
 // ────────────────────────────────────────────────
 const LeaseTermsSchema = new Schema<ILeaseTerms>(
   {
-    rentBasis: {
-      type: String,
-      enum: ["monthly", "nightly"],
-      default: "monthly",
-      required: true,
-    },
-
-    // Used when rentBasis = monthly
+    // Rent rate used to compute the total (rate x days between start and end).
     rentAmount: {
       type: Number,
       min: 0,
       default: 0,
-      // required only conditionally — see pre-save hook
+      required: true,
     },
 
-    // Used when rentBasis = nightly
-    nightlyRate: {
+    // Auto-calculated total (rentAmount x number of days). The form submits
+    // this; the pre-save hook recomputes it as a safeguard.
+    totalAmount: {
       type: Number,
       min: 0,
       default: 0,
-    },
-
-    // Mainly relevant for nightly leases
-    billingCycle: {
-      type: String,
-      enum: ["daily", "weekly", "monthly"],
-      default: "monthly",
     },
 
     securityDeposit: {
@@ -209,6 +201,7 @@ const LeaseSchema = new Schema<ILease>(
   {
     timestamps: true,
     toJSON: { virtuals: true, transform: (_, ret) => { delete ret.__v; return ret; } },
+    toObject: { virtuals: true },
   }
 );
 
@@ -216,56 +209,64 @@ const LeaseSchema = new Schema<ILease>(
 LeaseSchema.index({ propertyId: 1, unitId: 1 });
 LeaseSchema.index({ tenantId: 1, status: 1 });
 LeaseSchema.index({ status: 1, endDate: 1 });
-LeaseSchema.index({ "terms.rentBasis": 1 });
 LeaseSchema.index({ deletedAt: 1 });
+// Supports availability / overlap lookups by unit and date range.
+LeaseSchema.index({ propertyId: 1, unitId: 1, startDate: 1, endDate: 1 });
 
 // ─── Virtuals ───────────────────────────────────────
 LeaseSchema.virtual("durationDays").get(function () {
-  if (! (this as any).startDate || ! (this as any).endDate) return null;
-  return Math.ceil(( (this as any).endDate.getTime() - (this as any).startDate.getTime() ) / 86400000);
+  if (!(this as any).startDate || !(this as any).endDate) return null;
+  return Math.ceil(
+    ((this as any).endDate.getTime() - (this as any).startDate.getTime()) / 86400000
+  );
 });
 
-LeaseSchema.virtual("isNightly").get(function () {
-  return (this as any).terms?.rentBasis === "nightly";
+LeaseSchema.virtual("computedTotal").get(function () {
+  const days = (this as any).durationDays || 0;
+  const rate = (this as any).terms?.rentAmount || 0;
+  return days * rate;
 });
 
-LeaseSchema.virtual("effectiveRent").get(function () {
-  const t = (this as any).terms;
-  if (!t) return 0;
-  return t.rentBasis === "nightly" ? t.nightlyRate || 0 : t.rentAmount || 0;
-});
-
-// ─── Pre-save validation ─────────────────────────────
+// ─── Pre-save validation & normalization ─────────────
 LeaseSchema.pre("save", async function (next) {
-  // 1. Conditional required fields
-  const isNightly = (this as any).terms?.rentBasis === "nightly";
+  const terms = (this as any).terms;
+  if (!terms) return next(new Error("Lease terms are required"));
 
-  if (isNightly) {
-    if (!(this as any).terms.nightlyRate || (this as any).terms.nightlyRate <= 0) {
-      return next(new Error("Nightly rate must be greater than zero when rent basis is nightly"));
-    }
-    // Set default billingCycle for nightly leases if not provided
-    if (!(this as any).terms.billingCycle) {
-      (this as any).terms.billingCycle = "daily";
-    }
-  } else {
-    if (!(this as any).terms.rentAmount || (this as any).terms.rentAmount <= 0) {
-      return next(new Error("Monthly rent amount must be greater than zero when rent basis is monthly"));
-    }
+  if (!terms.rentAmount || terms.rentAmount <= 0) {
+    return next(new Error("Rent amount must be greater than zero"));
   }
 
-  // 2. End date after start date
+  // End date after start date
   if ((this as any).endDate <= (this as any).startDate) {
     return next(new Error("End date must be after start date"));
   }
 
-  // 3. Basic unit-in-property validation (you can keep or enhance existing logic)
+  // Recompute the total from rate x days as a safeguard against a stale or
+  // tampered client value.
+  const days = Math.max(
+    0,
+    Math.round(
+      ((this as any).endDate.getTime() - (this as any).startDate.getTime()) / 86_400_000
+    )
+  );
+  terms.totalAmount = days * terms.rentAmount;
+
+  next();
+});
+
+// ─── Bulk-update validation ──────────────────────────
+// Mongoose update operations (updateMany / updateOne / findOneAndUpdate) do NOT
+// run document `pre("save")` middleware, so the rules above are bypassed by the
+// bulk PUT route. This turns on the schema validators for those updates.
+LeaseSchema.pre(["updateMany", "updateOne", "findOneAndUpdate"], function (next) {
+  this.setOptions({ runValidators: true });
   next();
 });
 
 // You can keep soft-delete middleware, post-save unit status update, etc.
 // (omitted here for brevity — add them back if needed)
 
-const Lease: Model<ILease> = mongoose.models?.Lease || mongoose.model<ILease>("Lease", LeaseSchema);
+const Lease: Model<ILease> =
+  mongoose.models?.Lease || mongoose.model<ILease>("Lease", LeaseSchema);
 
 export default Lease;

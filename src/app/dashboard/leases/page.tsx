@@ -180,8 +180,8 @@ const fetchLeases = async (
             .reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
 
         const getSortVal = (lease: LeaseResponse) => {
-          if (sortBy === "terms.rentAmount") {
-            return lease.unit?.rentAmount ?? lease.terms?.rentAmount ?? 0;
+          if (sortBy === "terms.totalAmount") {
+            return lease.unit?.totalAmount ?? lease.terms?.totalAmount ?? 0;
           }
           const v = get(lease, sortBy);
           if (!v) return 0;
@@ -274,8 +274,8 @@ const fetchLeases = async (
             .split(".")
             .reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
         const getSortVal = (lease: LeaseResponse) => {
-          if (sortBy === "terms.rentAmount") {
-            return lease.unit?.rentAmount ?? lease.terms?.rentAmount ?? 0;
+          if (sortBy === "terms.totalAmount") {
+            return lease.unit?.totalAmount ?? lease.terms?.totalAmount ?? 0;
           }
           const v = get(lease, sortBy);
           if (!v) return 0;
@@ -531,17 +531,17 @@ const fetchLeases = async (
       cell: (lease) => <LeaseStatusBadge status={lease.status} />,
     },
     {
-      id: "rentAmount",
-      header: t("leases.table.rentAmount"),
+      id: "totalAmount",
+      header: t("leases.table.totalAmount"),
       visibility: "md",
       cell: (lease) => (
         <div>
           <div className="font-medium">
-            {formatCurrency(lease.unit?.rentAmount || lease.terms?.rentAmount)}
+            {formatCurrency(lease.unit?.totalAmount || lease.terms?.totalAmount)}
           </div>
-          <div className="text-sm text-muted-foreground">
+          {/* <div className="text-sm text-muted-foreground">
             {t("leases.labels.perMonth")}
-          </div>
+          </div> */}
         </div>
       ),
     },
@@ -918,10 +918,10 @@ const fetchLeases = async (
                   <SelectItem value="endDate-asc">
                     {t("leases.sort.endDateSoonest")}
                   </SelectItem>
-                  <SelectItem value="terms.rentAmount-desc">
+                  <SelectItem value="terms.totalAmount-desc">
                     {t("leases.sort.rentHighToLow")}
                   </SelectItem>
-                  <SelectItem value="terms.rentAmount-asc">
+                  <SelectItem value="terms.totalAmount-asc">
                     {t("leases.sort.rentLowToHigh")}
                   </SelectItem>
                 </SelectContent>
@@ -1058,7 +1058,7 @@ const fetchLeases = async (
                     </div>
                   ),
                   status: <Skeleton className="h-6 w-16 rounded-full" />,
-                  rentAmount: (
+                  totalAmount: (
                     <div className="space-y-1">
                       <Skeleton className="h-4 w-20" />
                       <Skeleton className="h-3 w-12" />
