@@ -42,7 +42,7 @@ import { GlobalPagination } from "@/components/ui/global-pagination";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import {
   FileText,
-  DollarSign,
+  PoundSterling,
   Download,
   Eye,
   MoreHorizontal,

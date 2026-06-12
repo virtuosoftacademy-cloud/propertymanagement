@@ -343,9 +343,8 @@ export default function DashboardPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `dashboard-export-${
-        new Date().toISOString().split("T")[0]
-      }.json`;
+      link.download = `dashboard-export-${new Date().toISOString().split("T")[0]
+        }.json`;
 
       document.body.appendChild(link);
       link.click();
@@ -367,9 +366,9 @@ export default function DashboardPage() {
   const handleAlertClick = useCallback(
     (alertType: string) => {
       switch (alertType) {
-        case "payment":
-          router.push("/dashboard/payments?filter=overdue");
-          break;
+        // case "payment":
+        //   router.push("/dashboard/payments?filter=overdue");
+        //   break;
         case "maintenance":
           router.push("/dashboard/maintenance?filter=urgent");
           break;
@@ -503,10 +502,10 @@ export default function DashboardPage() {
 
   const getAlertTitleText = (alert: DashboardAlert) => {
     switch (alert.id) {
-      case "overdue-payments":
-        return t("dashboard.alerts.overduePayments.title", {
-          defaultValue: alert.title,
-        });
+      // case "overdue-payments":
+      //   return t("dashboard.alerts.overduePayments.title", {
+      //     defaultValue: alert.title,
+      //   });
       case "urgent-maintenance":
         return t("dashboard.alerts.urgentMaintenance.title", {
           defaultValue: alert.title,
@@ -527,16 +526,16 @@ export default function DashboardPage() {
   const getAlertMessageText = (alert: DashboardAlert) => {
     const count = alert.count;
     switch (alert.id) {
-      case "overdue-payments":
-        return t(
-          count > 0
-            ? "dashboard.alerts.overduePayments.message.withCount"
-            : "dashboard.alerts.overduePayments.message.zero",
-          {
-            defaultValue: alert.message,
-            values: { count },
-          }
-        );
+      // case "overdue-payments":
+      //   return t(
+      //     count > 0
+      //       ? "dashboard.alerts.overduePayments.message.withCount"
+      //       : "dashboard.alerts.overduePayments.message.zero",
+      //     {
+      //       defaultValue: alert.message,
+      //       values: { count },
+      //     }
+      //   );
       case "urgent-maintenance":
         return t(
           count > 0
@@ -614,7 +613,7 @@ export default function DashboardPage() {
 
       {/* Alerts Section - Always show the main 3 alerts */}
       <div className="grid gap-4  md:grid-cols-3">
-        {alerts?.slice(0, 3).map((alert) => {
+        {alerts?.slice(1, 4).map((alert) => {
           const styles = getAlertStyles(alert.type);
           return (
             <div
@@ -703,9 +702,9 @@ export default function DashboardPage() {
         />
         <AnalyticsCard
           title={t("dashboard.cards.vacantUnits.title")}
-          value={vacantUnits}
+          value={vacantUnits! < 0 ? 0 : vacantUnits}
           description={t("dashboard.cards.vacantUnits.description", {
-            values: { rate: formatPercentage(vacancyRate) },
+            values: { rate: formatPercentage(vacancyRate! < 0 ? 0 : vacancyRate) },
           })}
           icon={Home}
           iconColor="error"
@@ -918,8 +917,8 @@ export default function DashboardPage() {
                             const data = payload[0].payload;
                             const percentage = overview?.totalProperties
                               ? Math.round(
-                                  (data.value / overview.totalProperties) * 100
-                                )
+                                (data.value / overview.totalProperties) * 100
+                              )
                               : 0;
                             return (
                               <div className="bg-white p-2 border rounded shadow-lg">

@@ -37,10 +37,8 @@ import {
   ArrowLeft,
   MoreHorizontal,
   Edit,
-  Trash2,
   Download,
   Calendar,
-  DollarSign,
   Home,
   User,
   FileText,
@@ -215,7 +213,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
               onClick={() => setActiveTab("payments")}
               className="flex items-center gap-2 cursor-pointer"
             >
-              <DollarSign className="h-4 w-4" />
+              <PoundSterling className="h-4 w-4" />
               <span className="hidden sm:inline">
                 {t("leases.details.actions.managePayments")}
               </span>
@@ -333,7 +331,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
             {t("leases.details.tabs.overview")}
           </TabsTrigger>
           <TabsTrigger value="payments" className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
+            <PoundSterling className="h-4 w-4" />
             {t("leases.details.tabs.payments")}
           </TabsTrigger>
           <TabsTrigger value="documents" className="flex items-center gap-2">
@@ -687,6 +685,14 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                       </span>
                       <span className="font-bold text-lg lg:text-xl text-success">
                         {formatCurrency(lease.terms.totalAmount)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
+                      <span className="text-success font-semibold text-sm lg:text-base">
+                        {t("leases.details.financial.rentAmount")}
+                      </span>
+                      <span className="font-bold text-lg lg:text-xl text-success">
+                        {formatCurrency(lease.terms.rentAmount)}
                       </span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-warning/15 to-warning/8 border border-warning/15">

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, DollarSign, FileText } from "lucide-react";
+import { ArrowLeft, User, FileText } from "lucide-react";
 import TenantLedger from "@/components/tenant/TenantLedger";
 import { toast } from "sonner";
 

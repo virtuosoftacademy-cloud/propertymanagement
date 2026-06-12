@@ -295,58 +295,58 @@ export const propertyCreateSchema = z.object({
     .string()
     .min(1, "Name is required")
     .max(200, "Name too long"),
-  ownerType: z.nativeEnum(PropertyownerType, {
-    errorMap: () => ({ message: "Property type is required" }),
-  }),
-
-  name: z
+    ownerType: z.nativeEnum(PropertyownerType, {
+      errorMap: () => ({ message: "Property type is required" }),
+    }),
+    name: z
     .string()
     .min(1, "Property name is required")
     .max(200, "Property name too long"),
-  description: z.string().max(2000, "Description too long").optional(),
+    description: z.string().max(2000, "Description too long").optional(),
   type: z.nativeEnum(PropertyType, {
     errorMap: () => ({ message: "Property type is required" }),
   }),
   status: z.nativeEnum(PropertyStatus).default(PropertyStatus.AVAILABLE),
-
+  
   // Address
   address: addressSchema,
-
+  
   // Property Type Configuration
   isMultiUnit: z.boolean().default(false),
   totalUnits: z.number().min(1).max(1000).default(1),
-
+  
   // Embedded Units array (unified approach)
   units: z
-    .array(unitSchema)
-    .max(1000, "Too many units")
-    .default([]),
-
+  .array(unitSchema)
+  .max(1000, "Too many units")
+  .default([]),
+  
   // Year Built
   yearBuilt: z
-    .number()
-    .min(1800, "Year built cannot be before 1800")
-    .max(
-      new Date().getFullYear() + 5,
-      "Year built cannot be more than 5 years in the future"
-    )
-    .optional(),
+  .number()
+  .min(1800, "Year built cannot be before 1800")
+  .max(
+    new Date().getFullYear() + 5,
+    "Year built cannot be more than 5 years in the future"
+  )
+  .optional(),
 
   // Property Features
   features: z.array(z.string()).default([]),
-
+  
   // Property Amenities
   amenities: z.array(amenitySchema).max(50, "Too many amenities").default([]),
-
+  
   // Images and Attachments
   images: z.array(z.string()).max(20, "Too many images").default([]),
   attachments: z
-    .array(propertyAttachmentSchema)
-    .max(20, "Too many attachments")
-    .default([]),
+  .array(propertyAttachmentSchema)
+  .max(20, "Too many attachments")
+  .default([]),
 
   // Ownership (optional for API, will be set from user context)
   ownerId: z.string().min(1, "Owner ID is required").optional(),
+  assignedAgent: z.string().optional(),
   managerId: z.string().min(1, "Manager ID is required").optional(),
 });
 
@@ -367,8 +367,8 @@ export const propertyQuerySchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   isMultiUnit: z.boolean().optional(),
-  amenities:z.string().optional(),
-  hasAvailableUnits:z.boolean().optional(),
+  amenities: z.string().optional(),
+  hasAvailableUnits: z.boolean().optional(),
   unitType: z
     .enum(["apartment", "studio", "penthouse", "loft", "room"])
     .optional(),

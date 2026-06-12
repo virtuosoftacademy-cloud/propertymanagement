@@ -30,7 +30,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  DollarSign,
+  PoundSterling,
   Mail,
   Target,
 } from "lucide-react";
@@ -460,7 +460,7 @@ export default function SystemConfigurationPanel() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <PoundSterling className="h-5 w-5" />
                 Late Fee Configuration
               </CardTitle>
               <CardDescription>

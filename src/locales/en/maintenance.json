@@ -255,7 +255,7 @@
   "maintenance.form.assignedTo.unassigned": "Unassigned",
   "maintenance.form.estimatedCost.label": "Estimated Cost (Optional)",
   "maintenance.form.estimatedCost.placeholder": "0.00",
-  "maintenance.form.estimatedCost.description": "Estimated cost in USD",
+  "maintenance.form.estimatedCost.description": "Estimated cost in GBP",
   "maintenance.form.scheduledDate.label": "Scheduled Date (Optional)",
   "maintenance.form.scheduledDate.placeholder": "Select date & time",
   "maintenance.form.scheduledDate.description": "When to perform the work",

@@ -51,7 +51,7 @@ import {
   Calendar,
   TrendingUp,
   TrendingDown,
-  DollarSign,
+  PoundSterling,
   Users,
   Building2,
   Clock,
@@ -183,7 +183,7 @@ export default function AdvancedReportingDashboard() {
   const getTypeIcon = (type: ReportData["type"]) => {
     switch (type) {
       case "financial":
-        return <DollarSign className="h-4 w-4" />;
+        return <PoundSterling className="h-4 w-4" />;
       case "occupancy":
         return <Building2 className="h-4 w-4" />;
       case "tenant":
@@ -347,7 +347,7 @@ export default function AdvancedReportingDashboard() {
                 <CardTitle className="text-sm font-medium">
                   Total Revenue
                 </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <PoundSterling className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -472,7 +472,7 @@ export default function AdvancedReportingDashboard() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Button variant="outline" className="h-20 flex-col space-y-2">
-                  <DollarSign className="h-6 w-6" />
+                  <PoundSterling className="h-6 w-6" />
                   <span>Monthly P&L</span>
                 </Button>
                 <Button variant="outline" className="h-20 flex-col space-y-2">

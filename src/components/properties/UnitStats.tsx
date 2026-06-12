@@ -7,7 +7,7 @@
 
 import {
   Building2,
-  DollarSign,
+  PoundSterling,
   Home,
   TrendingUp,
   Users,
@@ -113,7 +113,7 @@ export default function UnitStats({
             max: formatCurrencyLocalized(rentRange.max),
           },
         })}
-        icon={DollarSign}
+        icon={PoundSterling}
         iconColor="success"
       />
 

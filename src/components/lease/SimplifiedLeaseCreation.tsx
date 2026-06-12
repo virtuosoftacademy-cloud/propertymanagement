@@ -32,7 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Home,
   Calendar,
-  DollarSign,
+  PoundSterling,
   AlertTriangle,
   CheckCircle,
   Loader2,
@@ -812,15 +812,13 @@ export default function SimplifiedLeaseCreation({
                     }
                   }}
                   placeholder={t("leases.new.form.sections.dates.placeholders.startDate")}
-                  disabled={(date) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const checkDate = new Date(date);
-                    checkDate.setHours(0, 0, 0, 0);
-                    return checkDate < today;
-                  }}
-                  fromYear={new Date().getFullYear()}
-                  toYear={new Date().getFullYear() + 5}
+                  // disabled={(date) => {
+                  //   const today = new Date();
+                  //   today.setHours(0, 0, 0, 0);
+                  //   const checkDate = new Date(date);
+                  //   checkDate.setHours(0, 0, 0, 0);
+                  //   return checkDate < today;
+                  // }}
                 />
                 {fieldErrors.startDate && <p className="text-destructive text-sm">{fieldErrors.startDate}</p>}
               </div>
@@ -870,7 +868,7 @@ export default function SimplifiedLeaseCreation({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <PoundSterling className="h-5 w-5" />
               {t("leases.details.financial.title")}
             </CardTitle>
             <CardDescription>{t("leases.new.form.sections.financial.description")}</CardDescription>

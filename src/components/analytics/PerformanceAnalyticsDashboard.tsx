@@ -32,7 +32,7 @@ import {
   TrendingDown,
   Activity,
   Users,
-  DollarSign,
+  PoundSterling,
   Clock,
   AlertTriangle,
   CheckCircle,
@@ -301,7 +301,7 @@ export default function PerformanceAnalyticsDashboard() {
                   <CardTitle className="text-sm font-medium">
                     Collection Rate
                   </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">

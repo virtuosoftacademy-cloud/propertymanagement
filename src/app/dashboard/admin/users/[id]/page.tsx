@@ -41,7 +41,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  DollarSign,
+  PoundSterling,
 } from "lucide-react";
 import { UserRole, IUser } from "@/types";
 import { formatDate } from "@/lib/utils";
@@ -578,7 +578,7 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
                       </div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <DollarSign className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                      <PoundSterling className="h-8 w-8 text-purple-600 mx-auto mb-2" />
                       <div className="text-2xl font-bold">
                         {isStatsLoading ? (
                           <div className="h-8 w-8 bg-muted rounded animate-pulse mx-auto" />

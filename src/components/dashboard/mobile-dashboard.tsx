@@ -25,7 +25,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  DollarSign,
+  PoundSterling,
   Bell,
   ArrowRight,
   Eye,
@@ -235,7 +235,7 @@ export function MobileDashboard({ userRole, userName }: MobileDashboardProps) {
 
         <MobileFirstCard className="text-center">
           <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mx-auto mb-3">
-            <DollarSign className="h-6 w-6 text-purple-600" />
+            <PoundSterling className="h-6 w-6 text-purple-600" />
           </div>
           <div className="text-lg font-bold">
             {formatCurrency(mockStats.monthlyRevenue)}

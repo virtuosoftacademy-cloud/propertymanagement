@@ -43,6 +43,15 @@ export interface ExchangeRate {
 
 // Supported currencies
 export const CURRENCIES: Record<string, Currency> = {
+  GBP: {
+    code: "GBP",
+    name: "British Pound",
+    symbol: "£",
+    decimals: 2,
+    symbolPosition: "before",
+    thousandsSeparator: ",",
+    decimalSeparator: ".",
+  },
   USD: {
     code: "USD",
     name: "US Dollar",
@@ -60,15 +69,6 @@ export const CURRENCIES: Record<string, Currency> = {
     symbolPosition: "before",
     thousandsSeparator: ".",
     decimalSeparator: ",",
-  },
-  GBP: {
-    code: "GBP",
-    name: "British Pound",
-    symbol: "£",
-    decimals: 2,
-    symbolPosition: "before",
-    thousandsSeparator: ",",
-    decimalSeparator: ".",
   },
   CAD: {
     code: "CAD",

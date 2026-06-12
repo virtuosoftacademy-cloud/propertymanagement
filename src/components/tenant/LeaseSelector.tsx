@@ -39,7 +39,7 @@ import {
   ChevronsUpDown,
   Building2,
   Calendar,
-  DollarSign,
+  PoundSterling,
   MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -294,7 +294,7 @@ export default function LeaseSelector({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <PoundSterling className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="font-medium">
                         {t("leases.myLeases.table.monthlyRent")}

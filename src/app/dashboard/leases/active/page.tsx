@@ -30,7 +30,7 @@ import {
   List,
   CheckCircle,
   Calendar,
-  DollarSign,
+  PoundSterling,
   Home,
   Eye,
   Edit,
@@ -498,7 +498,7 @@ export default function ActiveLeasesPage() {
         <AnalyticsCard
           title={t("leases.active.stats.monthlyRent")}
           value={formatCurrency(stats.totalRentValue)}
-          icon={DollarSign}
+          icon={PoundSterling}
           iconColor="info"
         />
 

@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  DollarSign,
   TrendingUp,
   Calendar,
   CheckCircle,
@@ -23,6 +22,7 @@ import {
   RefreshCw,
   CreditCard,
   Banknote,
+  PoundSterling,
 } from "lucide-react";
 import { PaymentStatus, PaymentMethod, IPayment, ILease } from "@/types";
 import { LeaseResponse } from "@/lib/services/lease.service";
@@ -313,7 +313,7 @@ export function PaymentStatusDashboard({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <PoundSterling className="h-5 w-5" />
                 {t("leases.details.payments.dashboardTitle")}
               </CardTitle>
               <CardDescription>
@@ -361,7 +361,7 @@ export function PaymentStatusDashboard({
                 </p>
               </div>
               <div className="p-2 bg-muted rounded-lg">
-                <DollarSign className="h-6 w-6 text-blue-600" />
+                <PoundSterling className="h-6 w-6 text-primary" />
               </div>
             </div>
           </CardContent>

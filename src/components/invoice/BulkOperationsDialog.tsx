@@ -37,7 +37,7 @@ import {
   Mail,
   Download,
   Trash2,
-  DollarSign,
+  PoundSterling,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -164,7 +164,7 @@ export default function BulkOperationsDialog({
       case "delete":
         return <Trash2 className="h-4 w-4" />;
       case "add_late_fees":
-        return <DollarSign className="h-4 w-4" />;
+        return <PoundSterling className="h-4 w-4" />;
       default:
         return <CheckCircle className="h-4 w-4" />;
     }
@@ -250,7 +250,7 @@ export default function BulkOperationsDialog({
                         </SelectItem>
                         <SelectItem value="add_late_fees">
                           <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4" />
+                            <PoundSterling className="h-4 w-4" />
                             Add Late Fees
                           </div>
                         </SelectItem>

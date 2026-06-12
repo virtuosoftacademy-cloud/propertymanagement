@@ -26,7 +26,7 @@ import {
   Filter,
   X,
   Calendar,
-  DollarSign,
+  PoundSterling,
   User,
   Mail,
   Phone,
@@ -69,8 +69,8 @@ export default function TenantSearchSort({
     { field: "phone", label: "Phone", icon: Phone },
     { field: "applicationDate", label: "Application Date", icon: Calendar },
     { field: "moveInDate", label: "Move-in Date", icon: Calendar },
-    { field: "creditScore", label: "Credit Score", icon: DollarSign },
-    { field: "income", label: "Income", icon: DollarSign },
+    { field: "creditScore", label: "Credit Score", icon: PoundSterling },
+    { field: "income", label: "Income", icon: PoundSterling },
     { field: "createdAt", label: "Created Date", icon: Calendar },
   ];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -38,7 +38,7 @@ import {
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
+  PoundSterling,
   Home,
   Users,
   Wrench,
@@ -144,6 +144,8 @@ export default function AnalyticsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("6months");
   const [selectedProperty, setSelectedProperty] = useState("all");
   const [activeTab, setActiveTab] = useState("overview");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const formatAmount = (value: number) =>
     formatCurrency(value, undefined, {
@@ -188,6 +190,77 @@ export default function AnalyticsPage() {
     SAMPLE_ANALYTICS.overview.financial.collectionRate,
     previousData.collectionRate
   );
+
+  // Export function (brought over from the dashboard page).
+  const handleExport = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for export
+
+      const response = await fetch("/api/dashboard/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          format: "json",
+          includeDetails: false,
+          dateRange: {
+            start: new Date(new Date().getFullYear(), 0, 1).toISOString(),
+            end: new Date().toISOString(),
+          },
+        }),
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        throw new Error(`Export failed: ${response.status} ${errorText}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.data) {
+        throw new Error("Invalid export data received");
+      }
+
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], {
+        type: "application/json",
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `dashboard-export-${new Date().toISOString().split("T")[0]
+        }.json`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      // Ignore errors from aborted requests
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+
+      setError(error instanceof Error ? error.message : "Export failed");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Refresh affordance (brought over from the dashboard page). This page renders
+  // static SAMPLE_ANALYTICS data, so there is no loadDashboardData() to call as
+  // there is on the dashboard. It mirrors the dashboard's spinner/disabled
+  // behaviour; wire it to a real fetch when analytics is connected to live data.
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    setError(null);
+    setTimeout(() => setIsRefreshing(false), 600);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -237,22 +310,36 @@ export default function AnalyticsPage() {
               <SelectItem value="riverside">Riverside Towers</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+            />
             {t("analytics.header.refresh")}
           </Button>
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={isRefreshing}
+          >
             <Download className="h-4 w-4 mr-2" />
             {t("analytics.header.export")}
           </Button>
         </div>
       </div>
 
+      {error && <p className="text-sm text-error">{error}</p>}
+
       <AnalyticsCardGrid>
         <AnalyticsCard
           title={t("analytics.cards.totalRevenue")}
           value={formatAmount(SAMPLE_ANALYTICS.overview.financial.totalRevenue)}
-          icon={DollarSign}
+          icon={PoundSterling}
           iconColor="success"
           trend={{
             value: t("analytics.cards.fromLastPeriod", {
@@ -472,7 +559,7 @@ export default function AnalyticsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-lg">
                   <div className="p-2 rounded-lg bg-success/10">
-                    <DollarSign className="h-5 w-5 text-success" />
+                    <PoundSterling className="h-5 w-5 text-success" />
                   </div>
                   {t("analytics.financial.cashFlow.title")}
                 </CardTitle>

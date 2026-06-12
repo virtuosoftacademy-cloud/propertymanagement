@@ -37,7 +37,7 @@ import {
   Shield,
   Users,
   Building2,
-  DollarSign,
+  PoundSterling,
   Activity,
   Settings,
   MoreHorizontal,
@@ -397,7 +397,7 @@ export default function AdminPage() {
             <CardTitle className="text-sm font-medium">
               {t("admin.stats.totalRevenue")}
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {renderStatValue(formatCurrency(systemStats?.totalRevenue ?? 0))}

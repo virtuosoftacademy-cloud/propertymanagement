@@ -20,9 +20,8 @@ import {
   CreditCard,
   Building2,
   User,
-  Calendar,
-  DollarSign,
   AlertTriangle,
+  PoundSterling,
 } from "lucide-react";
 import Link from "next/link";
 import { PaymentStatus, PaymentType } from "@/types";
@@ -262,7 +261,7 @@ export default function PaymentProcessingPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <PoundSterling className="h-5 w-5" />
               {t("payments.pay.summary.title")}
             </CardTitle>
             <CardDescription>

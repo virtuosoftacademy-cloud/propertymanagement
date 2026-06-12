@@ -36,7 +36,7 @@ import {
   Edit,
   Eye,
   Calendar,
-  DollarSign,
+  PoundSterling,
   CheckCircle,
   Clock,
   Send,
@@ -459,7 +459,7 @@ export default function OverduePaymentsPage() {
           title={t("payments.overdue.stats.totalOverdue")}
           value={formatCurrency(totalOverdueAmount)}
           description={`${totalOverdue} ${t("payments.overdue.stats.payments")}`}
-          icon={DollarSign}
+          icon={PoundSterling}
           iconColor="error"
         />
 

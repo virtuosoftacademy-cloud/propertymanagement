@@ -66,6 +66,7 @@
   "nav.payments.all": "All Payments",
   "nav.payments.overdue": "Overdue",
   "nav.payments.payRent": "Pay Rent",
+  "nav.payments.compare":"Compare Payments",
   "nav.payments.history": "Payment History",
 
   "nav.analytics": "Analytics",

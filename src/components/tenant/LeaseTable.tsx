@@ -42,7 +42,7 @@ import { GlobalPagination } from "@/components/ui/global-pagination";
 import {
   Building2,
   Calendar,
-  DollarSign,
+  PoundSterling,
   Download,
   Eye,
   MoreHorizontal,

@@ -22,7 +22,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  DollarSign,
+  PoundSterling,
   Grid3X3,
   List,
 } from "lucide-react";
@@ -56,7 +56,7 @@ interface ComplianceReport {
   // Loosened from `ComplianceCategory` because legacy/corrupt records may have
   // null, undefined, or unexpected string values that would otherwise crash
   // the runtime helpers below.
-  category?: ComplianceCategory | string | null;
+  category: ComplianceCategory | string | null;
   issueDate: string;
   expiryDate: string;
   estimatedCost?: number;
@@ -251,18 +251,9 @@ export default function CompliancePage() {
    * Safely format a category value for display.
    * Handles null/undefined/non-string values that would crash `.split()`.
    */
-  const formatCategory = (category: unknown): string => {
-    if (category == null) return "—";
-    if (typeof category !== "string") return String(category);
-    if (!category.trim()) return "—";
 
     // Look up label by exact match first
-    const label = ComplianceCategoryLabels[category as ComplianceCategory];
-    if (label) return label;
-
-    // Fall back to humanizing the slug
-    return category.split("-").join(" ");
-  };
+    
 
   const getExpiryStyle = (days?: number | null) => {
     if (days == null) return "";
@@ -300,7 +291,7 @@ export default function CompliancePage() {
       header: "Type",
       cell: (r) => (
         <div className="font-medium capitalize">
-          {formatCategory(r.category)}
+          {r.category}
         </div>
       ),
     },
@@ -352,7 +343,7 @@ export default function CompliancePage() {
       id: "cost",
       header: "Est. Cost",
       cell: (r) =>
-        r.estimatedCost ? `$${r.estimatedCost.toLocaleString()}` : "—",
+        r.estimatedCost ? `£${r.estimatedCost.toLocaleString()}` : "—",
     },
     {
       id: "docs",
@@ -483,13 +474,13 @@ export default function CompliancePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Est. Cost
+              Total Act. Cost
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${stats.totalEstimatedCost.toLocaleString()}
+              £{stats.totalEstimatedCost.toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -648,7 +639,7 @@ export default function CompliancePage() {
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-1">
                         <h3 className="font-medium line-clamp-2 capitalize">
-                          {formatCategory(report.category)}
+                          {report.category}
                         </h3>
                         <p className="text-sm text-muted-foreground">
                           {report.propertyId?.name || "—"}
@@ -675,9 +666,9 @@ export default function CompliancePage() {
                         </div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground">Est. Cost</div>
+                        <div className="text-muted-foreground">Act. Cost</div>
                         {report.estimatedCost
-                          ? `$${report.estimatedCost.toLocaleString()}`
+                          ? `£${report.estimatedCost.toLocaleString()}`
                           : "—"}
                       </div>
                       <div>

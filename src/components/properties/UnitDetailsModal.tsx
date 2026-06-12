@@ -4,7 +4,7 @@ import {
   X,
   MoreVertical,
   Edit,
-  DollarSign,
+  PoundSterling,
   Home,
   MapPin,
   Calendar,
@@ -428,7 +428,7 @@ export default function UnitDetailsModal({
                     <CardContent className="p-2">
                       <div className="flex items-center space-x-3">
                         <div className="p-3 bg-green-100 dark:bg-green-950/30 rounded-lg">
-                          <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+                          <PoundSterling className="h-6 w-6 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -446,7 +446,7 @@ export default function UnitDetailsModal({
                     <CardContent className="p-2">
                       <div className="flex items-center space-x-3">
                         <div className="p-3 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
-                          <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                          <PoundSterling className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">

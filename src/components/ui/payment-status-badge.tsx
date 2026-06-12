@@ -10,7 +10,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  DollarSign,
+  PoundSterling,
   RefreshCw,
   Ban,
 } from "lucide-react";
@@ -63,7 +63,7 @@ const statusConfig = {
   [PaymentStatus.PARTIAL]: {
     label: "Partial",
     variant: "secondary" as const,
-    icon: DollarSign,
+    icon: PoundSterling,
     className: "bg-orange-100 text-orange-800 border-orange-200",
   },
   [PaymentStatus.CANCELLED]: {

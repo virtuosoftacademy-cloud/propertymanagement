@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft,
   TrendingUp,
-  DollarSign,
+  PoundSterling,
   BarChart3,
   RefreshCw,
   Calendar,
@@ -635,7 +635,7 @@ export default function FinancialAnalyticsPage() {
                 <CardTitle className="text-sm font-medium">
                   {t("analytics.financial.kpi.totalRevenue")}
                 </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <PoundSterling className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">

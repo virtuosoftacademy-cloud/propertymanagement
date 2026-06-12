@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import LeaseSelector from "./LeaseSelector";
 import {
   Home,
-  DollarSign,
+  PoundSterling,
   Calendar,
   Bell,
   RefreshCw,
@@ -366,7 +366,7 @@ export default function TenantDashboard({ className }: TenantDashboardProps) {
             <CardTitle className="text-sm font-medium">
               {t("dashboard.tenant.outstandingPayments")}
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -543,7 +543,7 @@ export default function TenantDashboard({ className }: TenantDashboardProps) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <PoundSterling className="h-5 w-5" />
               {t("dashboard.tenant.recentPayments")}
             </CardTitle>
           </CardHeader>

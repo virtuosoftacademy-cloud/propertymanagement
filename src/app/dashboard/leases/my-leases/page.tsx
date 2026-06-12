@@ -20,7 +20,7 @@ import {
   RefreshCw,
   Home,
   Calendar,
-  DollarSign,
+  PoundSterling,
   FileText,
   X,
   Grid3X3,
@@ -361,7 +361,7 @@ export default function MyLeasesPage() {
             <CardTitle className="text-sm font-medium">
               {t("leases.myLeases.stats.totalMonthlyRent")}
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <PoundSterling className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

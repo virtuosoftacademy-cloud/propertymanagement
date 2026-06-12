@@ -8,6 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -22,12 +23,11 @@ import {
   Clock,
   FileText,
   MapPin,
-  DollarSign,
+  PoundSterling,
   Building2,
   CalendarDays,
   Hourglass,
   ExternalLink,
-  Download,
   ImageIcon,
 } from "lucide-react";
 import {
@@ -40,6 +40,7 @@ import {
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { ComplianceDetailSkeleton } from "@/components/compliance/compliance-skeleton";
 import { ComplianceActions } from "@/components/compliance/compliance-actions";
+import Image from "next/image";
 
 // ────────────────────────────────────────────────
 // Types
@@ -79,9 +80,9 @@ export default function ComplianceReportDetailPage() {
       if (!response.ok || !data.success) {
         throw new Error(
           data.error || data.message ||
-            t("compliance.details.toasts.fetchError", {
-              defaultValue: "Failed to load compliance report",
-            })
+          t("compliance.details.toasts.fetchError", {
+            defaultValue: "Failed to load compliance report",
+          })
         );
       }
 
@@ -99,8 +100,8 @@ export default function ComplianceReportDetailPage() {
         error instanceof Error
           ? error.message
           : t("compliance.details.toasts.fetchError", {
-              defaultValue: "Failed to load compliance report",
-            })
+            defaultValue: "Failed to load compliance report",
+          })
       );
       router.push("/dashboard/compliance");
     } finally {
@@ -350,7 +351,7 @@ export default function ComplianceReportDetailPage() {
                 </div>
               </div>
 
-              {report.images && report.images.length > 0 && (
+              {report.images && (
                 <>
                   <Separator />
                   <div>
@@ -396,6 +397,41 @@ export default function ComplianceReportDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Images */}
+          {report.images && report.images.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  {t("compliance.details.card.photos")} (
+                  {report?.images.length})
+                </CardTitle>
+                <CardDescription>
+                  {t("maintenance.details.card.photosDescription")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {report?.images.map((image, index) => (
+                    <div
+                      key={index}
+                      className="aspect-square bg-gray-100 rounded-lg overflow-hidden"
+                    >
+                      <Image
+                        src={image}
+                        alt={`Compliance report image ${index + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                        onClick={() => window.open(image, "_blank")}
+                        width={200}
+                        height={200}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -441,7 +477,7 @@ export default function ComplianceReportDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <PoundSterling className="h-5 w-5" />
                 Cost Information
               </CardTitle>
             </CardHeader>
@@ -449,7 +485,7 @@ export default function ComplianceReportDetailPage() {
               {report.estimatedCost != null ? (
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
-                    Estimated Cost
+                    Actual Cost
                   </span>
                   <span className="font-medium">
                     {formatCurrencyDisplay(report.estimatedCost)}
@@ -457,7 +493,7 @@ export default function ComplianceReportDetailPage() {
                 </div>
               ) : (
                 <div className="text-center py-4">
-                  <DollarSign className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <PoundSterling className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
                     No cost information recorded
                   </p>

@@ -26,7 +26,7 @@ import {
   UserPlus,
   Calendar,
   Bell,
-  DollarSign,
+  PoundSterling,
   Key,
   Shield,
   ChevronLeft,
@@ -38,6 +38,8 @@ import {
   FileLock,
   Files,
   FilePlusCorner,
+  TrendingDown,
+  GitCompare,
 } from "lucide-react";
 import { UserRole } from "@/types";
 import { useTheme } from "next-themes";
@@ -103,6 +105,12 @@ const navigationSections: NavSection[] = [
             icon: Grid3X3,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
           },
+          {
+            title: "HMO Units",
+            href: "/dashboard/properties/hmo",
+            icon: Grid3X3,
+            roles: [UserRole.ADMIN, UserRole.MANAGER],
+          },
         ],
       },
       {
@@ -164,7 +172,7 @@ const navigationSections: NavSection[] = [
           // {
           //   title: "nav.leases.invoices",
           //   href: "/dashboard/leases/invoices",
-          //   icon: DollarSign,
+          //   icon: PoundSterling,
           //   roles: [UserRole.ADMIN, UserRole.MANAGER],
           // },
           {
@@ -176,7 +184,7 @@ const navigationSections: NavSection[] = [
           {
             title: "nav.leases.invoices",
             href: "/dashboard/leases/invoices",
-            icon: DollarSign,
+            icon: PoundSterling,
             roles: [UserRole.TENANT],
           },
           {
@@ -250,42 +258,48 @@ const navigationSections: NavSection[] = [
     title: "nav.section.financial",
     items: [
       {
-        title: "nav.leases.invoices",
+        title: "nav.payments",
         href: "/dashboard/leases/invoices",
         icon: CreditCard,
         roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
-        // children: [
-          // {
-          //   title: "nav.leases.invoices",
-          //   href: "/dashboard/leases/invoices",
-          //   icon: DollarSign,
-          //   roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
-          // },
-          // {
-          //   title: "nav.payments.all",
-          //   href: "/dashboard/payments",
-          //   icon: CreditCard,
-          //   roles: [UserRole.ADMIN, UserRole.MANAGER],
-          // },
-          // {
-          //   title: "nav.payments.overdue",
-          //   href: "/dashboard/payments/overdue",
-          //   icon: DollarSign,
-          //   roles: [UserRole.ADMIN, UserRole.MANAGER],
-          // },
-          // {
-          //   title: "nav.payments.payRent",
-          //   href: "/dashboard/payments/pay-rent",
-          //   icon: CreditCard,
-          //   roles: [UserRole.TENANT],
-          // },
-          // {
-          //   title: "nav.payments.history",
-          //   href: "/dashboard/payments/history",
-          //   icon: BarChart3,
-          //   roles: [UserRole.TENANT],
-          // },
-        // ],
+        children: [
+          {
+            title: "nav.payments.all",
+            href: "/dashboard/payments",
+            icon: CreditCard,
+            roles: [UserRole.ADMIN, UserRole.MANAGER],
+          },
+          {
+            title: "nav.payments.overdue",
+            href: "/dashboard/payments/overdue",
+            icon: TrendingDown,
+            roles: [UserRole.ADMIN, UserRole.MANAGER],
+          },
+          {
+            title: "nav.leases.invoices",
+            href: "/dashboard/leases/invoices",
+            icon: PoundSterling,
+            roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
+          },
+          {
+            title: "nav.payments.compare",
+            href: "/dashboard/payments/compare",
+            icon: GitCompare,
+            roles: [UserRole.ADMIN, UserRole.MANAGER],
+          },
+          {
+            title: "nav.payments.payRent",
+            href: "/dashboard/payments/pay-rent",
+            icon: CreditCard,
+            roles: [UserRole.TENANT],
+          },
+          {
+            title: "nav.payments.history",
+            href: "/dashboard/payments/history",
+            icon: BarChart3,
+            roles: [UserRole.TENANT],
+          },
+        ],
       },
     ],
   },
@@ -301,7 +315,7 @@ const navigationSections: NavSection[] = [
           {
             title: "nav.analytics.financial",
             href: "/dashboard/analytics/financial",
-            icon: DollarSign,
+            icon: PoundSterling,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
           },
           {
@@ -687,7 +701,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "flex h-full flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 overflow-hidden relative transition-[width] duration-300 ease-in-out",
+        "flex h-full flex-col bg-white dark:bg-sidebar border-r border-gray-200 dark:border-gray-800 overflow-hidden relative transition-[width] duration-300 ease-in-out",
         isCollapsed ? "w-16" : "w-64",
         className
       )}
@@ -759,7 +773,7 @@ export function Sidebar({ className }: SidebarProps) {
                 }
                 alt={`${session.user.firstName} ${session.user.lastName}`}
               />
-              <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium">
+              <AvatarFallback className="bg-gray-200 dark:bg-sidebar text-gray-700 dark:text-gray-300 text-sm font-medium">
                 {session.user.firstName?.[0]}
                 {session.user.lastName?.[0]}
               </AvatarFallback>

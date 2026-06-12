@@ -320,6 +320,7 @@ export interface IProperty extends Document {
   propertyOwnerName: string;
   ownerType: PropertyownerType;
   name: string;
+  assignedAgentName?: string | null;
   description?: string;
   type: PropertyType;
   status: PropertyStatus;
@@ -337,6 +338,7 @@ export interface IProperty extends Document {
   attachments: IPropertyAttachment[];
 
   images: string[];
+  assignedAgentId?: Types.ObjectId | null;
   ownerId: Types.ObjectId;
   managerId?: Types.ObjectId;
   createdAt: Date;
@@ -895,10 +897,10 @@ export interface IMaintenanceRequest extends Document {
 // Compliance category slugs - matches COMPLIANCE_TYPES in ComplianceReportForm
 export enum ComplianceCategory {
   FIRE_SAFETY = "fire-safety",
-  ELECTRICAL = "electrical",
-  STRUCTURAL = "structural",
-  ELEVATOR = "elevator",
-  PEST_CONTROL = "pest-control",
+  ELECTRICAL = "electrical-safety",
+  STRUCTURAL = "structural-safety",
+  ELEVATOR = "elevator-/-lift-certificate",
+  PEST_CONTROL = "pest-control-certificate",
   HEALTH_HYGIENE = "health-hygiene",
   HMO = "hmo-license",
 }
@@ -1153,6 +1155,7 @@ export interface PaginationParams {
 export interface PropertyFormData {
   propertyOwnerName: string;
   ownerType: PropertyownerType;
+  assignedAgentName?: string | null;
   name: string;
   description?: string;
   type: PropertyType;

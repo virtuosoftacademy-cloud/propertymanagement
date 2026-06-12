@@ -36,7 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   FileText,
-  DollarSign,
+  PoundSterling,
   Home,
   User,
   Settings,
@@ -878,7 +878,7 @@ export function LeaseForm({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <PoundSterling className="h-5 w-5" />
               Financial Terms
             </CardTitle>
             <CardDescription>
@@ -982,7 +982,7 @@ export function LeaseForm({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <PoundSterling className="h-5 w-5" />
               Payment Configuration
             </CardTitle>
             <CardDescription>

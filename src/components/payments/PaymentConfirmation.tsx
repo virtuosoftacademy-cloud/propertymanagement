@@ -15,7 +15,7 @@ import {
   FileText,
   Home,
   User,
-  DollarSign,
+  PoundSterling,
   Receipt,
   ArrowLeft,
 } from "lucide-react";

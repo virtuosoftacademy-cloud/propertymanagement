@@ -8,7 +8,7 @@ import {
   Banknote,
   Building2,
   FileText,
-  DollarSign,
+  PoundSterling,
   Smartphone,
   Check,
 } from "lucide-react";
@@ -75,7 +75,7 @@ const paymentMethodConfig = {
   [PaymentMethod.OTHER]: {
     label: "Other",
     description: "Alternative payment method",
-    icon: DollarSign,
+    icon: PoundSterling,
     color: "bg-slate-50 border-slate-200 text-slate-700",
     selectedColor: "bg-slate-100 border-slate-300",
   },

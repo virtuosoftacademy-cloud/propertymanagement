@@ -32,7 +32,7 @@ import {
   Eye,
   Trash2,
   Calendar,
-  DollarSign,
+  PoundSterling,
   Home,
   User,
   FileSignature,
@@ -331,7 +331,7 @@ export function LeaseCard({
           <div className="grid grid-cols-2 gap-2">
             <div className="p-2.5 bg-muted/30 rounded-lg border border-border/40">
               <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                <DollarSign className="h-3 w-3" />
+                <PoundSterling className="h-3 w-3" />
                 <span className="text-[10px] font-medium uppercase tracking-wide">Rent Amount</span>
               </div>
               <p className="text-sm font-bold text-foreground">
@@ -342,7 +342,7 @@ export function LeaseCard({
             </div>
             <div className="p-2.5 bg-muted/30 rounded-lg border border-border/40">
               <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                <DollarSign className="h-3 w-3" />
+                <PoundSterling className="h-3 w-3" />
                 <span className="text-[10px] font-medium uppercase tracking-wide">Security</span>
               </div>
               <p className="text-sm font-bold text-foreground">

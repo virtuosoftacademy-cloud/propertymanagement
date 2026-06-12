@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, DollarSign, Calendar, Settings, Upload } from "lucide-react";
+import { FileText, PoundSterling, Calendar, Settings, Upload } from "lucide-react";
 
 export default function NewLeaseLoading() {
   return (
@@ -82,7 +82,7 @@ export default function NewLeaseLoading() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
+                  <PoundSterling className="h-5 w-5" />
                   Financial Terms
                 </CardTitle>
                 <CardDescription>

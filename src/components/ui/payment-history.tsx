@@ -11,7 +11,7 @@ import { PaymentMethodBadge } from "./payment-method-selector";
 import { IPayment, PaymentMethod } from "@/types";
 import {
   Calendar,
-  DollarSign,
+  PoundSterling,
   Receipt,
   Download,
   Clock,
@@ -154,7 +154,7 @@ function PaymentHistoryItem({
                             key={index}
                             className="text-xs text-muted-foreground flex items-center gap-2"
                           >
-                            <DollarSign className="h-3 w-3" />
+                            <PoundSterling className="h-3 w-3" />
                             <span>
                               {formatCurrency(history.amount)} via{" "}
                               {history.paymentMethod.replace(/_/g, " ")}
@@ -240,7 +240,7 @@ export function PaymentHistory({
     return (
       <Card className={className}>
         <CardContent className="p-8 text-center">
-          <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <PoundSterling className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium text-muted-foreground mb-2">
             No Payment History
           </h3>
@@ -257,7 +257,7 @@ export function PaymentHistory({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+            <PoundSterling className="h-5 w-5" />
             Payment History
           </CardTitle>
           <Button

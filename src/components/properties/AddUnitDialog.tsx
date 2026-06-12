@@ -38,7 +38,7 @@ import {
   Building,
   Bed,
   Bath,
-  DollarSign,
+  PoundSterling,
   Wifi,
   Droplets,
   Zap,
@@ -190,7 +190,7 @@ export function AddUnitDialog({
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <DollarSign className="h-5 w-5 text-emerald-600 mb-1" />
+                    <PoundSterling className="h-5 w-5 text-emerald-600 mb-1" />
                     <span className="font-semibold">
                       {watchedValues.rentAmount
                         ? formatCurrency(watchedValues.rentAmount)

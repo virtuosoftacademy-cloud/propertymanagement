@@ -78,8 +78,6 @@ async function seedDemoAccounts() {
       throw new Error('MONGODB_URI is not defined in .env.local');
     }
 
-
-
     // Connect to database directly
     await mongoose.connect(MONGODB_URI, {
       maxPoolSize: 10,

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Wrench,
   Clock,
-  DollarSign,
+  PoundSterling,
   Target,
   TrendingUp,
   TrendingDown,
@@ -108,7 +108,7 @@ export function MaintenanceDashboardCards({
     {
       title: "Total Cost",
       value: data ? formatCurrency(data.totalCost) : "$0",
-      icon: DollarSign,
+      icon: PoundSterling,
       color: "text-green-600",
       bgColor: "bg-green-50",
       borderColor: "border-green-200",
@@ -205,7 +205,7 @@ export function MaintenanceDashboardCards({
           title="Total Cost"
           value={formatCurrency(data.totalCost)}
           description={`Avg: ${formatCurrency(data.avgCost)} per request`}
-          icon={DollarSign}
+          icon={PoundSterling}
           iconColor="success"
           trend={{
             value: `${costChange.value}% from last period`,

@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  DollarSign,
+  PoundSterling,
   TrendingUp,
   TrendingDown,
   Clock,
@@ -238,7 +238,7 @@ export function EnhancedPaymentDashboard({
                 </p>
               </div>
               <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-blue-600" />
+                <PoundSterling className="h-4 w-4 text-blue-600" />
               </div>
             </div>
           </CardContent>

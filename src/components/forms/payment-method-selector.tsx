@@ -19,7 +19,7 @@ import {
   CreditCard,
   Banknote,
   Building2,
-  DollarSign,
+  PoundSterling,
   FileText,
   Wallet,
 } from "lucide-react";
@@ -54,7 +54,7 @@ export function PaymentMethodSelector({
       case PaymentMethod.CHECK:
         return FileText;
       case PaymentMethod.CASH:
-        return DollarSign;
+        return PoundSterling;
       case PaymentMethod.MONEY_ORDER:
         return Wallet;
       default:
@@ -163,7 +163,7 @@ export function SimplePaymentMethodSelector({
       case PaymentMethod.CHECK:
         return FileText;
       case PaymentMethod.CASH:
-        return DollarSign;
+        return PoundSterling;
       case PaymentMethod.MONEY_ORDER:
         return Wallet;
       default:

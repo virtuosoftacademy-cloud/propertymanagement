@@ -29,7 +29,7 @@ import {
   CreditCard,
   Building2,
   Calendar,
-  DollarSign,
+  PoundSterling,
   AlertTriangle,
   CheckCircle,
   Clock,
@@ -510,7 +510,7 @@ export default function TenantPayRentPage() {
               <CardTitle className="text-sm font-medium">
                 {t("payments.payRent.stats.totalOwed")}
               </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <PoundSterling className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-destructive">

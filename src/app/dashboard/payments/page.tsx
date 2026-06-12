@@ -32,7 +32,7 @@ import {
   Edit,
   Eye,
   Calendar,
-  DollarSign,
+  PoundSterling,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -477,7 +477,7 @@ export default function PaymentsPage() {
                 <Link
                   href={`/dashboard/payments/record?paymentId=${payment._id}`}
                 >
-                  <DollarSign className="mr-2 h-4 w-4" />
+                  <PoundSterling className="mr-2 h-4 w-4" />
                   {t("payments.actions.recordPayment")}
                 </Link>
               </DropdownMenuItem>
@@ -556,7 +556,7 @@ export default function PaymentsPage() {
           title={t("payments.stats.totalAmount")}
           value={formatCurrency(totalAmount)}
           description={`${totalPayments} ${t("payments.stats.payments")}`}
-          icon={DollarSign}
+          icon={PoundSterling}
           iconColor="primary"
         />
 

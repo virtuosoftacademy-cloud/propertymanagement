@@ -23,7 +23,7 @@ import {
   Edit,
   MoreHorizontal,
   MapPin,
-  DollarSign,
+  PoundSterling,
   Bed,
   Bath,
   Square,
@@ -599,7 +599,7 @@ export default function UnitDetailsPage() {
             <Card className="p-2">
               <CardContent className="p-2">
                 <div className="flex items-center space-x-2">
-                  <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <PoundSterling className="h-5 w-5 text-green-600 dark:text-green-400" />
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                       {t("properties.unitDetails.stats.rent")}

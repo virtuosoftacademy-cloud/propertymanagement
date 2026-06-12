@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ArrowLeft,
-  DollarSign,
+  PoundSterling,
   FileText,
   Settings,
   RefreshCw,
@@ -229,11 +229,11 @@ export default function LeasePaymentManagementPage() {
       >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
+            <PoundSterling className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
           <TabsTrigger value="payments" className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
+            <PoundSterling className="h-4 w-4" />
             Process Payments
           </TabsTrigger>
           <TabsTrigger value="invoices" className="flex items-center gap-2">

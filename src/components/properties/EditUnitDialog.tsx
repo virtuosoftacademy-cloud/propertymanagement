@@ -39,7 +39,7 @@ import {
   Building,
   Bed,
   Bath,
-  DollarSign,
+  PoundSterling,
   Car,
   Zap,
   Droplets,
@@ -287,7 +287,7 @@ export function EditUnitDialog({
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <DollarSign className="h-5 w-5 text-emerald-600 mb-1" />
+                    <PoundSterling className="h-5 w-5 text-emerald-600 mb-1" />
                     <span className="font-semibold">
                       {watchedValues.rentAmount
                         ? formatCurrency(watchedValues.rentAmount)
@@ -502,7 +502,7 @@ export function EditUnitDialog({
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                             <Input
                               type="number"
                               min="0"
@@ -530,7 +530,7 @@ export function EditUnitDialog({
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                             <Input
                               type="number"
                               min="0"

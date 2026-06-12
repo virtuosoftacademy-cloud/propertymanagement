@@ -39,7 +39,7 @@ import {
   Download,
   Mail,
   MoreHorizontal,
-  DollarSign,
+  PoundSterling,
   Calendar,
   User,
   Building,
@@ -538,7 +538,7 @@ export default function InvoiceDetailsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <PoundSterling className="h-5 w-5" />
               {t("leases.invoices.details.summary.title")}
             </CardTitle>
           </CardHeader>

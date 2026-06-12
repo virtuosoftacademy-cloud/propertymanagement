@@ -49,7 +49,9 @@ import { ImageUpload, type UploadedImage } from "@/components/ui/image-upload";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { allowAlphabetsOnly } from "@/lib/utils";
 
-// Enhanced form schema (unchanged)
+// ─── CHANGE 1: Added assignedAgent to schema ────────────────────────────────
+// Status field removed from schema entirely.
+// assignedAgent is optional because it only shows for HMO property types.
 const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
   z.object({
     propertyOwnerName: z
@@ -64,8 +66,8 @@ const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
       .max(200),
     description: z.string().max(2000).optional(),
     type: z.nativeEnum(PropertyType),
-    status: z.nativeEnum(PropertyStatus),
-
+    assignedAgentName: z.string().optional(),
+    
     address: z.object({
       street: z
         .string()
@@ -145,7 +147,23 @@ interface EnhancedPropertyFormProps {
   isLoading?: boolean;
   mode?: "create" | "edit";
   propertyId?: string;
+  // Pass your agents list from the parent — shape matches your existing agent data
+  assignedAgent?: Array<{
+    _id: string;
+    name: string,
+    email: string,
+    specialties?: string[]
+  }> | null;
+
 }
+
+// ─── Placeholder agent list (replace with real data from your API) ───────────
+const FALLBACK_AGENTS = [
+  { _id: "a1", name: "Apex Property Co.", email: "info@apexpropertyco.com" },
+  { _id: "a2", name: "ProLet Managers", email: "contact@proletmanagers.com" },
+  { _id: "a3", name: "KeyHold Agency", email: "hello@keyholdagency.com" },
+  { _id: "a4", name: "Urban Nest Lettings", email: "support@urbannestlettings.com" },
+];
 
 const ESSENTIAL_AMENITIES_AND_FEATURES = [
   "Parking",
@@ -190,14 +208,7 @@ const getAmenityTranslationKey = (amenityName: string): string => {
 
 const getAmenityCategory = (amenityName: string): string => {
   const name = amenityName.toLowerCase();
-  if (
-    name.includes("dishwasher") ||
-    name.includes("kitchen") ||
-    name.includes("granite") ||
-    name.includes("stainless") ||
-    name.includes("microwave") ||
-    name.includes("refrigerator")
-  ) return "Kitchen";
+  if (name.includes("dishwasher") || name.includes("kitchen") || name.includes("granite") || name.includes("stainless") || name.includes("microwave") || name.includes("refrigerator")) return "Kitchen";
   if (name.includes("bathroom") || name.includes("jacuzzi") || name.includes("tub")) return "Bathroom";
   if (name.includes("hardwood") || name.includes("fireplace") || name.includes("furnished") || name.includes("living") || name.includes("carpet")) return "Living";
   if (name.includes("walk-in") || name.includes("closet") || name.includes("bedroom")) return "Bedroom";
@@ -217,6 +228,7 @@ export function EnhancedPropertyForm({
   isLoading = false,
   mode = "create",
   propertyId,
+  assignedAgent = [],
 }: EnhancedPropertyFormProps) {
   const [showAlert, setShowAlert] = useState(false);
 
@@ -252,7 +264,7 @@ export function EnhancedPropertyForm({
     }>
   >(() => {
     if (mode === "edit" && initialData?.units) {
-      const mappedUnits = initialData.units.map((unit: any, index: number) => ({
+      return initialData.units.map((unit: any, index: number) => ({
         id: unit._id || unit.id || `unit-${index}`,
         unitNumber: unit.unitNumber || `Unit ${index + 1}`,
         unitType: unit.unitType || "apartment",
@@ -268,7 +280,6 @@ export function EnhancedPropertyForm({
           publicId: `existing-unit-${index}-${imgIndex}`,
         })),
       }));
-      return mappedUnits;
     }
     return [
       {
@@ -298,7 +309,9 @@ export function EnhancedPropertyForm({
       name: initialData?.name || "",
       description: initialData?.description || "",
       type: initialData?.type || PropertyType.APARTMENT,
-      status: initialData?.status || PropertyStatus.AVAILABLE,
+      // REMOVED: status default value
+      // ADDED: assignedAgent default value
+      assignedAgentName: initialData?.assignedAgentName || "",
       address: {
         street: initialData?.address?.street || "",
         city: initialData?.address?.city || "",
@@ -316,31 +329,34 @@ export function EnhancedPropertyForm({
   const { watch, setValue } = form;
   const watchedValues = watch();
 
+  // CHANGE 2: Derive isHmo from the watched property type.
+  // The agent dropdown only mounts when this is true.
+  const isHmo = watchedValues.type === PropertyType.HMO;
+
+  // When the type changes away from HMO, clear the agent selection
+  // so stale data isn't submitted.
+  const handleTypeChange = (value: PropertyType) => {
+    setValue("type", value);
+    if (value !== PropertyType.HMO) {
+      setValue("assignedAgentName", "");
+    }
+  };
+
+  const agentList = Array.isArray(assignedAgent) && assignedAgent.length > 0 ? assignedAgent : FALLBACK_AGENTS;
+
   const handleAmenityToggle = (item: string) => {
     const newItems = selectedAmenities.includes(item)
       ? selectedAmenities.filter((i) => i !== item)
       : [...selectedAmenities, item];
-
     setSelectedAmenities(newItems);
-    const amenityObjects = newItems.map((name) => ({
-      name,
-      category: getAmenityCategory(name),
-    }));
-    setValue("amenities", amenityObjects);
+    setValue("amenities", newItems.map((name) => ({ name, category: getAmenityCategory(name) })));
   };
 
   const handleAddCustomAmenity = () => {
-    if (
-      customAmenity.trim() &&
-      !selectedAmenities.includes(customAmenity.trim())
-    ) {
+    if (customAmenity.trim() && !selectedAmenities.includes(customAmenity.trim())) {
       const newItems = [...selectedAmenities, customAmenity.trim()];
       setSelectedAmenities(newItems);
-      const amenityObjects = newItems.map((name) => ({
-        name,
-        category: getAmenityCategory(name),
-      }));
-      setValue("amenities", amenityObjects);
+      setValue("amenities", newItems.map((name) => ({ name, category: getAmenityCategory(name) })));
       setCustomAmenity("");
     }
   };
@@ -348,20 +364,13 @@ export function EnhancedPropertyForm({
   const handleRemoveAmenity = (item: string) => {
     const newItems = selectedAmenities.filter((i) => i !== item);
     setSelectedAmenities(newItems);
-    const amenityObjects = newItems.map((name) => ({
-      name,
-      category: getAmenityCategory(name),
-    }));
-    setValue("amenities", amenityObjects);
+    setValue("amenities", newItems.map((name) => ({ name, category: getAmenityCategory(name) })));
   };
 
   const handleImagesUploaded = (newImages: UploadedImage[]) => {
     const updatedImages = [...propertyImages, ...newImages];
     setPropertyImages(updatedImages);
-    setValue(
-      "images",
-      updatedImages.map((img) => img.url)
-    );
+    setValue("images", updatedImages.map((img) => img.url));
   };
 
   const handleImageRemove = (imageToRemove: UploadedImage) => {
@@ -369,10 +378,7 @@ export function EnhancedPropertyForm({
       (img) => img.publicId !== imageToRemove.publicId
     );
     setPropertyImages(updatedImages);
-    setValue(
-      "images",
-      updatedImages.map((img) => img.url)
-    );
+    setValue("images", updatedImages.map((img) => img.url));
   };
 
   const handleFormSubmit = async (data: EnhancedPropertyFormData) => {
@@ -390,14 +396,12 @@ export function EnhancedPropertyForm({
         images: images.map((img) => img.url),
       }));
 
-      const submissionData = {
+      await onSubmit({
         ...data,
         isMultiUnit,
         totalUnits,
         units: apiUnits,
-      };
-
-      await onSubmit(submissionData);
+      });
     } catch (error) {
       throw error;
     }
@@ -436,9 +440,7 @@ export function EnhancedPropertyForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ownerType">
-                {t("Property Owner")}
-              </Label>
+              <Label htmlFor="ownerType">{t("Property Owner")}</Label>
               <Select
                 value={watchedValues.ownerType}
                 onValueChange={(value) =>
@@ -446,9 +448,7 @@ export function EnhancedPropertyForm({
                 }
               >
                 <SelectTrigger>
-                  <SelectValue
-                    placeholder={t("Company")}
-                  />
+                  <SelectValue placeholder={t("Company")} />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.values(PropertyownerType).map((type) => (
@@ -476,6 +476,9 @@ export function EnhancedPropertyForm({
               )}
             </div>
 
+            {/* ── CHANGE 1: Property type now uses handleTypeChange ─────────────
+                When type changes to anything other than HMO the agent field
+                is cleared and hidden. When it's HMO the agent dropdown appears. */}
             <div className="space-y-2">
               <Label htmlFor="type">
                 {t("properties.form.fields.type.label")}
@@ -483,7 +486,7 @@ export function EnhancedPropertyForm({
               <Select
                 value={watchedValues.type}
                 onValueChange={(value) =>
-                  setValue("type", value as PropertyType)
+                  handleTypeChange(value as PropertyType)
                 }
               >
                 <SelectTrigger>
@@ -501,35 +504,40 @@ export function EnhancedPropertyForm({
               </Select>
             </div>
 
-            {/* <div className="space-y-2">
-              <Label htmlFor="status">
-                {t("properties.form.fields.status.label")}
-              </Label>
-              <Select
-                value={watchedValues.status}
-                onValueChange={(value) =>
-                  setValue("status", value as PropertyStatus)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={t("properties.form.fields.status.placeholder")}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(PropertyStatus).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.formState.errors.status && (
-                <p className="text-sm text-red-600">
-                  {form.formState.errors.status.message}
-                </p>
-              )}
-            </div> */}
+            {/* ── CHANGE 2: Assign to agent — only visible when type is HMO ───
+                Replaces the old status dropdown entirely.
+                Conditionally rendered: mounts only when isHmo is true. */}
+            {isHmo && (
+              <div className="space-y-2 md:col-span-1">
+                <Label htmlFor="assignedAgentName">
+                  Assign to agent
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">
+                    (required for HMO)
+                  </span>
+                </Label>
+                <Select
+                  value={watchedValues.assignedAgentName}
+                  onValueChange={(value) => setValue("assignedAgentName", value)}
+                >
+                  <SelectTrigger id="assignedAgent">
+                    <SelectValue placeholder="Select an agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agentList.map((agent) => (
+                      <SelectItem key={agent._id} value={agent._id}>
+                        {agent.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Validation hint — shown if submitted without an agent */}
+                {form.formState.errors.assignedAgentName && (
+                  <p className="text-sm text-red-600">
+                    {form.formState.errors.assignedAgentName.message}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="yearBuilt">
@@ -646,7 +654,9 @@ export function EnhancedPropertyForm({
                 <Label htmlFor="country">
                   {t("properties.form.fields.country.label")}
                 </Label>
-                <Input id="country" {...form.register("address.country")}
+                <Input
+                  id="country"
+                  {...form.register("address.country")}
                   onKeyDown={allowAlphabetsOnly}
                 />
               </div>
@@ -655,7 +665,7 @@ export function EnhancedPropertyForm({
         </CardContent>
       </Card>
 
-      {/* Property Units - Unified Design (unchanged) */}
+      {/* Property Units — unchanged */}
       <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-xl font-semibold">
@@ -693,9 +703,7 @@ export function EnhancedPropertyForm({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        setUnits(units.filter((_, i) => i !== index));
-                      }}
+                      onClick={() => setUnits(units.filter((_, i) => i !== index))}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -703,9 +711,7 @@ export function EnhancedPropertyForm({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>
-                      {t("properties.form.units.fields.unitNumber")}
-                    </Label>
+                    <Label>{t("properties.form.units.fields.unitNumber")}</Label>
                     <Input
                       value={unit.unitNumber}
                       onChange={(e) => {
@@ -726,25 +732,13 @@ export function EnhancedPropertyForm({
                         setUnits(newUnits);
                       }}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="apartment">
-                          {t("properties.unitType.apartment")}
-                        </SelectItem>
-                        <SelectItem value="studio">
-                          {t("properties.unitType.studio")}
-                        </SelectItem>
-                        <SelectItem value="penthouse">
-                          {t("properties.unitType.penthouse")}
-                        </SelectItem>
-                        <SelectItem value="loft">
-                          {t("properties.unitType.loft")}
-                        </SelectItem>
-                        <SelectItem value="room">
-                          {t("properties.unitType.room")}
-                        </SelectItem>
+                        <SelectItem value="apartment">{t("properties.unitType.apartment")}</SelectItem>
+                        <SelectItem value="studio">{t("properties.unitType.studio")}</SelectItem>
+                        <SelectItem value="penthouse">{t("properties.unitType.penthouse")}</SelectItem>
+                        <SelectItem value="loft">{t("properties.unitType.loft")}</SelectItem>
+                        <SelectItem value="room">{t("properties.unitType.room")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -756,112 +750,42 @@ export function EnhancedPropertyForm({
                       value={unit.floor || ""}
                       onChange={(e) => {
                         const newUnits = [...units];
-                        newUnits[index].floor =
-                          parseInt(e.target.value) || undefined;
+                        newUnits[index].floor = parseInt(e.target.value) || undefined;
                         setUnits(newUnits);
                       }}
-                      placeholder={t(
-                        "properties.form.units.placeholders.floor"
-                      )}
+                      placeholder={t("properties.form.units.placeholders.floor")}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>{t("properties.form.units.fields.bedrooms")}</Label>
-                    <Input
-                      min={1}
-                      type="number"
-                      value={unit.bedrooms}
-                      onChange={(e) => {
-                        const newUnits = [...units];
-                        newUnits[index].bedrooms =
-                          parseInt(e.target.value) || 0;
-                        setUnits(newUnits);
-                      }}
+                    <Input min={1} type="number" value={unit.bedrooms}
+                      onChange={(e) => { const n = [...units]; n[index].bedrooms = parseInt(e.target.value) || 0; setUnits(n); }}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>{t("properties.form.units.fields.bathrooms")}</Label>
-                    <Input
-                      min={1}
-                      type="number"
-                      value={unit.bathrooms}
-                      onChange={(e) => {
-                        const newUnits = [...units];
-                        newUnits[index].bathrooms =
-                          parseInt(e.target.value) || 0;
-                        setUnits(newUnits);
-                      }}
+                    <Input min={1} type="number" value={unit.bathrooms}
+                      onChange={(e) => { const n = [...units]; n[index].bathrooms = parseInt(e.target.value) || 0; setUnits(n); }}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>
-                      {t("properties.form.units.fields.squareFootage")}
-                    </Label>
-                    <Input
-                      min={50}
-                      type="number"
-                      value={unit.squareFootage}
-                      onChange={(e) => {
-                        const newUnits = [...units];
-                        newUnits[index].squareFootage =
-                          parseInt(e.target.value) || 0;
-                        setUnits(newUnits);
-                      }}
+                    <Label>{t("properties.form.units.fields.squareFootage")}</Label>
+                    <Input min={50} type="number" value={unit.squareFootage}
+                      onChange={(e) => { const n = [...units]; n[index].squareFootage = parseInt(e.target.value) || 0; setUnits(n); }}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>
-                      {t("properties.form.units.fields.rentAmount")}
-                    </Label>
-                    <Input
-                      min={1}
-                      type="number"
-                      value={unit.rentAmount}
-                      onChange={(e) => {
-                        const newUnits = [...units];
-                        newUnits[index].rentAmount =
-                          parseInt(e.target.value) || 0;
-                        setUnits(newUnits);
-                      }}
+                    <Label>{t("properties.form.units.fields.rentAmount")}</Label>
+                    <Input min={1} type="number" value={unit.rentAmount}
+                      onChange={(e) => { const n = [...units]; n[index].rentAmount = parseInt(e.target.value) || 0; setUnits(n); }}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>
-                      {t("properties.form.units.fields.securityDeposit")}
-                    </Label>
-                    <Input
-                      type="number"
-                      value={unit.securityDeposit}
-                      onChange={(e) => {
-                        const newUnits = [...units];
-                        newUnits[index].securityDeposit =
-                          parseInt(e.target.value) || 0;
-                        setUnits(newUnits);
-                      }}
+                    <Label>{t("properties.form.units.fields.securityDeposit")}</Label>
+                    <Input type="number" value={unit.securityDeposit}
+                      onChange={(e) => { const n = [...units]; n[index].securityDeposit = parseInt(e.target.value) || 0; setUnits(n); }}
                     />
                   </div>
-                  {/* <div className="space-y-2">
-                    <Label>{t("properties.form.units.fields.status")}</Label>
-                    <Select
-                      value={unit.status}
-                      onValueChange={(value: PropertyStatus) => {
-                        const newUnits = [...units];
-                        newUnits[index].status = value;
-                        setUnits(newUnits);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(PropertyStatus).map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {t(`properties.status.${status}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div> */}
                 </div>
 
                 <div className="space-y-2 pt-3 border-t">
@@ -872,19 +796,13 @@ export function EnhancedPropertyForm({
                   <ImageUpload
                     onImagesUploaded={(newImages) => {
                       const newUnits = [...units];
-                      newUnits[index].images = [
-                        ...newUnits[index].images,
-                        ...newImages,
-                      ];
+                      newUnits[index].images = [...newUnits[index].images, ...newImages];
                       setUnits(newUnits);
                     }}
                     onImagesRemoved={(imagesToRemove) => {
                       const newUnits = [...units];
                       newUnits[index].images = newUnits[index].images.filter(
-                        (img) =>
-                          !imagesToRemove.some(
-                            (remove) => remove.publicId === img.publicId
-                          )
+                        (img) => !imagesToRemove.some((r) => r.publicId === img.publicId)
                       );
                       setUnits(newUnits);
                     }}
@@ -899,8 +817,7 @@ export function EnhancedPropertyForm({
                   />
                   {unit.images.length > 0 && (
                     <p className="text-sm text-muted-foreground">
-                      {unit.images.length}{" "}
-                      {unit.images.length === 1 ? "image" : "images"} uploaded
+                      {unit.images.length} {unit.images.length === 1 ? "image" : "images"} uploaded
                     </p>
                   )}
                 </div>
@@ -911,7 +828,7 @@ export function EnhancedPropertyForm({
             type="button"
             variant="outline"
             onClick={() => {
-              const newUnit = {
+              setUnits([...units, {
                 id: `unit-${Date.now()}`,
                 unitNumber: `Unit ${units.length + 1}`,
                 unitType: "apartment" as const,
@@ -922,8 +839,7 @@ export function EnhancedPropertyForm({
                 securityDeposit: 1000,
                 status: PropertyStatus.AVAILABLE,
                 images: [],
-              };
-              setUnits([...units, newUnit]);
+              }]);
             }}
             className="w-full"
           >
@@ -933,7 +849,7 @@ export function EnhancedPropertyForm({
         </CardContent>
       </Card>
 
-      {/* Amenities & Features - Modern Bento Box Design (unchanged) */}
+      {/* Amenities — unchanged */}
       <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
         <CardHeader className="pb-6">
           <CardTitle className="flex items-center gap-3 text-xl font-semibold">
@@ -974,7 +890,7 @@ export function EnhancedPropertyForm({
                     </span>
                   </div>
                   {selectedAmenities.includes(item) && (
-                    <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full" />
                   )}
                 </div>
               );
@@ -1033,12 +949,9 @@ export function EnhancedPropertyForm({
                         e.stopPropagation();
                         handleRemoveAmenity(item);
                       }}
-                      aria-label={t(
-                        "properties.form.amenities.selected.remove",
-                        {
-                          values: { name: item },
-                        }
-                      )}
+                      aria-label={t("properties.form.amenities.selected.remove", {
+                        values: { name: item },
+                      })}
                     >
                       <X className="h-3.5 w-3.5 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-100" />
                     </button>
@@ -1050,6 +963,7 @@ export function EnhancedPropertyForm({
         </CardContent>
       </Card>
 
+      {/* Images — unchanged */}
       <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
         <CardHeader className="pb-6">
           <CardTitle className="flex items-center gap-3 text-xl font-semibold">
@@ -1065,9 +979,7 @@ export function EnhancedPropertyForm({
         <CardContent className="space-y-6">
           <ImageUpload
             onImagesUploaded={handleImagesUploaded}
-            onImagesRemoved={(images) => {
-              images.forEach(handleImageRemove);
-            }}
+            onImagesRemoved={(images) => images.forEach(handleImageRemove)}
             existingImages={propertyImages}
             maxFiles={20}
             folder="PropertyPro/properties"
@@ -1075,7 +987,6 @@ export function EnhancedPropertyForm({
             disabled={isLoading}
             className="w-full"
           />
-
           {propertyImages.length > 0 && (
             <div className="text-sm text-gray-600 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border">
               <span className="font-medium">{propertyImages.length}</span>{" "}

@@ -36,7 +36,7 @@ import {
 import {
   CreditCard,
   Calendar,
-  DollarSign,
+  PoundSterling,
   AlertTriangle,
   CheckCircle,
   Settings,
@@ -460,7 +460,7 @@ export function RecurringPaymentSetup({
               <div className="space-y-2">
                 <Label htmlFor="amount">Custom Payment Amount</Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <PoundSterling className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="amount"
                     type="number"

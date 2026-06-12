@@ -52,7 +52,7 @@
   "dashboard.cards.vacantUnits.description": "{rate} vacancy rate",
 
   "dashboard.cards.averageRent.title": "Average Rent",
-  "dashboard.cards.averageRent.description": "Per unit monthly average",
+  "dashboard.cards.averageRent.description": "Per unit average",
 
   "dashboard.cards.leaseRenewals.title": "Lease Renewals",
   "dashboard.cards.leaseRenewals.description": "Due in next 30 days",

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Building2, ArrowLeft } from "lucide-react";
@@ -14,39 +14,96 @@ import {
   parseValidationErrors,
 } from "@/lib/toast-notifications";
 
+interface assignedAgent {
+  _id: string;
+  name: string;
+  email: string;
+  specialties?: string[];
+}
+
 export default function EnhancedNewPropertyPage() {
   const router = useRouter();
   const { t } = useLocalizationContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [assignedAgent, setassignedAgent] = useState<assignedAgent[]>([]);
+
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        const res = await fetch(
+          "/api/users?excludeTenant=true&isActive=true&limit=100"
+        );
+
+        if (res.ok) {
+          const json = await res.json();
+
+          // Handle varying API response shapes — same pattern as maintenance form
+          const usersArray = Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json?.data?.users)
+            ? json.data.users
+            : Array.isArray(json?.users)
+            ? json.users
+            : [];
+
+          // Filter to non-tenant, active users only and normalise shape
+          const agentList = usersArray
+            .filter((u: any) => {
+              if (!u || (!u._id && !u.id)) return false;
+              const role = (u.role || "").toLowerCase();
+              if (role === "tenant") return false;
+              if (u.isActive === false) return false;
+              return (
+              role.includes("manager") ||
+              role.includes("technician") ||
+              role.includes("maintenance")
+            );
+            })
+            .map((u: any) => ({
+              _id: u._id || u.id,
+              name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.name || "",
+              email: u.email || "",
+              specialties: u.specialties || [],
+            }));
+
+          setassignedAgent(agentList);
+          // console.log("Fetched agents:", agentList);
+        } else {
+          console.error("Failed to fetch agents — non-OK response");
+        }
+      } catch (err) {
+        console.error("Failed to fetch agents:", err);
+      }
+    };
+
+    fetchAgents();
+  }, []);
 
   const handlePropertySubmit = async (data: any) => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/properties", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        // Extract detailed error information from various possible response formats
         const errorDetails = result.details || result.error || result.message;
         const errorMessage =
           typeof errorDetails === "string"
             ? errorDetails
             : Array.isArray(errorDetails)
-              ? errorDetails.join(", ")
-              : JSON.stringify(errorDetails);
+            ? errorDetails.join(", ")
+            : JSON.stringify(errorDetails);
 
         throw new Error(errorMessage || "Failed to create property");
       }
 
-      // The API returns data in result.data
       const property = result.data;
+
       showSimpleSuccess(
         t("properties.newProperty.success.title"),
         t("properties.newProperty.success.description", {
@@ -54,7 +111,20 @@ export default function EnhancedNewPropertyPage() {
         })
       );
 
-      // Redirect to property details page
+      if (data.assignedAgent) {
+        const assignedAgents = assignedAgent.find(
+          (assignedAgent) => assignedAgent._id === data.assignedAgent
+        );
+        if (assignedAgents) {
+          showSimpleSuccess(
+            t("properties.newProperty.agentAssigned.title"),
+            t("properties.newProperty.agentAssigned.description", {
+              values: { agentName: assignedAgents.name },
+            })
+          );
+        }
+      }
+
       router.push(`/dashboard/properties/${property._id}`);
     } catch (error) {
       console.error("Property creation error:", error);
@@ -64,19 +134,17 @@ export default function EnhancedNewPropertyPage() {
           ? error.message
           : t("properties.newProperty.error.fallbackMessage");
 
-      // Parse validation errors for better display
       const parsedErrors = parseValidationErrors(errorMessage);
 
-      // If we have multiple errors or errors with field info, show detailed toast
       if (parsedErrors.length > 1 || parsedErrors.some((e) => e.field)) {
         showErrorToast({
           title: t("properties.newProperty.error.title"),
-          description: `${parsedErrors.length} validation ${parsedErrors.length === 1 ? "error" : "errors"
-            } found`,
+          description: `${parsedErrors.length} validation ${
+            parsedErrors.length === 1 ? "error" : "errors"
+          } found`,
           items: parsedErrors,
         });
       } else {
-        // For single simple errors, show a simple error toast
         showSimpleError(
           t("properties.newProperty.error.title"),
           errorMessage
@@ -111,9 +179,11 @@ export default function EnhancedNewPropertyPage() {
           </Link>
         </div>
       </div>
+
       <EnhancedPropertyForm
         onSubmit={handlePropertySubmit}
         isLoading={isLoading}
+        assignedAgent={assignedAgent}
         mode="create"
       />
     </div>

@@ -22,7 +22,7 @@ import {
   Calendar,
   Mail,
   MessageSquare,
-  DollarSign,
+  PoundSterling,
   Clock,
   Users,
   CheckCircle,
@@ -193,7 +193,7 @@ export default function AutomatedPaymentDashboard() {
   const getAutomationIcon = (type: AutomationRule["type"]) => {
     switch (type) {
       case "payment_generation":
-        return <DollarSign className="h-4 w-4" />;
+        return <PoundSterling className="h-4 w-4" />;
       case "reminder":
         return <Mail className="h-4 w-4" />;
       case "late_fee":
@@ -208,7 +208,7 @@ export default function AutomatedPaymentDashboard() {
   const getTaskIcon = (type: ScheduledTask["type"]) => {
     switch (type) {
       case "generate_rent":
-        return <DollarSign className="h-4 w-4" />;
+        return <PoundSterling className="h-4 w-4" />;
       case "send_reminder":
         return <Mail className="h-4 w-4" />;
       case "apply_late_fee":
@@ -327,7 +327,7 @@ export default function AutomatedPaymentDashboard() {
             <CardTitle className="text-sm font-medium">
               Payments Generated
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

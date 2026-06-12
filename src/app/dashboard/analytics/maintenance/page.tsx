@@ -27,7 +27,7 @@ import {
 } from "recharts";
 import {
   Wrench,
-  DollarSign,
+  PoundSterling,
   RefreshCw,
   Filter,
   Clock,
@@ -266,7 +266,7 @@ export default function MaintenanceAnalyticsPage() {
             <CardTitle className="text-sm font-medium">
               {t("analytics.maintenance.stats.totalCost")}
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

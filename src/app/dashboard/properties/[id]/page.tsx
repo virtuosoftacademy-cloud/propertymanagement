@@ -13,7 +13,7 @@ import {
   Bed,
   Bath,
   Square,
-  DollarSign,
+  PoundSterling,
   MapPin,
   Edit,
   Trash2,
@@ -807,7 +807,7 @@ export default function PropertyDetailsPage() {
               <CardHeader className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 p-6">
                 <CardTitle className="flex items-center space-x-3">
                   <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                    <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    <PoundSterling className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -834,7 +834,7 @@ export default function PropertyDetailsPage() {
                             t("properties.details.common.notAvailable")}
                       </p>
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                        {/* <DollarSign className="h-4 w-4 mr-1" /> */}
+                        {/* <PoundSterling className="h-4 w-4 mr-1" /> */}
                         <span>
                           {t("properties.details.financial.monthlyRent.helper")}
                         </span>

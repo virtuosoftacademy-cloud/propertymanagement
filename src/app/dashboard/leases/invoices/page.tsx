@@ -38,7 +38,7 @@ import {
   LayoutGrid,
   List,
   Calendar,
-  DollarSign,
+  PoundSterling,
   AlertTriangle,
   CheckCircle,
   Clock,
@@ -950,14 +950,14 @@ export default function LeaseInvoicesPage() {
           <AnalyticsCard
             title={t("leases.invoices.stats.totalValue")}
             value={formatCurrency(stats.totalAmount)}
-            icon={DollarSign}
+            icon={PoundSterling}
             iconColor="primary"
           />
 
           <AnalyticsCard
             title={t("leases.invoices.stats.collected")}
             value={formatCurrency(stats.paidAmount)}
-            icon={DollarSign}
+            icon={PoundSterling}
             iconColor="success"
           />
         </AnalyticsCardGrid>

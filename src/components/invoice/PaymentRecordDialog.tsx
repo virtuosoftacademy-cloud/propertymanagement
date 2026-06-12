@@ -30,7 +30,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { CreditCard, DollarSign } from "lucide-react";
+import { CreditCard, PoundSterling } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js";
@@ -438,7 +438,7 @@ export default function PaymentRecordDialog({
                       <FormLabel>Payment Amount</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                           <Input
                             type="number"
                             step="0.01"

@@ -10,7 +10,7 @@ import { PaymentStatusBadge } from "./payment-status-badge";
 import { IPayment, PaymentType, PaymentMethod } from "@/types";
 import {
   Calendar,
-  DollarSign,
+  PoundSterling,
   User,
   Home,
   MoreHorizontal,
@@ -197,7 +197,7 @@ export function PaymentCard({
             {/* Payment Method */}
             {payment.paymentMethod && (
               <div className="flex items-center gap-2 text-sm">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 <span>
                   Method: {paymentMethodLabels[payment.paymentMethod]}
                 </span>
@@ -324,7 +324,7 @@ export function PaymentSummaryCard({
               {count} payment{count !== 1 ? "s" : ""}
             </p>
           </div>
-          <DollarSign className="h-8 w-8 text-muted-foreground" />
+          <PoundSterling className="h-8 w-8 text-muted-foreground" />
         </div>
       </CardContent>
     </Card>

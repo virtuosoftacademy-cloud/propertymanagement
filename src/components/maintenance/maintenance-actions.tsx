@@ -42,7 +42,7 @@ import {
   Play,
   CheckCircle,
   X,
-  DollarSign,
+  PoundSterling,
 } from "lucide-react";
 import { MaintenanceStatus, MaintenancePriority, UserRole } from "@/types";
 import { toast } from "sonner";

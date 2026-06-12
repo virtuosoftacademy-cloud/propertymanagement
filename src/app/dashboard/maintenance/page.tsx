@@ -25,7 +25,7 @@ import {
   CheckCircle,
   Clock,
   User,
-  DollarSign,
+  PoundSterling,
   Play,
   X,
   Image,
@@ -806,7 +806,7 @@ export default function MaintenancePage() {
             <CardTitle className="text-sm font-medium">
               {t("maintenance.stats.estimatedCost")}
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -874,7 +874,7 @@ export default function MaintenancePage() {
             <CardTitle className="text-sm font-medium">
               {t("maintenance.stats.avgCost")}
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-600" />
+            <PoundSterling className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">

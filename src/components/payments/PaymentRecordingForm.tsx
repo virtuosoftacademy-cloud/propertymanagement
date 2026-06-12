@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
-  DollarSign,
+  PoundSterling,
   CreditCard,
   Calendar,
   FileText,
@@ -335,7 +335,7 @@ export default function PaymentRecordingForm({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+            <PoundSterling className="h-5 w-5" />
             {t("payments.record.form.title")}
           </CardTitle>
           <CardDescription>

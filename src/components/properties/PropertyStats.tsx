@@ -9,7 +9,7 @@ import { useMemo } from "react";
 import {
   Building2,
   Users,
-  DollarSign,
+  PoundSterling,
   TrendingUp,
   CheckCircle,
   Wrench,
@@ -214,7 +214,7 @@ export default function PropertyStats({
             : "N/A"
         }
         description={t("properties.stats.averageRent.description")}
-        icon={DollarSign}
+        icon={PoundSterling}
         iconColor="success"
       />
 

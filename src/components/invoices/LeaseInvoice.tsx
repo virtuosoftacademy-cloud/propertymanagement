@@ -4,7 +4,7 @@ import React, { useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Calendar,
-  DollarSign,
+  PoundSterling,
   Download,
   FileText,
   Home,
@@ -433,7 +433,7 @@ export function LeaseInvoice({
             {/* Financial Summary */}
             <div className="financial-summary bg-blue-50 p-6 rounded-lg mb-8">
               <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
-                <DollarSign className="h-5 w-5 text-blue-600" />
+                <PoundSterling className="h-5 w-5 text-blue-600" />
                 Financial Summary
               </h3>
               <div className="summary-grid space-y-3">

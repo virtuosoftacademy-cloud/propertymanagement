@@ -33,7 +33,7 @@ import {
   Sun,
   Moon,
   Monitor,
-  DollarSign,
+  PoundSterling,
   RotateCcw,
   Save,
   Loader2,
@@ -178,14 +178,14 @@ export function DisplaySettings({
         (settings?.language as string | undefined) ||
         localization.language ||
         "en",
-      currency: settings?.currency || "USD",
+      currency: settings?.currency || "GBP",
       branding: settings?.branding
         ? {
             logoLight: settings.branding.logoLight || "/images/logo-light.png",
             logoDark: settings.branding.logoDark || "/images/logo-dark.png",
             favicon: settings.branding.favicon || "/favicon.ico",
-            primaryColor: settings.branding.primaryColor || "#3B82F6",
-            secondaryColor: settings.branding.secondaryColor || "#64748B",
+            primaryColor: settings.branding.primaryColor || "#188182",
+            secondaryColor: settings.branding.secondaryColor || "#1F1F1F",
             companyName: settings.branding.companyName || "",
             companyAddress: settings.branding.companyAddress || "",
             r2: settings.branding.r2 || {},
@@ -194,8 +194,8 @@ export function DisplaySettings({
             logoLight: "/images/logo-light.png",
             logoDark: "/images/logo-dark.png",
             favicon: "/favicon.ico",
-            primaryColor: "#3B82F6",
-            secondaryColor: "#64748B",
+            primaryColor: "#188182",
+            secondaryColor: "#1F1F1F",
             companyName: "",
             companyAddress: "",
             r2: {},
@@ -518,7 +518,7 @@ export function DisplaySettings({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <DollarSign className="h-5 w-5" />
+              <PoundSterling className="h-5 w-5" />
               {t("settings.display.currency.title")}
             </CardTitle>
             <CardDescription>
@@ -554,9 +554,9 @@ export function DisplaySettings({
                       .sort((a, b) => {
                         // Sort by region priority, then alphabetically
                         const regionOrder: Record<string, number> = {
-                          USD: 0,
+                          GBP: 0,
                           EUR: 1,
-                          GBP: 2,
+                          USD: 2,
                           JPY: 3,
                           CHF: 4, // Major currencies first
                           CAD: 10,

@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/form";
 import {
   CreditCard,
-  DollarSign,
+  PoundSterling,
   Calendar,
   User,
   Building2,
@@ -401,7 +401,7 @@ function PaymentFormInner({
                       </FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <PoundSterling className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
                             type="number"
                             step="0.01"

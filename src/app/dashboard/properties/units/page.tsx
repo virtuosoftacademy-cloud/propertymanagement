@@ -778,7 +778,7 @@ export default function AllUnitsPage() {
                     <TableHead className="text-left font-medium text-gray-700 dark:text-gray-300 py-3 px-4">
                       {t("properties.available.table.details")}
                     </TableHead>
-                    <TableHead className="text-left font-medium text-gray-700 dark:text-gray-300 py-3 px-4">
+                    <TableHead className="text-left font-medium capitalize text-gray-700 dark:text-gray-300 py-3 px-4">
                       {t("properties.available.table.perNight")}
                     </TableHead>
                     <TableHead className="text-left font-medium text-gray-700 dark:text-gray-300 py-3 px-4">
@@ -888,7 +888,7 @@ export default function AllUnitsPage() {
                             {formatCurrency(unit.rentAmount)}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {t("properties.available.table.perNight")}
+                            /{t("properties.available.table.perNight")}
                           </div>
                         </div>
                       </TableCell>

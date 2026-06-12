@@ -46,7 +46,7 @@ import {
   Edit,
   MoreHorizontal,
   Clock,
-  DollarSign,
+  PoundSterling,
   User,
   Building2,
   Phone,
@@ -993,7 +993,7 @@ export default function MaintenanceRequestDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <PoundSterling className="h-5 w-5" />
                 {t("maintenance.details.card.costInformation")}
               </CardTitle>
             </CardHeader>
@@ -1020,7 +1020,7 @@ export default function MaintenanceRequestDetailPage() {
               )}
               {!request?.estimatedCost && !request?.actualCost && (
                 <div className="text-center py-4">
-                  <DollarSign className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <PoundSterling className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
                     {t("maintenance.details.card.noCostInformation")}
                   </p>

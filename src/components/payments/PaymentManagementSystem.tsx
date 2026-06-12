@@ -35,7 +35,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CreditCard,
   Banknote,
-  DollarSign,
+  PoundSterling,
   Calendar,
   CheckCircle,
   Clock,
@@ -279,7 +279,7 @@ export function PaymentManagementSystem({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <PoundSterling className="h-5 w-5" />
                 Payment Management
               </CardTitle>
               <CardDescription>

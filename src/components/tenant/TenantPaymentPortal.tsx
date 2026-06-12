@@ -37,7 +37,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  DollarSign,
+  PoundSterling,
   CreditCard,
   Calendar,
   Download,
@@ -524,7 +524,7 @@ export function TenantPaymentPortal({
                 )}
               </div>
               <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-blue-600" />
+                <PoundSterling className="h-4 w-4 text-blue-600" />
               </div>
             </div>
           </CardContent>

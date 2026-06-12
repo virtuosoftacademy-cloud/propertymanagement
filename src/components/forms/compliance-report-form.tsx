@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label"; // kept for consistency, but mostly using FormLabel
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -34,17 +33,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { FormDatePicker } from "@/components/ui/date-picker";
-import PropertyDocReport from "../compliance/PropertyDocReport";
-import {
-  Home,
-  Calendar,
-  FileText,
-  DollarSign,
-} from "lucide-react";
+import { Home, Calendar, FileText, PoundSterling } from "lucide-react";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"; // FIX 5: removed unused useParams
 import { ImageUpload } from "../ui/image-upload";
-import { ComplianceCategory } from "@/types";
+import { ComplianceCategory, ComplianceCategoryLabels } from "@/types";
 
 // ────────────────────────────────────────────────
 // Schema
@@ -74,7 +67,6 @@ interface ComplianceReportFormProps {
   initialData?: Partial<ComplianceReportFormData> & { _id?: string };
   onSuccess?: (reportId?: string) => void;
   onCancel?: () => void;
-
   properties: Array<{
     _id: string;
     name: string;
@@ -88,17 +80,6 @@ interface ComplianceReportFormProps {
   }>;
 }
 
-// const categories = [
-//   { value: "fire-safety", label: "Fire Safety Certificate" },
-//   { value: "electrical", label: "Electrical Safety" },
-//   { value: "structural", label: "Structural Safety" },
-//   { value: "elevator", label: "Elevator / Lift Certificate" },
-//   { value: "pest-control", label: "Pest Control Certificate" },
-//   { value: "health-hygiene", label: "Health & Hygiene Compliance" },
-//   { value: "general", label: "General Building Compliance" },
-//   { value: "hmo", label: "HMO (House in Multiple Occupation) License" },
-// ];
-
 export default function ComplianceReportForm({
   mode = "create",
   reportId,
@@ -108,7 +89,9 @@ export default function ComplianceReportForm({
   properties = [],
 }: ComplianceReportFormProps) {
   const { t } = useLocalizationContext();
+  const router = useRouter();
   const isEditMode = mode === "edit";
+
   const [uploadedImages, setUploadedImages] = useState<
     { url: string; publicId: string }[]
   >((initialData?.images || []).map((url) => ({ url, publicId: "" })));
@@ -126,10 +109,8 @@ export default function ComplianceReportForm({
     },
   });
 
-  const watchedPropertyId = form.watch("propertyId");
   const watchedIssueDate = form.watch("issueDate");
 
-  // Optional: auto-clear expiry if issue date changes to later date
   useEffect(() => {
     const currentExpiry = form.getValues("expiryDate");
     if (
@@ -141,7 +122,7 @@ export default function ComplianceReportForm({
       toast.info("Expiry date was cleared because it was before the new issue date");
     }
   }, [watchedIssueDate, form]);
-  const router = useRouter()
+
   const handleFormSubmit = async (data: ComplianceReportFormData) => {
     const payload = {
       propertyId: data.propertyId,
@@ -152,7 +133,8 @@ export default function ComplianceReportForm({
       estimatedCost: data.estimatedCost ?? undefined,
     };
 
-    const url = isEditMode && reportId ? `/api/compliance/${reportId}` : "/api/compliance";
+    const url =
+      isEditMode && reportId ? `/api/compliance/${reportId}` : "/api/compliance";
     const method = isEditMode ? "PUT" : "POST";
 
     try {
@@ -165,12 +147,17 @@ export default function ComplianceReportForm({
       const json = await res.json();
 
       if (!res.ok || !json.success) {
-        throw new Error(json.error || `Failed to ${isEditMode ? "update" : "create"} report`);
+        throw new Error(
+          json.error || `Failed to ${isEditMode ? "update" : "create"} report`
+        );
       }
 
+      // FIX 3: use savedId (returned from API) instead of reportId (undefined in create mode)
       const savedId = json.data?._id || reportId;
-      toast.success(isEditMode ? "Report updated successfully" : "Report created successfully");
-      router.push(`/dashboard/compliance/${reportId}`);
+      toast.success(
+        isEditMode ? "Report updated successfully" : "Report created successfully"
+      );
+      router.push(`/dashboard/compliance/${savedId}`);
       onSuccess?.(savedId);
     } catch (err) {
       toast.error(
@@ -179,8 +166,7 @@ export default function ComplianceReportForm({
       );
     }
   };
-  const { watch, setValue } = form;
-  const watchedValues = watch();
+
   return (
     <div className="w-full space-y-8">
       <Form {...form}>
@@ -188,17 +174,15 @@ export default function ComplianceReportForm({
           onSubmit={form.handleSubmit(handleFormSubmit)}
           className="space-y-8"
         >
-          {/* Header / Back button could be moved outside or kept in parent */}
-          {/* Main Content */}
-
-          {/* Property & Type */}
+          {/* Property & Compliance Type */}
           <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
                 <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                   <Home className="h-5 w-5" />
                 </div>
-                {t("compliance.form.propertyAndType.title") || "Property & Compliance Type"}
+                {t("compliance.form.propertyAndType.title") ||
+                  "Property & Compliance Type"}
               </CardTitle>
               <CardDescription className="text-base">
                 {t("compliance.form.propertyAndType.description") ||
@@ -207,13 +191,15 @@ export default function ComplianceReportForm({
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Property selector */}
                 <FormField
                   control={form.control}
                   name="propertyId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        Property <span className="text-red-500 text-xs">*</span>
+                        Property{" "}
+                        <span className="text-red-500 text-xs">*</span>
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -242,19 +228,19 @@ export default function ComplianceReportForm({
                   )}
                 />
 
+                {/* FIX 4: use field.value / field.onChange instead of watch/setValue directly */}
                 <FormField
                   control={form.control}
                   name="category"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        Compliance Type <span className="text-red-500 text-xs">*</span>
+                        Compliance Type{" "}
+                        <span className="text-red-500 text-xs">*</span>
                       </FormLabel>
                       <Select
-                        value={watchedValues.category}
-                        onValueChange={(value) =>
-                          setValue("category", value as ComplianceCategory)
-                        }
+                        onValueChange={field.onChange}
+                        value={field.value || undefined}
                       >
                         <FormControl>
                           <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200">
@@ -264,7 +250,9 @@ export default function ComplianceReportForm({
                         <SelectContent>
                           {Object.values(ComplianceCategory).map((type) => (
                             <SelectItem key={type} value={type}>
-                              {t(`compliance.category.${type}`)}
+                              <div className="font-medium">
+                                {ComplianceCategoryLabels[type]}
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -287,7 +275,8 @@ export default function ComplianceReportForm({
                 Validity Period
               </CardTitle>
               <CardDescription className="text-base">
-                Set when this compliance certificate was issued and when it expires
+                Set when this compliance certificate was issued and when it
+                expires
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6 md:grid-cols-2">
@@ -297,7 +286,8 @@ export default function ComplianceReportForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Issue Date <span className="text-red-500 text-xs">*</span>
+                      Issue Date{" "}
+                      <span className="text-red-500 text-xs">*</span>
                     </FormLabel>
                     <FormControl>
                       <FormDatePicker
@@ -321,7 +311,8 @@ export default function ComplianceReportForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Expiry Date <span className="text-red-500 text-xs">*</span>
+                      Expiry Date{" "}
+                      <span className="text-red-500 text-xs">*</span>
                     </FormLabel>
                     <FormControl>
                       <FormDatePicker
@@ -345,17 +336,19 @@ export default function ComplianceReportForm({
             </CardContent>
           </Card>
 
-          {/* Estimated Cost & Notes */}
+          {/* Cost & Additional Notes */}
           <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
                 <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
-                  <DollarSign className="h-5 w-5" />
+                  <PoundSterling className="h-5 w-5" />
                 </div>
-                {t("compliance.form.costandAdd.title") && "Cost & Additional Notes"}
+                {t("compliance.form.costandAdd.title") ||
+                  "Cost & Additional Notes"}
               </CardTitle>
               <CardDescription className="text-base">
-                {t("compliance.form.costandAdd.description") && "Optional information about actual cost and any remarks"}
+                {t("compliance.form.costandAdd.description") ||
+                  "Optional information about actual cost and any remarks"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -370,15 +363,15 @@ export default function ComplianceReportForm({
                     <FormControl>
                       <Input
                         type="number"
-                        step="40"
-                        min="0"
                         placeholder="0"
                         className="h-11 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
                         {...field}
                         value={field.value ?? ""}
                         onChange={(e) =>
                           field.onChange(
-                            e.target.value === "" ? undefined : Number(e.target.value)
+                            e.target.value === ""
+                              ? undefined
+                              : Number(e.target.value)
                           )
                         }
                       />
@@ -417,17 +410,20 @@ export default function ComplianceReportForm({
             </CardContent>
           </Card>
 
-          {/* Documents */}
+          {/* Supporting Documents */}
           <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
                 <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white">
                   <FileText className="h-5 w-5" />
                 </div>
-                {t("compliance.form.support.title") && "Supporting Documents"}
+                {/* FIX 1 (same pattern): || for Supporting Documents card too */}
+                {t("compliance.form.support.title") ||
+                  "Supporting Documents"}
               </CardTitle>
               <CardDescription className="text-base">
-                {t("compliance.form.support.description") && "Upload certificate, inspection report, photos, etc."}
+                {t("compliance.form.support.description") ||
+                  "Upload certificate, inspection report, photos, etc."}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -455,7 +451,7 @@ export default function ComplianceReportForm({
                 }}
                 existingImages={uploadedImages}
                 maxFiles={10}
-                folder="PropertyPro/maintenance"
+                folder="PropertyPro/compliance"
                 quality="auto"
               />
             </CardContent>

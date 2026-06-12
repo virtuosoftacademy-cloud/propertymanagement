@@ -26,7 +26,7 @@ import {
   User,
   Building2,
   Calendar,
-  DollarSign,
+  PoundSterling,
 } from "lucide-react";
 import { PaymentStatus, PaymentType, PaymentMethod } from "@/types";
 import { formatCurrency } from "@/lib/utils/formatting";
@@ -296,7 +296,7 @@ export function PaymentCard({ payment, onDelete }: PaymentCardProps) {
 
         {payment.paymentMethod && (
           <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">Method:</span>
             <span className="capitalize">
               {payment.paymentMethod.replace("_", " ")}
