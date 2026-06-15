@@ -144,8 +144,6 @@ function PropertyCard({
         return <Building2 className="h-4 w-4" />;
       case PropertyType.HOUSE:
         return <Building2 className="h-4 w-4" />;
-      case PropertyType.CONDO:
-        return <Building2 className="h-4 w-4" />;
       case PropertyType.TOWNHOUSE:
         return <Building2 className="h-4 w-4" />;
       default:

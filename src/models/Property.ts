@@ -178,7 +178,6 @@ const PropertySchema = new Schema<IProperty>(
       trim: true,
       maxlength: [200, "Property name cannot exceed 200 characters"],
     },
-    assignedAgentName: { type: String, default: null },
     description: {
       type: String,
       trim: true,
@@ -189,15 +188,6 @@ const PropertySchema = new Schema<IProperty>(
       enum: Object.values(PropertyType),
       required: [true, "Property type is required"],
     },
-
-    // ── CHANGE 1: status moved to top-level property schema ──────────────────
-    // Previously status only existed at the unit level. The form no longer
-    // collects it from the user (it was replaced by assignedAgent) but it is
-    // still needed at the property level because:
-    //   • calculatePropertyStatus() writes to this.status
-    //   • updatePropertyStatusFromUnits() reads/writes this.status
-    //   • findAvailable() / softDelete() / restore() all reference it
-    // Default is AVAILABLE; it is auto-calculated from unit statuses on save.
     status: {
       type: String,
       enum: Object.values(PropertyStatus),
@@ -248,11 +238,6 @@ const PropertySchema = new Schema<IProperty>(
       default: [],
       validate: { validator: (images: string[]) => images.length <= 20, message: "Cannot have more than 20 images" },
     },
-    assignedAgentId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
     ownerId: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -263,6 +248,19 @@ const PropertySchema = new Schema<IProperty>(
       ref: "User",
       default: null,
     },
+    assignedAgentId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    hmoLicenseNumber: {
+      type: String,
+      trim: true,
+      default: null,
+      maxlength: [100, "HMO licence number cannot exceed 100 characters"],
+    },
+    hmoLicenseIssueDate: { type: Date, default: null },
+    hmoLicenseExpiry: { type: Date, default: null },
     deletedAt: { type: Date, default: null },
   },
   {
@@ -290,12 +288,14 @@ try {
   PropertySchema.index({ deletedAt: 1 });
   PropertySchema.index({ createdAt: -1 });
   // CHANGE 3: index on assignedAgent for fast agent→property lookups
-  PropertySchema.index({ assignedAgent: 1 });
+  PropertySchema.index({ assignedAgentId: 1 });
   PropertySchema.index({ status: 1, type: 1 });
   PropertySchema.index({ ownerId: 1, status: 1 });
   PropertySchema.index({ managerId: 1, status: 1 });
   // CHANGE 4: compound index — find all HMO properties for a given agent
-  PropertySchema.index({ assignedAgent: 1, type: 1 });
+  PropertySchema.index({ assignedAgentId: 1, type: 1 });
+  // HMO licence expiry — supports "licences expiring soon" compliance queries
+  PropertySchema.index({ hmoLicenseExpiry: 1 });
 } catch {
   // Silently handle index creation errors
 }
@@ -338,7 +338,7 @@ PropertySchema.statics.findByManager = function (managerId: string) {
 
 // CHANGE 5: new static — find all properties assigned to a specific agent
 PropertySchema.statics.findByAgent = function (agentId: string) {
-  return this.find({ assignedAgent: agentId, deletedAt: null });
+  return this.find({ assignedAgentId: agentId, deletedAt: null });
 };
 
 PropertySchema.statics.search = function (query: string) {
@@ -432,10 +432,14 @@ PropertySchema.pre("save", async function (next) {
     }
   });
 
-  // CHANGE 6: clear assignedAgent when property type is not HMO
-  // Prevents stale agent references on non-HMO properties
+  // CHANGE 6: clear HMO-only fields when the property type is not HMO.
+  // (Previously a no-op — `this.assignedAgentId;` read the value and discarded
+  // it, so stale agent/licence data was never actually cleared.)
   if (this.isModified("type") && this.type !== PropertyType.HMO) {
-    this.assignedAgent = null;
+    this.assignedAgentId = null;
+    this.hmoLicenseNumber = null;
+    this.hmoLicenseIssueDate = null;
+    this.hmoLicenseExpiry = null;
   }
 
   // Auto-calculate status metadata from units
@@ -473,9 +477,9 @@ PropertySchema.pre("save", async function (next) {
 
   // CHANGE 7: validate assignedAgent when type is HMO
   // Ensures the referenced user exists and has an appropriate role
-  if (this.isModified("assignedAgent") && this.assignedAgent && this.type === PropertyType.HMO) {
+  if (this.isModified("assignedAgentId") && this.assignedAgentId && this.type === PropertyType.HMO) {
     const User = mongoose.model("User");
-    const agent = await User.findById(this.assignedAgent);
+    const agent = await User.findById(this.assignedAgentId);
     if (!agent) return next(new Error("Assigned agent not found"));
     if (agent.role === "tenant") return next(new Error("Tenant cannot be assigned as an HMO agent"));
   }

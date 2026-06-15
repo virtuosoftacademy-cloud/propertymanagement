@@ -281,12 +281,12 @@ const navigationSections: NavSection[] = [
             icon: PoundSterling,
             roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
           },
-          // {
-          //   title: "nav.payments.compare",
-          //   href: "/dashboard/payments/compare",
-          //   icon: GitCompare,
-          //   roles: [UserRole.ADMIN, UserRole.MANAGER],
-          // },
+          {
+            title: "nav.payments.compare",
+            href: "/dashboard/payments/compare",
+            icon: GitCompare,
+            roles: [UserRole.ADMIN, UserRole.MANAGER],
+          },
           {
             title: "nav.payments.payRent",
             href: "/dashboard/payments/pay-rent",

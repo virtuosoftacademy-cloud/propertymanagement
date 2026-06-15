@@ -280,7 +280,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // Populate owner and manager information
       await property.populate([
         { path: "ownerId", select: "firstName lastName email" },
-        { path: "managerId", select: "firstName lastName email" },
+        { path: "managerId", select: "firstName lastName email" }
       ]);
 
       // Return the complete property with embedded units

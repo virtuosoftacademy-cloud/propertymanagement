@@ -24,6 +24,8 @@ import {
   Home,
   CheckCircle,
   Calendar,
+  ShieldCheck,
+  FileText,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -59,6 +61,9 @@ export default function PropertyDetailsPage() {
   const [showAddUnitDialog, setShowAddUnitDialog] = useState(false);
   const { t, formatCurrency, formatNumber, formatDate } = useLocalization();
   const propertyId = params.id as string;
+
+  // Whether this property is an HMO (drives the compliance section visibility).
+  const isHmo = property?.type === "hmo";
 
   // Helper function to get unit statistics
   const getUnitStats = (units: any[]) => {
@@ -824,7 +829,7 @@ export default function PropertyDetailsPage() {
                   <div className="grid grid-cols-1 gap-4">
                     <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
                       <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block uppercase tracking-wide">
-                        {t("properties.details.financial.monthlyRent.label")}
+                        {t("properties.details.financial.nightRent.label")}
                       </label>
                       <p className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                         {property?.isMultiUnit && units.length > 0
@@ -946,7 +951,7 @@ export default function PropertyDetailsPage() {
               </div>
 
               {/* Status Card */}
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+              {/* <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900">
                     <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -985,7 +990,7 @@ export default function PropertyDetailsPage() {
                     />
                   )}
                 </div>
-              </div>
+              </div> */}
 
               {/* Total Units Card */}
               <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
@@ -1020,7 +1025,7 @@ export default function PropertyDetailsPage() {
 
               {/* Description Card - Full Width */}
               {property?.description && (
-                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300 md:col-span-2">
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300 md:col-span-3">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900">
                       <Eye className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -1036,6 +1041,109 @@ export default function PropertyDetailsPage() {
               )}
             </div>
           </div>
+
+          {/* HMO Compliance Licence — only shown for HMO properties */}
+          {isHmo && (
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 rounded-lg bg-emerald-100 dark:bg-emerald-900">
+                  <ShieldCheck className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {t("properties.details.hmo.title", {
+                      defaultValue: "HMO Compliance",
+                    })}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {t("properties.details.hmo.subtitle", {
+                      defaultValue: "Mandatory HMO licence details",
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Licence Number */}
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900">
+                      <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      {t("properties.details.hmo.licenseNumber", {
+                        defaultValue: "Licence number",
+                      })}
+                    </label>
+                  </div>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white break-words">
+                    {property?.hmoLicenseNumber ||
+                      t("properties.details.common.notAvailable")}
+                  </p>
+                </div>
+
+                {/* Issue Date */}
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900">
+                      <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      {t("properties.details.hmo.issueDate", {
+                        defaultValue: "Licence issue date",
+                      })}
+                    </label>
+                  </div>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                    {property?.hmoLicenseIssueDate
+                      ? formatDate(property.hmoLicenseIssueDate)
+                      : t("properties.details.common.notAvailable")}
+                  </p>
+                </div>
+
+                {/* Expiry Date + status badge */}
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-900">
+                      <Calendar className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      {t("properties.details.hmo.expiryDate", {
+                        defaultValue: "Licence expiry date",
+                      })}
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">
+                      {property?.hmoLicenseExpiry
+                        ? formatDate(property.hmoLicenseExpiry)
+                        : t("properties.details.common.notAvailable")}
+                    </p>
+                    {property?.hmoLicenseExpiry &&
+                      (new Date(property.hmoLicenseExpiry) < new Date() ? (
+                        <Badge
+                          variant="outline"
+                          className="text-red-600 border-red-200 dark:text-red-400 dark:border-red-800"
+                        >
+                          {t("properties.details.hmo.expired", {
+                            defaultValue: "Expired",
+                          })}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-green-600 border-green-200 dark:text-green-400 dark:border-green-800"
+                        >
+                          {t("properties.details.hmo.valid", {
+                            defaultValue: "Valid",
+                          })}
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Property Features */}
           {property?.features && property.features.length > 0 && (

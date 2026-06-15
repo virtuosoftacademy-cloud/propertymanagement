@@ -14,71 +14,11 @@ import {
   parseValidationErrors,
 } from "@/lib/toast-notifications";
 
-interface assignedAgent {
-  _id: string;
-  name: string;
-  email: string;
-  specialties?: string[];
-}
-
 export default function EnhancedNewPropertyPage() {
   const router = useRouter();
   const { t } = useLocalizationContext();
   const [isLoading, setIsLoading] = useState(false);
-  const [assignedAgent, setassignedAgent] = useState<assignedAgent[]>([]);
-
-  useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        const res = await fetch(
-          "/api/users?excludeTenant=true&isActive=true&limit=100"
-        );
-
-        if (res.ok) {
-          const json = await res.json();
-
-          // Handle varying API response shapes — same pattern as maintenance form
-          const usersArray = Array.isArray(json?.data)
-            ? json.data
-            : Array.isArray(json?.data?.users)
-            ? json.data.users
-            : Array.isArray(json?.users)
-            ? json.users
-            : [];
-
-          // Filter to non-tenant, active users only and normalise shape
-          const agentList = usersArray
-            .filter((u: any) => {
-              if (!u || (!u._id && !u.id)) return false;
-              const role = (u.role || "").toLowerCase();
-              if (role === "tenant") return false;
-              if (u.isActive === false) return false;
-              return (
-              role.includes("manager") ||
-              role.includes("technician") ||
-              role.includes("maintenance")
-            );
-            })
-            .map((u: any) => ({
-              _id: u._id || u.id,
-              name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.name || "",
-              email: u.email || "",
-              specialties: u.specialties || [],
-            }));
-
-          setassignedAgent(agentList);
-          // console.log("Fetched agents:", agentList);
-        } else {
-          console.error("Failed to fetch agents — non-OK response");
-        }
-      } catch (err) {
-        console.error("Failed to fetch agents:", err);
-      }
-    };
-
-    fetchAgents();
-  }, []);
-
+  
   const handlePropertySubmit = async (data: any) => {
     setIsLoading(true);
     try {
@@ -110,21 +50,6 @@ export default function EnhancedNewPropertyPage() {
           values: { name: data.name },
         })
       );
-
-      if (data.assignedAgent) {
-        const assignedAgents = assignedAgent.find(
-          (assignedAgent) => assignedAgent._id === data.assignedAgent
-        );
-        if (assignedAgents) {
-          showSimpleSuccess(
-            t("properties.newProperty.agentAssigned.title"),
-            t("properties.newProperty.agentAssigned.description", {
-              values: { agentName: assignedAgents.name },
-            })
-          );
-        }
-      }
-
       router.push(`/dashboard/properties/${property._id}`);
     } catch (error) {
       console.error("Property creation error:", error);
@@ -183,7 +108,6 @@ export default function EnhancedNewPropertyPage() {
       <EnhancedPropertyForm
         onSubmit={handlePropertySubmit}
         isLoading={isLoading}
-        assignedAgent={assignedAgent}
         mode="create"
       />
     </div>

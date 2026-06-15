@@ -29,6 +29,7 @@ import {
   Home,
   ArrowUpDown,
   X,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -735,6 +736,19 @@ export default function AllUnitsPage() {
                 </Table>
               </div>
             )
+          ) : !loading && units.length === 0 ? (
+            <div className="flex items-center justify-center py-16">
+              <Building2 className="h-8 w-8 text-gray-400 dark:text-gray-600" />
+              <span className="ml-2 text-gray-600 dark:text-gray-400">
+                {t("properties.unit.empty.title")}
+              </span>
+              <Link href="/dashboard/properties/new">
+                <Button className="ml-4">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("properties.available.empty.addProperty")}
+                </Button>
+              </Link>
+            </div>
           ) : error ? (
             <div className="flex items-center justify-center">
               <span className="ml-2 text-red-600 dark:text-red-400">
@@ -793,11 +807,10 @@ export default function AllUnitsPage() {
                   {units.map((unit, index) => (
                     <TableRow
                       key={`${unit._id}-${unit.unitId}`}
-                      className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${
-                        index % 2 === 0
+                      className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${index % 2 === 0
                           ? "bg-white dark:bg-gray-900/20"
                           : "bg-gray-50/20 dark:bg-gray-800/20"
-                      }`}
+                        }`}
                     >
                       <TableCell className="py-4 px-6">
                         <div className="flex items-center space-x-3">

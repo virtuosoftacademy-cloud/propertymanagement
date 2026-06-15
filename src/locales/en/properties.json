@@ -416,7 +416,7 @@
   "properties.details.location.postalCode": "ZIP Code",
   "properties.details.financial.title": "Financial Overview",
   "properties.details.financial.subtitle": "Revenue & pricing",
-  "properties.details.financial.monthlyRent.label": "Monthly Rent",
+  "properties.details.financial.nightRent.label": "Rent Proposed by Owner",
   "properties.details.financial.monthlyRent.helper": "Primary revenue source",
   "properties.details.financial.securityDeposit.label": "Security Deposit",
   "properties.details.financial.securityDeposit.helper": "Upfront cost",
@@ -567,5 +567,6 @@
   "properties.available.stats.uniqueProperties.description": "With available units",
   "properties.available.stats.occupancyRate.title": "Occupancy Rate",
   "properties.available.stats.occupancyRate.value": "Available Now",
-  "properties.available.stats.occupancyRate.description": "All units ready for rent"
+  "properties.available.stats.occupancyRate.description": "All units ready for rent",
+  "properties.unit.empty.title":"No units found"
 }

@@ -52,7 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PropertyType } from "@/types";
+import { PropertyStatus, PropertyType } from "@/types";
 import {
   propertyService,
   AvailableUnitResponse,
@@ -274,7 +274,7 @@ export default function AvailablePropertiesPage() {
       setError(null);
       const response = await propertyService.getAllUnits({
         ...filters,
-        status: "available",
+        status: PropertyStatus.AVAILABLE,
       });
       setAvailableUnits(response.data);
       setPagination(response.pagination);

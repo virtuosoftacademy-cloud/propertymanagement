@@ -22,8 +22,8 @@ interface BrandingContextType {
 }
 
 const defaultBranding: BrandingSettings = {
-  primaryColor: "#3B82F6",
-  secondaryColor: "#64748B",
+  primaryColor: "#188182",
+  secondaryColor: "#1F1F1F",
   logoLight: "/images/logo-light.png",
   logoDark: "/images/logo-dark.png",
   favicon: "/favicon.ico",

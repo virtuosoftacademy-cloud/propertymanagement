@@ -6,7 +6,7 @@ import {
   showSimpleError,
   showSimpleSuccess,
 } from "@/lib/toast-notifications";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   Popover,
@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormDatePicker } from "@/components/ui/date-picker";
 import {
   Form,
   FormControl,
@@ -58,6 +57,7 @@ import {
   CheckCircle2,
   EyeOff,
   Eye,
+  Save,
 } from "lucide-react";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
@@ -132,7 +132,7 @@ const createTenantSchema = (t: (key: string) => string) =>
       position: z.string().optional(),
       income: z
         .number()
-        .min(20000, t("tenants.form.validation.incomePositive"))
+        .min(0, t("tenants.form.validation.incomePositive"))
         .optional(),
       employmentStartDate: z.string().optional(),
 
@@ -189,6 +189,9 @@ type RecentlyAddedTenant = {
   timestamp: string;
 };
 
+// Local-only draft storage key (drafts never leave the browser).
+const TENANT_DRAFT_KEY = "propertypro:tenant-draft";
+
 export default function NewTenantPage() {
   const { t } = useLocalizationContext();
   const router = useRouter();
@@ -199,6 +202,17 @@ export default function NewTenantPage() {
   const [filePreviews, setFilePreviews] = useState<Record<string, string>>({});
   const [recentlyAdded, setRecentlyAdded] = useState<RecentlyAddedTenant[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [restorableDraft, setRestorableDraft] =
+    useState<Partial<TenantFormData> | null>(null);
+
+  // Tracks which button submitted so onSubmit knows what to do afterwards.
+  // A ref (not state) because it must be readable synchronously in onSubmit.
+  const submitIntentRef = useRef<"save" | "saveAndAnother">("save");
+  // Mirror of the intent in state, purely for per-button loading labels.
+  const [pendingIntent, setPendingIntent] = useState<
+    null | "save" | "saveAndAnother"
+  >(null);
 
   const tenantSchema = createTenantSchema(t);
 
@@ -235,6 +249,69 @@ export default function NewTenantPage() {
     setDocumentFiles([]);
     setFilePreviews({});
   };
+
+  // ─── Draft persistence (local) ──────────────────────────────────────────
+  // Drafts live in the browser only and deliberately exclude sensitive
+  // fields (password, confirm password, SSN). Uploaded document files aren't
+  // serialisable, so they're not part of a draft.
+  const SENSITIVE_DRAFT_FIELDS: (keyof TenantFormData)[] = [
+    "password",
+    "confirmPassword",
+    "ssn",
+  ];
+
+  const saveDraft = () => {
+    try {
+      const values = form.getValues();
+      const draft: any = { ...values };
+      SENSITIVE_DRAFT_FIELDS.forEach((key) => delete draft[key]);
+      const payload = { savedAt: new Date().toISOString(), values: draft };
+      window.localStorage.setItem(TENANT_DRAFT_KEY, JSON.stringify(payload));
+      setDraftSavedAt(payload.savedAt);
+      setRestorableDraft(null);
+      showSimpleSuccess(
+        "Draft saved",
+        "Your progress is saved on this device."
+      );
+    } catch {
+      showSimpleError("Couldn't save draft", "Saving the draft failed.");
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      window.localStorage.removeItem(TENANT_DRAFT_KEY);
+    } catch {
+      // ignore storage errors
+    }
+    setDraftSavedAt(null);
+    setRestorableDraft(null);
+  };
+
+  const applyDraft = (values: Partial<TenantFormData>) => {
+    const revived: any = { ...values };
+    // dateOfBirth was serialised to a string — turn it back into a Date.
+    if (revived.dateOfBirth) revived.dateOfBirth = new Date(revived.dateOfBirth);
+    form.reset({ ...form.getValues(), ...revived });
+    if (revived.avatar) setAvatarUrl(revived.avatar);
+    setRestorableDraft(null);
+  };
+
+  // On mount, surface any saved draft so the user can choose to restore it.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(TENANT_DRAFT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.values) {
+        setRestorableDraft(parsed.values as Partial<TenantFormData>);
+        setDraftSavedAt(parsed.savedAt || null);
+      }
+    } catch {
+      // ignore malformed draft
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAvatarUploaded = (url: string) => {
     setAvatarUrl(url);
@@ -469,8 +546,16 @@ export default function NewTenantPage() {
         ...prev.slice(0, 4), // keep last 5
       ]);
 
-      // Reset for next tenant
-      resetFormCompletely();
+      // Saved successfully — drop any local draft.
+      clearDraft();
+
+      if (submitIntentRef.current === "saveAndAnother") {
+        // Optional path: stay on the page and start a fresh tenant.
+        resetFormCompletely();
+      } else {
+        // Default path: finish and return to the tenants list.
+        router.push("/dashboard/tenants");
+      }
 
     } catch (error) {
       await cleanupUploadedDocuments(uploadedDocumentUrls);
@@ -483,6 +568,7 @@ export default function NewTenantPage() {
       );
     } finally {
       setIsLoading(false);
+      setPendingIntent(null);
     }
   };
 
@@ -533,6 +619,44 @@ export default function NewTenantPage() {
                   </div>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Saved draft restore prompt */}
+        {restorableDraft && (
+          <Card className="bg-amber-950/20 border-amber-800/30">
+            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <FileText className="h-5 w-5 text-amber-400" />
+                <span className="text-muted-foreground">
+                  You have an unsaved draft
+                  {draftSavedAt && (
+                    <span className="opacity-80">
+                      {" "}from {format(new Date(draftSavedAt), "h:mm a")}
+                    </span>
+                  )}
+                  . Restore it?
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={clearDraft}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  Discard
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => applyDraft(restorableDraft)}
+                >
+                  Restore draft
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -935,16 +1059,37 @@ export default function NewTenantPage() {
                               <FormLabel className="text-sm font-semibold text-muted-foreground">
                                 {t("tenants.form.fields.employmentStartDate.label")}
                               </FormLabel>
-                              <FormControl>
-                                <FormDatePicker
-                                  value={field.value ? new Date(field.value) : undefined}
-                                  onChange={(date) =>
-                                    field.onChange(date?.toISOString().split("T"))
-                                  }
-                                  placeholder={t("tenants.form.fields.employmentStartDate.placeholder")}
-                                  disabled={(date) => date > new Date()}
-                                />
-                              </FormControl>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      className="h-11 w-full justify-start text-left font-normal border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {field.value ? (
+                                        format(new Date(field.value), "PPP")
+                                      ) : (
+                                        <span>
+                                          {t("tenants.form.fields.employmentStartDate.placeholder")}
+                                        </span>
+                                      )}
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value ? new Date(field.value) : undefined}
+                                    onSelect={(date) =>
+                                      field.onChange(date ? format(date, "yyyy-MM-dd") : "")
+                                    }
+                                    disabled={(date) => date > new Date()}
+                                    initialFocus
+                                    captionLayout="dropdown"
+                                  />
+                                </PopoverContent>
+                              </Popover>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1127,22 +1272,43 @@ export default function NewTenantPage() {
                           <FormLabel className="text-sm font-semibold text-muted-foreground">
                             {t("tenants.form.fields.moveInDate.label")}
                           </FormLabel>
-                          <FormControl>
-                            <FormDatePicker
-                              value={field.value ? new Date(field.value) : undefined}
-                              onChange={(date) =>
-                                field.onChange(date?.toISOString().split("T"))
-                              }
-                              placeholder={t("tenants.form.fields.moveInDate.placeholder")}
-                              disabled={(date) => {
-                                const fiveYearsAgo = new Date();
-                                fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-                                const fiveYearsFromNow = new Date();
-                                fiveYearsFromNow.setFullYear(fiveYearsFromNow.getFullYear() + 5);
-                                return date < fiveYearsAgo || date > fiveYearsFromNow;
-                              }}
-                            />
-                          </FormControl>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className="h-11 w-full justify-start text-left font-normal border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value ? (
+                                    format(new Date(field.value), "PPP")
+                                  ) : (
+                                    <span>
+                                      {t("tenants.form.fields.moveInDate.placeholder")}
+                                    </span>
+                                  )}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value ? new Date(field.value) : undefined}
+                                onSelect={(date) =>
+                                  field.onChange(date ? format(date, "yyyy-MM-dd") : "")
+                                }
+                                disabled={(date) => {
+                                  const fiveYearsAgo = new Date();
+                                  fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+                                  const fiveYearsFromNow = new Date();
+                                  fiveYearsFromNow.setFullYear(fiveYearsFromNow.getFullYear() + 5);
+                                  return date < fiveYearsAgo || date > fiveYearsFromNow;
+                                }}
+                                initialFocus
+                                captionLayout="dropdown"
+                              />
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1330,37 +1496,80 @@ export default function NewTenantPage() {
             </div>
 
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-muted-foreground">
                 {t("tenants.form.actions.requiredFields")}
+                {draftSavedAt && (
+                  <span className="ml-2 text-xs opacity-80">
+                    • Draft saved {format(new Date(draftSavedAt), "h:mm a")}
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <Link href="/dashboard/tenants">
                   <Button
                     type="button"
-                    variant="outline"
-                    className="border-2 hover:bg-accent/50 transition-all duration-200"
+                    variant="ghost"
+                    className="hover:bg-accent/50 transition-all duration-200"
                   >
                     {t("tenants.form.actions.cancel")}
                   </Button>
                 </Link>
-                {/* Action Buttons */}
-                <div className="flex justify-center">
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Adding tenant...
-                      </>
-                    ) : (
-                      "+ Add Another Tenant"
-                    )}
-                  </Button>
-                </div>
 
+                {/* Save progress locally without creating the tenant */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={saveDraft}
+                  disabled={isLoading}
+                  className="border-2 hover:bg-accent/50 transition-all duration-200"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Save as Draft
+                </Button>
+
+                {/* Optional: save the current tenant and start another */}
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={isLoading}
+                  onClick={() => {
+                    submitIntentRef.current = "saveAndAnother";
+                    setPendingIntent("saveAndAnother");
+                  }}
+                  className="border-2 hover:bg-accent/50 transition-all duration-200"
+                >
+                  {isLoading && pendingIntent === "saveAndAnother" ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save & Add Another"
+                  )}
+                </Button>
+
+                {/* Primary: save the current tenant and finish */}
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  onClick={() => {
+                    submitIntentRef.current = "save";
+                    setPendingIntent("save");
+                  }}
+                >
+                  {isLoading && pendingIntent === "save" ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving tenant...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Tenant
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </form>

@@ -289,71 +289,99 @@ const propertyAttachmentSchema = z.object({
 export type InlineUnitFormData = z.infer<typeof unitSchema>;
 
 // Enhanced property validation schemas
-export const propertyCreateSchema = z.object({
+
+// Cross-field rule: HMO licence expiry must be after the issue date.
+// Only fires when both are present, so partial updates stay valid.
+const refineHmoLicenceDates = (
+  data: { hmoLicenseIssueDate?: Date; hmoLicenseExpiry?: Date },
+  ctx: z.RefinementCtx
+) => {
+  if (
+    data.hmoLicenseIssueDate &&
+    data.hmoLicenseExpiry &&
+    data.hmoLicenseExpiry <= data.hmoLicenseIssueDate
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["hmoLicenseExpiry"],
+      message: "Licence expiry must be after the issue date",
+    });
+  }
+};
+
+// Base object kept un-refined so propertyUpdateSchema can derive from it
+// via .partial()/.omit() (those aren't available on a refined ZodEffects).
+const propertyCreateBaseSchema = z.object({
   // Basic Information
   propertyOwnerName: z
     .string()
     .min(1, "Name is required")
     .max(200, "Name too long"),
-    ownerType: z.nativeEnum(PropertyownerType, {
-      errorMap: () => ({ message: "Property type is required" }),
-    }),
-    name: z
+  ownerType: z.nativeEnum(PropertyownerType, {
+    errorMap: () => ({ message: "Owner type is required" }),
+  }),
+  name: z
     .string()
     .min(1, "Property name is required")
     .max(200, "Property name too long"),
-    description: z.string().max(2000, "Description too long").optional(),
+  description: z.string().max(2000, "Description too long").optional(),
   type: z.nativeEnum(PropertyType, {
     errorMap: () => ({ message: "Property type is required" }),
   }),
   status: z.nativeEnum(PropertyStatus).default(PropertyStatus.AVAILABLE),
-  
+
   // Address
   address: addressSchema,
-  
+
   // Property Type Configuration
   isMultiUnit: z.boolean().default(false),
   totalUnits: z.number().min(1).max(1000).default(1),
-  
+
   // Embedded Units array (unified approach)
-  units: z
-  .array(unitSchema)
-  .max(1000, "Too many units")
-  .default([]),
-  
+  units: z.array(unitSchema).max(1000, "Too many units").default([]),
+
   // Year Built
   yearBuilt: z
-  .number()
-  .min(1800, "Year built cannot be before 1800")
-  .max(
-    new Date().getFullYear() + 5,
-    "Year built cannot be more than 5 years in the future"
-  )
-  .optional(),
+    .number()
+    .min(1800, "Year built cannot be before 1800")
+    .max(
+      new Date().getFullYear() + 5,
+      "Year built cannot be more than 5 years in the future"
+    )
+    .optional(),
 
   // Property Features
   features: z.array(z.string()).default([]),
-  
+
   // Property Amenities
   amenities: z.array(amenitySchema).max(50, "Too many amenities").default([]),
-  
+
   // Images and Attachments
   images: z.array(z.string()).max(20, "Too many images").default([]),
   attachments: z
-  .array(propertyAttachmentSchema)
-  .max(20, "Too many attachments")
-  .default([]),
+    .array(propertyAttachmentSchema)
+    .max(20, "Too many attachments")
+    .default([]),
 
-  // Ownership (optional for API, will be set from user context)
   ownerId: z.string().min(1, "Owner ID is required").optional(),
-  assignedAgent: z.string().optional(),
+  assignedAgentId: z.string().optional(),
   managerId: z.string().min(1, "Manager ID is required").optional(),
+
+  // HMO compliance licence (UK) — HMO only, optional.
+  // Dates arrive as ISO "yyyy-MM-dd" strings and are coerced to Date.
+  hmoLicenseNumber: z.string().max(100, "Licence number too long").optional(),
+  hmoLicenseIssueDate: z.coerce.date().optional(),
+  hmoLicenseExpiry: z.coerce.date().optional(),
 });
 
-export const propertyUpdateSchema = propertyCreateSchema
-  .partial()
-  .omit({ ownerId: true, managerId: true }); // Regular users can't change ownership or management
+export const propertyCreateSchema =
+  propertyCreateBaseSchema.superRefine(refineHmoLicenceDates);
 
+export const propertyUpdateSchema = propertyCreateBaseSchema
+  .partial()
+  .omit({ ownerId: true, managerId: true }) // Regular users can't change ownership or management
+  .superRefine(refineHmoLicenceDates);
+  
 export const propertyQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(10),

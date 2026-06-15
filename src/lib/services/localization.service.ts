@@ -556,16 +556,6 @@ export const CURRENCIES: Record<string, Currency> = {
 
 // Supported locales
 export const LOCALES: Record<string, Locale> = {
-  "en-US": {
-    code: "en-US",
-    name: "English (United States)",
-    nativeName: "English (United States)",
-    currency: "USD",
-    dateFormat: "MM/DD/YYYY",
-    timeFormat: "12h",
-    firstDayOfWeek: 0,
-    rtl: false,
-  },
   "en-GB": {
     code: "en-GB",
     name: "English (United Kingdom)",
@@ -574,6 +564,16 @@ export const LOCALES: Record<string, Locale> = {
     dateFormat: "DD/MM/YYYY",
     timeFormat: "24h",
     firstDayOfWeek: 1,
+    rtl: false,
+  },
+  "en-US": {
+    code: "en-US",
+    name: "English (United States)",
+    nativeName: "English (United States)",
+    currency: "USD",
+    dateFormat: "MM/DD/YYYY",
+    timeFormat: "12h",
+    firstDayOfWeek: 0,
     rtl: false,
   },
   "en-CA": {

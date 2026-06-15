@@ -320,13 +320,11 @@ export interface IProperty extends Document {
   propertyOwnerName: string;
   ownerType: PropertyownerType;
   name: string;
-  assignedAgentName?: string | null;
   description?: string;
   type: PropertyType;
   status: PropertyStatus;
   address: IAddress;
-  // Note: bedrooms, bathrooms, squareFootage, rentAmount, securityDeposit
-  // are now stored only at the unit level in the units array
+  
   yearBuilt?: number;
   amenities: IAmenity[];
 
@@ -338,9 +336,14 @@ export interface IProperty extends Document {
   attachments: IPropertyAttachment[];
 
   images: string[];
-  assignedAgentId?: Types.ObjectId | null;
+  
+  hmoLicenseNumber?: string;
+  hmoLicenseIssueDate?: Date;
+  hmoLicenseExpiry?: Date;
+  
   ownerId: Types.ObjectId;
   managerId?: Types.ObjectId;
+  assignedAgentId?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -1155,16 +1158,18 @@ export interface PaginationParams {
 export interface PropertyFormData {
   propertyOwnerName: string;
   ownerType: PropertyownerType;
-  assignedAgentName?: string | null;
   name: string;
   description?: string;
   type: PropertyType;
+
   address: IAddress;
+
   bedrooms: number;
   bathrooms: number;
   squareFootage: number;
   rentAmount: number;
   securityDeposit: number;
+
   amenities: IAmenity[];
 }
 

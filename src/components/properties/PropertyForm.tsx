@@ -1,7 +1,7 @@
 "use client";
 
 import { z } from "zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -49,9 +49,18 @@ import { ImageUpload, type UploadedImage } from "@/components/ui/image-upload";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { allowAlphabetsOnly } from "@/lib/utils";
 
-// ─── CHANGE 1: Added assignedAgent to schema ────────────────────────────────
-// Status field removed from schema entirely.
-// assignedAgent is optional because it only shows for HMO property types.
+// Shape of an assignable agent (manager / technician / maintenance user).
+type AgentOption = {
+  id: string;
+  name: string;
+  email: string;
+  specialties?: string[];
+};
+
+// ─── Assigned agent (HMO only, optional) ────────────────────────────────────
+// The agent dropdown only appears when the property type is HMO, and choosing
+// an agent is OPTIONAL. The dropdown writes the agent's id into
+// `assignedAgentId`; it's cleared when the type is not HMO.
 const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
   z.object({
     propertyOwnerName: z
@@ -66,8 +75,12 @@ const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
       .max(200),
     description: z.string().max(2000).optional(),
     type: z.nativeEnum(PropertyType),
-    assignedAgentName: z.string().optional(),
-    
+    assignedAgentId: z.string().optional(),
+    // HMO compliance licence (UK mandatory licence) — HMO only, optional.
+    hmoLicenseNumber: z.string().max(100).optional(),
+    hmoLicenseIssueDate: z.string().optional(),
+    hmoLicenseExpiry: z.string().optional(),
+
     address: z.object({
       street: z
         .string()
@@ -147,23 +160,9 @@ interface EnhancedPropertyFormProps {
   isLoading?: boolean;
   mode?: "create" | "edit";
   propertyId?: string;
-  // Pass your agents list from the parent — shape matches your existing agent data
-  assignedAgent?: Array<{
-    _id: string;
-    name: string,
-    email: string,
-    specialties?: string[]
-  }> | null;
-
+  // Optional agents list from the parent. If omitted, the form fetches its own.
+  assignedAgent?: AgentOption[];
 }
-
-// ─── Placeholder agent list (replace with real data from your API) ───────────
-const FALLBACK_AGENTS = [
-  { _id: "a1", name: "Apex Property Co.", email: "info@apexpropertyco.com" },
-  { _id: "a2", name: "ProLet Managers", email: "contact@proletmanagers.com" },
-  { _id: "a3", name: "KeyHold Agency", email: "hello@keyholdagency.com" },
-  { _id: "a4", name: "Urban Nest Lettings", email: "support@urbannestlettings.com" },
-];
 
 const ESSENTIAL_AMENITIES_AND_FEATURES = [
   "Parking",
@@ -231,6 +230,9 @@ export function EnhancedPropertyForm({
   assignedAgent = [],
 }: EnhancedPropertyFormProps) {
   const [showAlert, setShowAlert] = useState(false);
+
+  // Agents fetched by this form (same source/shape pattern as the maintenance form).
+  const [agents, setAgents] = useState<AgentOption[]>([]);
 
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(() => {
     const amenities =
@@ -300,6 +302,81 @@ export function EnhancedPropertyForm({
 
   const { t } = useLocalizationContext();
 
+  // Fetch assignable agents (managers / technicians / maintenance users).
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        const res = await fetch(
+          "/api/users?excludeTenant=true&isActive=true&limit=100"
+        );
+        if (!res.ok) {
+          console.error("Failed to fetch agents — non-OK response");
+          return;
+        }
+
+        const json = await res.json();
+
+        // Handle varying API response shapes — same pattern as maintenance form.
+        const usersArray = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json?.data?.users)
+          ? json.data.users
+          : Array.isArray(json?.users)
+          ? json.users
+          : [];
+
+        const mapped: AgentOption[] = usersArray
+          .filter((u: any) => {
+            if (!u || (!u._id && !u.id)) return false;
+            const role = (u.role || "").toLowerCase();
+            if (role === "tenant") return false;
+            if (u.isActive === false) return false;
+            return (
+              role.includes("manager") ||
+              role.includes("technician") ||
+              role.includes("maintenance")
+            );
+          })
+          .map((u: any) => ({
+            id: u._id || u.id,
+            name:
+              `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
+              u.name ||
+              "",
+            email: u.email || "",
+            specialties: u.specialties || [],
+          }));
+
+        setAgents(mapped);
+      } catch (err) {
+        console.error("Failed to fetch agents:", err);
+      }
+    };
+
+    fetchAgents();
+  }, []);
+
+  // On edit, the API may return assignedAgentId either as a plain id string or
+  // as a populated user object ({ _id|id, name|firstName/lastName, email }).
+  // Normalize it so the <Select> value matches an option id.
+  const initObj =
+    initialData?.assignedAgentId &&
+    typeof initialData.assignedAgentId === "object"
+      ? (initialData.assignedAgentId as any)
+      : null;
+
+  const initialAgentId = initObj
+    ? initObj.id || initObj._id || ""
+    : (initialData?.assignedAgentId as string | undefined) || "";
+
+  const initialAgentName = initObj
+    ? initObj.name ||
+      `${initObj.firstName || ""} ${initObj.lastName || ""}`.trim() ||
+      "Assigned agent"
+    : "";
+
+  const initialAgentEmail = initObj ? initObj.email || "" : "";
+
   const form = useForm({
     resolver: zodResolver(enhancedPropertySchema(t)),
     mode: "onChange",
@@ -309,9 +386,14 @@ export function EnhancedPropertyForm({
       name: initialData?.name || "",
       description: initialData?.description || "",
       type: initialData?.type || PropertyType.APARTMENT,
-      // REMOVED: status default value
-      // ADDED: assignedAgent default value
-      assignedAgentName: initialData?.assignedAgentName || "",
+      assignedAgentId: initialAgentId,
+      hmoLicenseNumber: initialData?.hmoLicenseNumber || "",
+      hmoLicenseIssueDate: initialData?.hmoLicenseIssueDate
+        ? String(initialData.hmoLicenseIssueDate).slice(0, 10)
+        : "",
+      hmoLicenseExpiry: initialData?.hmoLicenseExpiry
+        ? String(initialData.hmoLicenseExpiry).slice(0, 10)
+        : "",
       address: {
         street: initialData?.address?.street || "",
         city: initialData?.address?.city || "",
@@ -329,20 +411,45 @@ export function EnhancedPropertyForm({
   const { watch, setValue } = form;
   const watchedValues = watch();
 
-  // CHANGE 2: Derive isHmo from the watched property type.
-  // The agent dropdown only mounts when this is true.
+  // The agent dropdown only mounts when the property type is HMO.
   const isHmo = watchedValues.type === PropertyType.HMO;
 
-  // When the type changes away from HMO, clear the agent selection
-  // so stale data isn't submitted.
+  // When the type changes away from HMO, clear the agent selection so stale
+  // data isn't submitted.
   const handleTypeChange = (value: PropertyType) => {
     setValue("type", value);
     if (value !== PropertyType.HMO) {
-      setValue("assignedAgentName", "");
+      setValue("assignedAgentId", "");
+      setValue("hmoLicenseNumber", "");
+      setValue("hmoLicenseIssueDate", "");
+      setValue("hmoLicenseExpiry", "");
     }
   };
 
-  const agentList = Array.isArray(assignedAgent) && assignedAgent.length > 0 ? assignedAgent : FALLBACK_AGENTS;
+  // Build the agent options from the fetched agents plus any passed via props,
+  // de-duplicated by id, and ensure the currently-assigned agent (on edit) is
+  // present so its name renders even before/without the list containing it.
+  const agentOptions: AgentOption[] = [];
+  const seenAgentIds = new Set<string>();
+  for (const a of [...agents, ...assignedAgent]) {
+    if (a?.id && !seenAgentIds.has(a.id)) {
+      seenAgentIds.add(a.id);
+      agentOptions.push(a);
+    }
+  }
+  if (initObj && initialAgentId && !seenAgentIds.has(initialAgentId)) {
+    agentOptions.unshift({
+      id: initialAgentId,
+      name: initialAgentName,
+      email: initialAgentEmail,
+    });
+    seenAgentIds.add(initialAgentId);
+  }
+
+  // Store the selected agent's id ("" clears it).
+  const handleAgentChange = (agentId: string) => {
+    setValue("assignedAgentId", agentId);
+  };
 
   const handleAmenityToggle = (item: string) => {
     const newItems = selectedAmenities.includes(item)
@@ -396,8 +503,22 @@ export function EnhancedPropertyForm({
         images: images.map((img) => img.url),
       }));
 
+      // assignedAgentId is optional (HMO only) — omit it entirely when empty so
+      // the API isn't sent an empty string for an optional ObjectId field.
+      const {
+        assignedAgentId,
+        hmoLicenseNumber,
+        hmoLicenseIssueDate,
+        hmoLicenseExpiry,
+        ...rest
+      } = data;
+
       await onSubmit({
-        ...data,
+        ...rest,
+        ...(assignedAgentId ? { assignedAgentId } : {}),
+        ...(hmoLicenseNumber ? { hmoLicenseNumber } : {}),
+        ...(hmoLicenseIssueDate ? { hmoLicenseIssueDate } : {}),
+        ...(hmoLicenseExpiry ? { hmoLicenseExpiry } : {}),
         isMultiUnit,
         totalUnits,
         units: apiUnits,
@@ -476,9 +597,8 @@ export function EnhancedPropertyForm({
               )}
             </div>
 
-            {/* ── CHANGE 1: Property type now uses handleTypeChange ─────────────
-                When type changes to anything other than HMO the agent field
-                is cleared and hidden. When it's HMO the agent dropdown appears. */}
+            {/* Property type — switching away from HMO clears and hides the
+                agent field; choosing HMO reveals it. */}
             <div className="space-y-2">
               <Label htmlFor="type">
                 {t("properties.form.fields.type.label")}
@@ -504,36 +624,118 @@ export function EnhancedPropertyForm({
               </Select>
             </div>
 
-            {/* ── CHANGE 2: Assign to agent — only visible when type is HMO ───
-                Replaces the old status dropdown entirely.
-                Conditionally rendered: mounts only when isHmo is true. */}
+            {/* Assigned agent — only shown for HMO, and optional. Uses the same
+                "assign to" pattern as the maintenance form (Unassigned option +
+                name/email/specialties rows). */}
             {isHmo && (
               <div className="space-y-2 md:col-span-1">
-                <Label htmlFor="assignedAgentName">
+                <Label htmlFor="assignedAgentId">
                   Assign to agent
                   <span className="ml-1 text-xs text-muted-foreground font-normal">
-                    (required for HMO)
+                    (optional)
                   </span>
                 </Label>
                 <Select
-                  value={watchedValues.assignedAgentName}
-                  onValueChange={(value) => setValue("assignedAgentName", value)}
+                  value={watchedValues.assignedAgentId || "UNASSIGNED"}
+                  onValueChange={(value) =>
+                    handleAgentChange(value === "UNASSIGNED" ? "" : value)
+                  }
                 >
-                  <SelectTrigger id="assignedAgent">
+                  <SelectTrigger id="assignedAgentId">
                     <SelectValue placeholder="Select an agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {agentList.map((agent) => (
-                      <SelectItem key={agent._id} value={agent._id}>
-                        {agent.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+                    {agentOptions.length > 0 ? (
+                      agentOptions.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          <div>
+                            <div className="font-medium">{agent.name}</div>
+                            {agent.email && (
+                              <div className="text-sm text-muted-foreground">
+                                {agent.email}
+                              </div>
+                            )}
+                            {agent.specialties &&
+                              agent.specialties.length > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                  {agent.specialties.join(", ")}
+                                </div>
+                              )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        No agents available
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
-                {/* Validation hint — shown if submitted without an agent */}
-                {form.formState.errors.assignedAgentName && (
+              </div>
+            )}
+
+            {/* HMO licence number — compliance, HMO only, optional. */}
+            {isHmo && (
+              <div className="space-y-2">
+                <Label htmlFor="hmoLicenseNumber">
+                  HMO licence number
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="hmoLicenseNumber"
+                  placeholder="e.g. HMO/2024/01234"
+                  {...form.register("hmoLicenseNumber")}
+                />
+                {form.formState.errors.hmoLicenseNumber && (
                   <p className="text-sm text-red-600">
-                    {form.formState.errors.assignedAgentName.message}
+                    {form.formState.errors.hmoLicenseNumber.message}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* HMO licence issue date — compliance, HMO only, optional. */}
+            {isHmo && (
+              <div className="space-y-2">
+                <Label htmlFor="hmoLicenseIssueDate">
+                  HMO licence issue date
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="hmoLicenseIssueDate"
+                  type="date"
+                  {...form.register("hmoLicenseIssueDate")}
+                />
+                {form.formState.errors.hmoLicenseIssueDate && (
+                  <p className="text-sm text-red-600">
+                    {form.formState.errors.hmoLicenseIssueDate.message}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* HMO licence expiry — compliance, HMO only, optional. */}
+            {isHmo && (
+              <div className="space-y-2">
+                <Label htmlFor="hmoLicenseExpiry">
+                  HMO licence expiry
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="hmoLicenseExpiry"
+                  type="date"
+                  {...form.register("hmoLicenseExpiry")}
+                />
+                {form.formState.errors.hmoLicenseExpiry && (
+                  <p className="text-sm text-red-600">
+                    {form.formState.errors.hmoLicenseExpiry.message}
                   </p>
                 )}
               </div>

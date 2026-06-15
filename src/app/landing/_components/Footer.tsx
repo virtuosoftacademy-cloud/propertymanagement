@@ -71,7 +71,7 @@ const Footer = () => {
   const logoSrc = currentLogo ? currentIconUrl : currentLogoUrl;
 
   return (
-    <footer className="relative bg-background dark:bg-foreground">
+    <footer className="relative bg-foreground dark:bg-background">
       <div className="max-w-350 mx-auto py-12 px-16 md:px-16 xl:px-0">
         <div className="text-center md:text-left">
           <div className="flex justify-between flex-wrap space-y-10 gap-10">
