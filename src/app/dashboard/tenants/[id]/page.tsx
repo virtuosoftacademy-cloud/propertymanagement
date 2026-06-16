@@ -301,7 +301,7 @@ export default function TenantDetailPage() {
 
         {/* Center - Tenant name and badges */}
         <div className="flex-1 text-center">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-secondary-foreground">
             {tenant.firstName} {tenant.lastName}
           </h1>
           <div className="flex items-center justify-center space-x-2 mt-2">

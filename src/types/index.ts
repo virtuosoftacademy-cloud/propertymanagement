@@ -570,11 +570,20 @@ export interface ILeasePaymentConfig {
 }
 
 export interface ILeaseTerms {
-  /** Rent rate used to compute the total (rate × days) */
+  /** Rent rate proposed by the landlord; used to compute the total (rate × days) */
   rentAmount: number;
 
-  /** Auto-calculated total (rentAmount × number of days) */
+  /** Auto-calculated landlord total (rentAmount × number of days) */
   totalAmount?: number;
+
+  /** Rent rate proposed by the managing agent (HMO + assigned agent only) */
+  rentProposedByAgent?: number;
+
+  /** Auto-calculated agent total (rentProposedByAgent × number of days) */
+  agentTotalAmount?: number;
+
+  /** Difference between the totals (totalAmount − agentTotalAmount); +ve = landlord higher */
+  rentTotalDifference?: number;
 
   securityDeposit?: number;
   lateFee?: number;

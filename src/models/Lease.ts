@@ -8,11 +8,6 @@ import {
   PaymentMethod,
 } from "@/types";
 
-// NOTE: ILeaseTerms (in @/types) should declare:
-//   rentAmount: number;    // the rate
-//   totalAmount: number;   // auto-calculated total (rate x days)
-// and no longer reference rentBasis / nightlyRate / billingCycle.
-
 // ────────────────────────────────────────────────
 //              Late Fee Configuration
 // ────────────────────────────────────────────────
@@ -101,7 +96,8 @@ const LeasePaymentConfigSchema = new Schema<ILeasePaymentConfig>(
 // ────────────────────────────────────────────────
 const LeaseTermsSchema = new Schema<ILeaseTerms>(
   {
-    // Rent rate used to compute the total (rate x days between start and end).
+    // Rent rate proposed by the landlord; used to compute the total
+    // (rate x days between start and end).
     rentAmount: {
       type: Number,
       min: 0,
@@ -109,15 +105,49 @@ const LeaseTermsSchema = new Schema<ILeaseTerms>(
       required: true,
     },
 
-    // Auto-calculated total (rentAmount x number of days). The form submits
-    // this; the pre-save hook recomputes it as a safeguard.
+    // Auto-calculated landlord total (rentAmount x number of days). The form
+    // submits this; the pre-save hook recomputes it as a safeguard.
     totalAmount: {
       type: Number,
       min: 0,
       default: 0,
     },
 
+    // ─── Agent-proposed rent (HMO properties with an assigned agent only) ───
+    // The assigned agent is optional, so these are only populated when the
+    // property is an HMO that has a managing agent. They are informational and
+    // do not change the landlord total that drives the lease.
+
+    // Rent rate proposed by the managing agent.
+    rentProposedByAgent: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    // Auto-calculated agent total (rentProposedByAgent x number of days).
+    // Recomputed in the pre-save hook as a safeguard.
+    agentTotalAmount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    // Difference between the totals (totalAmount - agentTotalAmount).
+    // Positive => landlord proposes more; negative => agent proposes more.
+    // No `min` because this value may legitimately be negative.
+    rentTotalDifference: {
+      type: Number,
+      default: 0,
+    },
+
     securityDeposit: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    lateFee: {
       type: Number,
       min: 0,
       default: 0,
@@ -227,6 +257,12 @@ LeaseSchema.virtual("computedTotal").get(function () {
   return days * rate;
 });
 
+LeaseSchema.virtual("computedAgentTotal").get(function () {
+  const days = (this as any).durationDays || 0;
+  const rate = (this as any).terms?.rentProposedByAgent || 0;
+  return days * rate;
+});
+
 // ─── Pre-save validation & normalization ─────────────
 LeaseSchema.pre("save", async function (next) {
   const terms = (this as any).terms;
@@ -250,6 +286,18 @@ LeaseSchema.pre("save", async function (next) {
     )
   );
   terms.totalAmount = days * terms.rentAmount;
+
+  // Recompute the agent figures the same way. These only apply to HMO
+  // properties with an assigned agent; when no agent rent is proposed we clear
+  // the derived values so nothing stale is persisted.
+  if (typeof terms.rentProposedByAgent === "number" && terms.rentProposedByAgent > 0) {
+    terms.agentTotalAmount = days * terms.rentProposedByAgent;
+    terms.rentTotalDifference = terms.totalAmount - terms.agentTotalAmount;
+  } else {
+    terms.rentProposedByAgent = 0;
+    terms.agentTotalAmount = 0;
+    terms.rentTotalDifference = 0;
+  }
 
   next();
 });

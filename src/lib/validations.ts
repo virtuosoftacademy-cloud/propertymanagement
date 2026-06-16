@@ -555,17 +555,44 @@ export const leasePaymentConfigSchema = z.object({
 });
 
 export const leaseTermsSchema = z.object({
-  // Rent rate used to compute the total (rate × days between start and end)
+  // Rent rate proposed by the landlord; used to compute the total
+  // (rate × days between start and end)
   rentAmount: z
     .number()
     .min(0, "Rent cannot be negative")
     .max(100000, "Rent too high"),
 
-  // Auto-calculated total the form submits (rentAmount × number of days)
+  // Auto-calculated landlord total the form submits (rentAmount × number of days)
   totalAmount: z
     .number()
     .min(0, "Total cannot be negative")
     .max(100_000_000, "Total too high")
+    .optional(),
+
+  // ─── Agent-proposed rent (HMO properties with an assigned agent only) ───
+  // Optional, since the assigned agent is optional. Informational; does not
+  // change the landlord total that drives the lease.
+
+  // Rent rate proposed by the managing agent.
+  rentProposedByAgent: z
+    .number()
+    .min(0, "Agent rent cannot be negative")
+    .max(100000, "Agent rent too high")
+    .optional(),
+
+  // Auto-calculated agent total (rentProposedByAgent × number of days).
+  agentTotalAmount: z
+    .number()
+    .min(0, "Agent total cannot be negative")
+    .max(100_000_000, "Agent total too high")
+    .optional(),
+
+  // Difference between the totals (totalAmount − agentTotalAmount). May be
+  // negative when the agent proposes more, so the lower bound is negative.
+  rentTotalDifference: z
+    .number()
+    .min(-100_000_000, "Difference out of range")
+    .max(100_000_000, "Difference out of range")
     .optional(),
 
   securityDeposit: z
@@ -687,7 +714,6 @@ export const leaseUpdateSchema = z.object({
     .optional(),
   notes: z.string().max(2000, "Notes too long").optional(),
 });
-
 // ============================================================================
 // PAYMENT VALIDATIONS
 // ============================================================================

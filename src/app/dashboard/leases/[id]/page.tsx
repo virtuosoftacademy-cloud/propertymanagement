@@ -1,3 +1,5 @@
+// View Lease Page
+
 "use client";
 
 import Link from "next/link";
@@ -185,6 +187,20 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
 
   const daysRemaining = getDaysRemaining();
   const totalDays = getTotalDays();
+
+  // Agent-proposed rent figures (HMO properties with an assigned agent only).
+  // These are optional on the lease and only shown when present.
+  const agentRentRate = (lease.terms as any).rentProposedByAgent as
+    | number
+    | undefined;
+  const agentTotal = (lease.terms as any).agentTotalAmount as
+    | number
+    | undefined;
+  const rentDifference = (lease.terms as any).rentTotalDifference as
+    | number
+    | undefined;
+  const hasAgentRent =
+    typeof agentRentRate === "number" && agentRentRate > 0;
 
   return (
     <div className="space-y-8 animate-fade-in-up">
@@ -681,7 +697,9 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                   <div className="grid grid-cols-1 gap-3 lg:gap-4">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
                       <span className="text-success font-semibold text-sm lg:text-base">
-                        {t("leases.details.financial.totalAmount")}
+                        {hasAgentRent
+                          ? "Total amount (landlord)"
+                          : t("leases.details.financial.totalAmount")}
                       </span>
                       <span className="font-bold text-lg lg:text-xl text-success">
                         {formatCurrency(lease.terms.totalAmount)}
@@ -689,12 +707,49 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                     </div>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
                       <span className="text-success font-semibold text-sm lg:text-base">
-                        {t("leases.details.financial.rentAmount")}
+                        {hasAgentRent
+                          ? "Rent proposed by landlord"
+                          : t("leases.details.financial.rentAmount")}
                       </span>
                       <span className="font-bold text-lg lg:text-xl text-success">
                         {formatCurrency(lease.terms.rentAmount)}
                       </span>
                     </div>
+
+                    {/* Agent-proposed rent — HMO properties with an assigned agent only */}
+                    {hasAgentRent && (
+                      <>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-info/15 to-info/8 border border-info/15">
+                          <span className="text-info font-semibold text-sm lg:text-base">
+                            Rent proposed by agent
+                          </span>
+                          <span className="font-bold text-lg lg:text-xl text-info">
+                            {formatCurrency(agentRentRate || 0)}
+                          </span>
+                        </div>
+                        {typeof agentTotal === "number" && (
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-info/15 to-info/8 border border-info/15">
+                            <span className="text-info font-semibold text-sm lg:text-base">
+                              Total amount (agent)
+                            </span>
+                            <span className="font-bold text-base lg:text-lg text-info">
+                              {formatCurrency(agentTotal)}
+                            </span>
+                          </div>
+                        )}
+                        {typeof rentDifference === "number" && (
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-muted/40 border border-border/15">
+                            <span className="text-muted-foreground font-semibold text-sm lg:text-base">
+                              Rent Difference 
+                            </span>
+                            <span className="font-bold text-base lg:text-lg">
+                              {formatCurrency(Math.abs(rentDifference))}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-warning/15 to-warning/8 border border-warning/15">
                       <span className="text-warning font-semibold text-sm lg:text-base">
                         {t("leases.details.financial.securityDeposit")}

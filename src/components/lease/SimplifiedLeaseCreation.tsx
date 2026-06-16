@@ -3,6 +3,19 @@
  * Streamlined lease creation focusing on core fields only.
  * Rent is a single rate; the Total Amount is auto-calculated (read-only)
  * from the rate x number of days between the start and end dates.
+ *
+ * Rent has two scenarios:
+ *  1. Rent proposed by landlord  — always shown; this is the rate that
+ *     drives the auto-calculated total.
+ *  2. Rent proposed by agent     — shown only for HMO properties that have
+ *     an assigned managing agent (the assigned agent is optional, so this
+ *     field is hidden when the HMO has no agent). It is informational and
+ *     does not affect the total.
+ *
+ * Drafts: in create mode the form can be saved as a draft lease — it is
+ * persisted to the server with a "draft" status (LeaseStatus.DRAFT) instead of
+ * "active", so it can be reopened and completed later. Edit mode submits the
+ * lease as-is.
  */
 
 "use client";
@@ -36,9 +49,10 @@ import {
   AlertTriangle,
   CheckCircle,
   Loader2,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
-import { PropertyStatus } from "@/types";
+import { LeaseStatus, PropertyStatus } from "@/types";
 import { FormDatePicker } from "@/components/ui/date-picker";
 import { LeaseResponse, leaseService } from "@/lib/services/lease.service";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
@@ -54,7 +68,8 @@ interface SimplifiedLeaseData {
   endDate: string;
 
   // Financial Terms
-  rentAmount: number; // rate (per day) used to compute the total
+  rentAmount: number; // rate (per day) proposed by the landlord; drives the total
+  rentProposedByAgent: number; // optional agent-proposed rate (HMO + assigned agent only)
   securityDeposit: number;
   rentDueDay: number;
 
@@ -68,9 +83,20 @@ interface SimplifiedLeaseData {
   autoEmailInvoices: boolean;
 }
 
+interface PropertyAgentRef {
+  _id?: string;
+  id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 interface Property {
   _id: string;
   name: string;
+  type?: string; // "hmo" for Houses in Multiple Occupation
+  assignedAgentId?: string | PropertyAgentRef | null;
+  assignedAgent?: PropertyAgentRef | null;
   address: {
     street: string;
     city: string;
@@ -105,6 +131,8 @@ interface SimplifiedLeaseCreationProps {
   onSuccess?: (leaseId?: string) => void;
 }
 
+const HMO_TYPE = "hmo";
+
 const createInitialLeaseState = (): SimplifiedLeaseData => ({
   propertyId: "",
   unitId: "",
@@ -112,6 +140,7 @@ const createInitialLeaseState = (): SimplifiedLeaseData => ({
   startDate: "",
   endDate: "",
   rentAmount: 0,
+  rentProposedByAgent: 0,
   securityDeposit: 0,
   rentDueDay: 1,
   lateFeeAmount: 50,
@@ -146,6 +175,9 @@ export default function SimplifiedLeaseCreation({
   const [initializingLease, setInitializingLease] = useState(mode === "edit");
   const [leaseError, setLeaseError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // True while a "Save as Draft" submit is in flight (create mode only).
+  const [savingDraft, setSavingDraft] = useState(false);
 
   const isEditMode = mode === "edit";
   const submitLabel = isEditMode
@@ -226,6 +258,7 @@ export default function SimplifiedLeaseCreation({
       startDate: lease.startDate ? lease.startDate.slice(0, 10) : "",
       endDate: lease.endDate ? lease.endDate.slice(0, 10) : "",
       rentAmount: lease.terms?.rentAmount ?? 0,
+      rentProposedByAgent: (lease.terms as any)?.rentProposedByAgent ?? 0,
       securityDeposit: lease.terms?.securityDeposit ?? 0,
       rentDueDay: paymentConfig?.rentDueDay ?? 1,
       lateFeeAmount: lateFeeConfig?.feeAmount ?? lease.terms?.lateFee ?? 0,
@@ -319,6 +352,15 @@ export default function SimplifiedLeaseCreation({
     if (field === "rentAmount" && (typeof value !== "number" || value <= 0))
       message = t("leases.new.form.validation.rentPositive");
 
+    // Agent-proposed rent is optional, but if present it cannot be negative.
+    if (
+      field === "rentProposedByAgent" &&
+      value !== undefined &&
+      value !== null &&
+      (typeof value !== "number" || value < 0)
+    )
+      message = "Agent-proposed rent cannot be negative";
+
     if (field === "securityDeposit" && (typeof value !== "number" || value < 0))
       message = t("leases.new.form.validation.securityDepositNonNegative");
     if (field === "lateFeeAmount" && (typeof value !== "number" || value < 0))
@@ -359,6 +401,11 @@ export default function SimplifiedLeaseCreation({
       ["lateFeeGracePeriodDays", leaseData.lateFeeGracePeriodDays],
     ];
 
+    // Only validate the agent-proposed rent when the field is actually shown.
+    if (isHmoWithAgent()) {
+      checks.push(["rentProposedByAgent", leaseData.rentProposedByAgent]);
+    }
+
     const messages: string[] = [];
     const invalidFields: Array<keyof SimplifiedLeaseData> = [];
 
@@ -382,6 +429,7 @@ export default function SimplifiedLeaseCreation({
       startDate: "startDatePicker",
       endDate: "endDatePicker",
       rentAmount: "rentAmount",
+      rentProposedByAgent: "rentProposedByAgent",
       securityDeposit: "securityDeposit",
       rentDueDay: "rentDueDaySelect",
       lateFeeAmount: "lateFeeAmount",
@@ -407,6 +455,40 @@ export default function SimplifiedLeaseCreation({
 
   const getSelectedProperty = () => {
     return properties.find((p) => p._id === leaseData.propertyId);
+  };
+
+  // Resolve the assigned managing agent (id + display name) for the selected
+  // property, tolerating either a populated object or a plain id string.
+  const selectedPropertyAgent = (): { id: string; name: string } | null => {
+    const property = getSelectedProperty();
+    if (!property) return null;
+
+    const raw: PropertyAgentRef | null =
+      property.assignedAgentId && typeof property.assignedAgentId === "object"
+        ? property.assignedAgentId
+        : property.assignedAgent && typeof property.assignedAgent === "object"
+        ? property.assignedAgent
+        : null;
+
+    const id = raw
+      ? raw._id || raw.id || ""
+      : typeof property.assignedAgentId === "string"
+      ? property.assignedAgentId
+      : "";
+
+    if (!id) return null;
+
+    const name = raw
+      ? raw.name || `${raw.firstName || ""} ${raw.lastName || ""}`.trim()
+      : "";
+
+    return { id, name };
+  };
+
+  // Scenario 2 applies only to HMO properties that have an assigned agent.
+  const isHmoWithAgent = (): boolean => {
+    const property = getSelectedProperty();
+    return !!(property && property.type === HMO_TYPE && selectedPropertyAgent());
   };
 
   const getAvailableUnits = () => {
@@ -439,6 +521,31 @@ export default function SimplifiedLeaseCreation({
     return availableUnits.find((unit) => unit?._id === leaseData?.unitId);
   };
 
+  // Changing the property also drops any agent-proposed rent that no longer
+  // applies (e.g. switching to a non-HMO or an HMO with no assigned agent).
+  const handlePropertyChange = (value: string) => {
+    handleInputChange("propertyId", value);
+    handleInputChange("unitId", "");
+
+    const property = properties.find((p) => p._id === value);
+    const rawAgent =
+      property?.assignedAgentId && typeof property.assignedAgentId === "object"
+        ? property.assignedAgentId
+        : property?.assignedAgent && typeof property.assignedAgent === "object"
+        ? property.assignedAgent
+        : null;
+    const agentId = rawAgent
+      ? rawAgent._id || rawAgent.id
+      : typeof property?.assignedAgentId === "string"
+      ? property.assignedAgentId
+      : "";
+    const nextIsHmoWithAgent = !!(property?.type === HMO_TYPE && agentId);
+
+    if (!nextIsHmoWithAgent) {
+      handleInputChange("rentProposedByAgent", 0);
+    }
+  };
+
   const handleUnitChange = (unitId: string) => {
     handleInputChange("unitId", unitId);
 
@@ -468,8 +575,17 @@ export default function SimplifiedLeaseCreation({
 
   const totalAmount = pricing ? pricing.total : 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Agent-proposed total = agent rate x the same number of days. Informational
+  // only — the landlord total above is the figure that drives the lease.
+  const agentTotalAmount = pricing
+    ? pricing.days * (leaseData.rentProposedByAgent || 0)
+    : 0;
+
+  // Difference between the landlord total and the agent total (landlord − agent).
+  // Positive => landlord proposes more; negative => agent proposes more.
+  const rentTotalDifference = totalAmount - agentTotalAmount;
+
+  const persistLease = async (asDraft: boolean) => {
     const { ok, messages, invalidFields } = validateAll();
     if (!ok) {
       toast.error(
@@ -486,7 +602,10 @@ export default function SimplifiedLeaseCreation({
       return;
     }
 
-    setSubmitting(true);
+    if (asDraft) setSavingDraft(true);
+    else setSubmitting(true);
+
+    const includeAgentRent = isHmoWithAgent();
 
     const basePayload = {
       propertyId: leaseData.propertyId,
@@ -495,7 +614,15 @@ export default function SimplifiedLeaseCreation({
       startDate: leaseData.startDate,
       endDate: leaseData.endDate,
       terms: {
-        rentAmount: leaseData.rentAmount, // rate
+        rentAmount: leaseData.rentAmount, // rate proposed by landlord
+        // Only persist the agent-proposed rent for HMO + assigned-agent.
+        ...(includeAgentRent
+          ? {
+              rentProposedByAgent: leaseData.rentProposedByAgent,
+              agentTotalAmount,
+              rentTotalDifference,
+            }
+          : {}),
         totalAmount, // auto-calculated total (rate x days)
         securityDeposit: leaseData.securityDeposit,
         lateFee: leaseData.lateFeeAmount,
@@ -523,7 +650,13 @@ export default function SimplifiedLeaseCreation({
     const targetLeaseId = leaseId ?? initialLease?._id;
     const endpoint = mode === "edit" && targetLeaseId ? `/api/leases/${targetLeaseId}` : "/api/leases";
     const method = mode === "edit" ? "PUT" : "POST";
-    const payload = mode === "edit" ? basePayload : { ...basePayload, status: "active" as const };
+    const payload =
+      mode === "edit"
+        ? basePayload
+        : {
+            ...basePayload,
+            status: asDraft ? LeaseStatus.DRAFT : LeaseStatus.ACTIVE,
+          };
 
     try {
       const response = await fetch(endpoint, {
@@ -555,7 +688,13 @@ export default function SimplifiedLeaseCreation({
         return;
       }
 
-      toast.success(t("leases.new.form.toasts.createSuccess"));
+      toast.success(
+        asDraft
+          ? t("leases.new.form.toasts.draftCreated", {
+              defaultValue: "Lease saved as draft",
+            })
+          : t("leases.new.form.toasts.createSuccess")
+      );
 
       if (result.data?.invoiceGeneration) {
         const { invoicesGenerated, errors: invoiceErrors } = result.data.invoiceGeneration;
@@ -586,12 +725,24 @@ export default function SimplifiedLeaseCreation({
       const fallbackMessage = t("leases.new.form.errors.saveLeaseGeneric");
       const message = error instanceof Error ? error.message : fallbackMessage;
       toast.error(
-        mode === "edit" ? t("leases.new.form.toasts.updateError") : t("leases.new.form.toasts.createError"),
+        mode === "edit"
+          ? t("leases.new.form.toasts.updateError")
+          : asDraft
+          ? t("leases.new.form.toasts.draftError", {
+              defaultValue: "Couldn't save draft",
+            })
+          : t("leases.new.form.toasts.createError"),
         { description: message, duration: 5000 }
       );
     } finally {
-      setSubmitting(false);
+      if (asDraft) setSavingDraft(false);
+      else setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await persistLease(false);
   };
 
   if (isEditMode && initializingLease) {
@@ -601,6 +752,8 @@ export default function SimplifiedLeaseCreation({
       </div>
     );
   }
+
+  const agentRent = selectedPropertyAgent();
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -642,10 +795,7 @@ export default function SimplifiedLeaseCreation({
                 </Label>
                 <Select
                   value={leaseData.propertyId}
-                  onValueChange={(value) => {
-                    handleInputChange("propertyId", value);
-                    handleInputChange("unitId", "");
-                  }}
+                  onValueChange={handlePropertyChange}
                 >
                   <SelectTrigger id="propertySelect">
                     <SelectValue placeholder={t("leases.new.form.sections.propertyTenant.placeholders.property")} />
@@ -874,12 +1024,10 @@ export default function SimplifiedLeaseCreation({
             <CardDescription>{t("leases.new.form.sections.financial.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Rent Amount (rate) + auto-calculated Total Amount */}
+            {/* Rent rate (proposed by landlord) + auto-calculated Total Amount */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="rentAmount">
-                  {t("leases.details.financial.rent") || "Rent Amount (per day)"}
-                </Label>
+                <Label htmlFor="rentAmount">Rent proposed by landlord (per day)</Label>
                 <Input
                   id="rentAmount"
                   type="number"
@@ -894,9 +1042,7 @@ export default function SimplifiedLeaseCreation({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="totalAmount">
-                  {t("leases.details.financial.totalAmount") || "Total Amount"}
-                </Label>
+                <Label htmlFor="totalAmount">Total amount (landlord)</Label>
                 <Input
                   id="totalAmount"
                   type="number"
@@ -912,6 +1058,72 @@ export default function SimplifiedLeaseCreation({
                 </p>
               </div>
             </div>
+
+            {/* Scenario 2: agent-proposed rent + its own total — HMO with an assigned agent only */}
+            {isHmoWithAgent() && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="rentProposedByAgent">Rent proposed by agent (per day)</Label>
+                  <Input
+                    id="rentProposedByAgent"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={leaseData.rentProposedByAgent}
+                    onChange={(e) =>
+                      handleInputChange("rentProposedByAgent", parseFloat(e.target.value) || 0)
+                    }
+                    placeholder="0.00"
+                  />
+                  {fieldErrors.rentProposedByAgent && (
+                    <p className="text-destructive text-sm">{fieldErrors.rentProposedByAgent}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {agentRent?.name
+                      ? `Agent: ${agentRent.name}. For reference — the landlord rate drives the total.`
+                      : "Managing agent's proposed daily rent for this HMO (for reference)."}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="agentTotalAmount">Total amount (agent)</Label>
+                  <Input
+                    id="agentTotalAmount"
+                    type="number"
+                    value={agentTotalAmount}
+                    readOnly
+                    disabled
+                    className="bg-muted font-medium"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {pricing && leaseData.rentProposedByAgent > 0
+                      ? `${pricing.days} days × ${formatCurrency(leaseData.rentProposedByAgent)} = ${formatCurrency(agentTotalAmount)}`
+                      : "For reference — does not change the landlord total."}
+                  </p>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="rentTotalDifference">Difference (landlord total − agent total)</Label>
+                  <Input
+                    id="rentTotalDifference"
+                    type="number"
+                    value={rentTotalDifference}
+                    readOnly
+                    disabled
+                    className="bg-muted font-medium"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {pricing && leaseData.rentProposedByAgent > 0
+                      ? rentTotalDifference === 0
+                        ? "Landlord and agent totals match."
+                        : rentTotalDifference > 0
+                        ? `Landlord total is ${formatCurrency(Math.abs(rentTotalDifference))} higher than the agent total.`
+                        : `Agent total is ${formatCurrency(Math.abs(rentTotalDifference))} higher than the landlord total.`
+                      : "Enter the agent rent and lease dates to see the difference."}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -1064,12 +1276,30 @@ export default function SimplifiedLeaseCreation({
               <div className="rounded-lg border p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
-                    {`${pricing.days} days × ${formatCurrency(pricing.rate)}`}
+                    {`Landlord — ${pricing.days} days × ${formatCurrency(pricing.rate)}`}
                   </span>
                   <span className="text-lg font-semibold text-green-600">
                     {formatCurrency(pricing.total)}
                   </span>
                 </div>
+                {isHmoWithAgent() && leaseData.rentProposedByAgent > 0 && (
+                  <div className="mt-2 flex items-center justify-between border-t pt-2">
+                    <span className="text-sm text-muted-foreground">
+                      {`Agent — ${pricing.days} days × ${formatCurrency(leaseData.rentProposedByAgent)}`}
+                    </span>
+                    <span className="text-base font-medium">
+                      {formatCurrency(agentTotalAmount)}
+                    </span>
+                  </div>
+                )}
+                {isHmoWithAgent() && leaseData.rentProposedByAgent > 0 && rentTotalDifference !== 0 && (
+                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {rentTotalDifference > 0 ? "Landlord higher by" : "Agent higher by"}
+                    </span>
+                    <span>{formatCurrency(Math.abs(rentTotalDifference))}</span>
+                  </div>
+                )}
                 {leaseData.securityDeposit > 0 && (
                   <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                     <span>Security deposit (held, not part of total)</span>
@@ -1098,7 +1328,7 @@ export default function SimplifiedLeaseCreation({
               </Alert>
             )}
 
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
               <Button
                 type="button"
                 variant="outline"
@@ -1111,14 +1341,34 @@ export default function SimplifiedLeaseCreation({
                     setOriginalLeaseData(createInitialLeaseState());
                   }
                 }}
-                disabled={submitting || (isEditMode && initializingLease)}
+                disabled={submitting || savingDraft || (isEditMode && initializingLease)}
               >
                 {resetLabel}
               </Button>
 
+              {/* Save as Draft — creates the lease with a draft status (create mode only) */}
+              {!isEditMode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void persistLease(true)}
+                  disabled={submitting || savingDraft}
+                  className="flex items-center gap-2"
+                >
+                  {savingDraft ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {t("leases.new.form.draft.saveButton", {
+                    defaultValue: "Save as Draft",
+                  })}
+                </Button>
+              )}
+
               <Button
                 type="submit"
-                disabled={submitting || (isEditMode && initializingLease)}
+                disabled={submitting || savingDraft || (isEditMode && initializingLease)}
                 className="flex-1"
               >
                 {submitting ? (

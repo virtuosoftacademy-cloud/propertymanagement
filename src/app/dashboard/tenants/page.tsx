@@ -48,6 +48,8 @@ import {
   RefreshCw,
   Users,
   XCircle,
+  FileText,
+  Clock,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/ui/global-search";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
@@ -66,6 +68,26 @@ const formatIncome = (amount?: number) =>
     ? formatCurrency(amount, undefined, currencyDisplayOptions)
     : null;
 type Tenant = TenantRecord;
+
+// ─── Local (browser) tenant drafts ──────────────────────────────────────────
+// The New Tenant page stores unsaved work to localStorage under this key. Drafts
+// are device-local only (not synced to the server).
+const TENANT_DRAFT_KEY = "propertypro:tenant-draft";
+
+interface TenantDraft {
+  id: string;
+  savedAt?: string;
+  values: Record<string, any>;
+}
+
+const formatDraftTime = (value?: string) => {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return "";
+  }
+};
 
 export default function TenantsPage() {
   const searchParams = useSearchParams();
@@ -95,6 +117,9 @@ export default function TenantsPage() {
   const [selectedTenantForDelete, setSelectedTenantForDelete] =
     useState<Tenant | null>(null);
 
+  // Locally-saved tenant drafts (from the New Tenant page).
+  const [drafts, setDrafts] = useState<TenantDraft[]>([]);
+
   const [currentPage, setCurrentPage] = useState(
     parseInt(searchParams.get("page") || "1")
   );
@@ -123,6 +148,72 @@ export default function TenantsPage() {
       setIsStatsLoading(false);
     }
   }, []);
+
+  // Read any locally-saved tenant drafts. Tolerates either a single draft
+  // object {savedAt, values} or an array of them.
+  const loadDrafts = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(TENANT_DRAFT_KEY);
+      if (!raw) {
+        setDrafts([]);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed) ? parsed : [parsed];
+      const normalized: TenantDraft[] = list
+        .filter((d) => d && d.values)
+        .map((d, index) => ({
+          id: d.id || d.savedAt || `draft-${index}`,
+          savedAt: d.savedAt,
+          values: d.values,
+        }));
+      setDrafts(normalized);
+    } catch {
+      setDrafts([]);
+    }
+  }, []);
+
+  const discardDraft = (id: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(TENANT_DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const next = parsed.filter(
+            (d, index) => (d.id || d.savedAt || `draft-${index}`) !== id
+          );
+          if (next.length) {
+            window.localStorage.setItem(TENANT_DRAFT_KEY, JSON.stringify(next));
+          } else {
+            window.localStorage.removeItem(TENANT_DRAFT_KEY);
+          }
+        } else {
+          window.localStorage.removeItem(TENANT_DRAFT_KEY);
+        }
+      }
+    } catch {
+      // ignore parse/storage errors and fall through to a reload
+    }
+    loadDrafts();
+    toast.success(
+      t("tenants.drafts.discarded", { defaultValue: "Draft discarded" })
+    );
+  };
+
+  const discardAllDrafts = () => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(TENANT_DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+    loadDrafts();
+    toast.success(
+      t("tenants.drafts.allDiscarded", { defaultValue: "All drafts discarded" })
+    );
+  };
 
   const [error, setError] = useState<string | null>(null);
 
@@ -431,6 +522,20 @@ export default function TenantsPage() {
     void fetchAllTenants();
   }, [fetchAllTenants]);
 
+  // Load local drafts on mount, and refresh them whenever the user returns to
+  // this tab (e.g. after saving a draft on the New Tenant page) or another tab
+  // changes the stored value.
+  useEffect(() => {
+    loadDrafts();
+    const refresh = () => loadDrafts();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, [loadDrafts]);
+
   useEffect(() => {
     const tp = Math.max(1, Math.ceil(totalTenants / itemsPerPage));
     if (currentPage > tp) {
@@ -493,6 +598,115 @@ export default function TenantsPage() {
       )}
 
       <TenantStats tenants={allTenants} />
+
+      {/* Locally-saved tenant drafts */}
+      {drafts.length > 0 && (
+        <Card className="border-amber-200 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-900/10">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {t("tenants.drafts.title", {
+                      defaultValue: "Unsaved tenant drafts",
+                    })}{" "}
+                    ({drafts.length})
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {t("tenants.drafts.subtitle", {
+                      defaultValue:
+                        "Saved on this device. Resume to finish adding the tenant.",
+                    })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {drafts.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600"
+                    onClick={discardAllDrafts}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {t("tenants.drafts.discardAll", {
+                      defaultValue: "Discard all",
+                    })}
+                  </Button>
+                )}
+                <Link href="/dashboard/tenants/new">
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t("tenants.drafts.openNew", {
+                      defaultValue: "Open new tenant",
+                    })}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {drafts.map((draft) => {
+                const name =
+                  `${draft.values?.firstName || ""} ${
+                    draft.values?.lastName || ""
+                  }`.trim() ||
+                  t("tenants.drafts.untitled", {
+                    defaultValue: "Untitled draft",
+                  });
+                const email = draft.values?.email || "";
+                return (
+                  <div
+                    key={draft.id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg border bg-white/70 dark:bg-gray-900/30"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{name}</div>
+                      <div className="text-sm text-muted-foreground truncate flex flex-wrap items-center gap-x-2">
+                        {email && <span className="truncate">{email}</span>}
+                        {draft.savedAt && (
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {t("tenants.drafts.savedAt", {
+                              defaultValue: "Saved",
+                            })}{" "}
+                            {formatDraftTime(draft.savedAt)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push("/dashboard/tenants/new")}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        {t("tenants.drafts.resume", { defaultValue: "Resume" })}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600"
+                        onClick={() => discardDraft(draft.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {t("tenants.drafts.discard", {
+                          defaultValue: "Discard",
+                        })}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="gap-2">
         <CardHeader>
