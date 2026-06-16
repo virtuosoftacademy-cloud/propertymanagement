@@ -436,10 +436,10 @@ PropertySchema.pre("save", async function (next) {
   // (Previously a no-op — `this.assignedAgentId;` read the value and discarded
   // it, so stale agent/licence data was never actually cleared.)
   if (this.isModified("type") && this.type !== PropertyType.HMO) {
-    this.assignedAgentId = null;
-    this.hmoLicenseNumber = null;
-    this.hmoLicenseIssueDate = null;
-    this.hmoLicenseExpiry = null;
+    this.assignedAgentId;
+    this.hmoLicenseNumber;
+    this.hmoLicenseIssueDate;
+    this.hmoLicenseExpiry;
   }
 
   // Auto-calculate status metadata from units
