@@ -59,8 +59,8 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
           searchParams.get("isMultiUnit") === "true"
             ? true
             : searchParams.get("isMultiUnit") === "false"
-            ? false
-            : undefined,
+              ? false
+              : undefined,
         features: searchParams.get("features") || undefined,
         amenities: searchParams.get("amenities") || undefined,
         hasAvailableUnits: searchParams.get("hasAvailableUnits") === "true",
@@ -239,11 +239,6 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // Prepare property data with proper ownership
       // Strip deprecated fields that should only exist at unit level
       const {
-        bedrooms: _bedrooms,
-        bathrooms: _bathrooms,
-        squareFootage: _squareFootage,
-        rentAmount: _rentAmount,
-        securityDeposit: _securityDeposit,
         ...cleanPropertyData
       } = propertyData;
 
@@ -291,10 +286,9 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 
       return createSuccessResponse(
         responseData,
-        `Property created successfully${
-          unitsCount > 0
-            ? ` with ${unitsCount} unit${unitsCount > 1 ? "s" : ""}`
-            : ""
+        `Property created successfully${unitsCount > 0
+          ? ` with ${unitsCount} unit${unitsCount > 1 ? "s" : ""}`
+          : ""
         }`,
         undefined
       );
