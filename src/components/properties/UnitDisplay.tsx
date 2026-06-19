@@ -121,7 +121,7 @@ export function EnhancedUnitDisplay({
         <CardHeader className="p-2 gap-0">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center p-0">
-              <Building className="h-5 w-5 mr-2 text-blue-600" />
+              <Building className="h-5 w-5 mr-2 text-primary" />
               {t("properties.units.list.title")} (
               {t("properties.units.list.summary", {
                 values: {
@@ -134,7 +134,7 @@ export function EnhancedUnitDisplay({
             {!isSingleUnit && (
               <Button
                 onClick={onAddUnit}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary-700"
               >
                 <Building className="h-4 w-4 mr-2" />
                 {t("properties.units.actions.addUnit")}
@@ -162,7 +162,7 @@ export function EnhancedUnitDisplay({
             {units.length === 0 && !isSingleUnit && (
               <Button
                 onClick={onAddUnit}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary-700"
               >
                 <Building className="h-4 w-4 mr-2" />
                 {t("properties.units.actions.addFirstUnit")}
@@ -177,7 +177,7 @@ export function EnhancedUnitDisplay({
             .map((unit) => (
               <Card
                 key={unit._id?.toString()}
-                className="border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                className="border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-primary hover:shadow-lg transition-all duration-200 cursor-pointer"
                 onClick={() => handleViewUnitDetails(unit)}
               >
                 <CardHeader className="pb-3">
@@ -215,7 +215,7 @@ export function EnhancedUnitDisplay({
                       {t(`properties.unitType.${unit.unitType}`)}
                     </Badge>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      <div className="text-2xl font-bold text-primary dark:text-primary/90">
                         {formatCurrency(unit.rentAmount)}
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400">

@@ -41,9 +41,9 @@ function SelectTrigger({
         "flex w-full items-center justify-between gap-2 rounded-md border-2 border-gray-200 bg-white px-3 py-2 text-sm",
         "shadow-sm transition-all duration-200 outline-none whitespace-nowrap",
         "hover:border-gray-300 hover:shadow-md",
-        "focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:shadow-lg",
+        "focus:border-primary focus:ring-2 focus:ring-primary/20 focus:shadow-lg",
         "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-50",
-        "dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400/20",
+        "dark:border-gray-700 dark:bg-background dark:hover:border-gray-600 dark:focus:border-primary dark:focus:ring-primary/20",
         "data-[size=default]:h-10 data-[size=sm]:h-8",
         "*:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2",
         "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -72,7 +72,7 @@ function SelectContent({
         className={cn(
           "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border shadow-md",
           position === "popper" &&
-            "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+          "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className
         )}
         position={position}
@@ -83,7 +83,7 @@ function SelectContent({
           className={cn(
             "p-1",
             position === "popper" &&
-              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1"
+            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1"
           )}
         >
           {children}

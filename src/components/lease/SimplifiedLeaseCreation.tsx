@@ -1,26 +1,17 @@
 /**
  * PropertyPro - Simplified Lease Creation Form
  * Streamlined lease creation focusing on core fields only.
- * Rent is a single rate; the Total Amount is auto-calculated (read-only)
- * from the rate x number of days between the start and end dates.
  *
- * Rent has two scenarios:
- *  1. Rent proposed by landlord  — always shown; this is the rate that
- *     drives the auto-calculated total.
- *  2. Rent proposed by agent     — shown only for HMO properties that have
- *     an assigned managing agent (the assigned agent is optional, so this
- *     field is hidden when the HMO has no agent). It is informational and
- *     does not affect the total.
- *
- * Drafts: in create mode the form can be saved as a draft lease — it is
- * persisted to the server with a "draft" status (LeaseStatus.DRAFT) instead of
- * "active", so it can be reopened and completed later. Edit mode submits the
- * lease as-is.
+ * Rent period drives how rent is taken:
+ *  - Day / Week: the lease is bounded by a start and end date, and the total is
+ *    calculated from the number of days/weeks in that range × the rent amount.
+ *  - Month: the start/end dates are hidden — it's an open-ended monthly tenancy
+ *    and rent is collected automatically each month on the chosen due day.
  */
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Card,
@@ -52,7 +43,7 @@ import {
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
-import { LeaseStatus, PropertyStatus } from "@/types";
+import { LeaseRentPeriod, PropertyStatus, LeaseStatus } from "@/types";
 import { FormDatePicker } from "@/components/ui/date-picker";
 import { LeaseResponse, leaseService } from "@/lib/services/lease.service";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
@@ -62,14 +53,14 @@ interface SimplifiedLeaseData {
   propertyId: string;
   unitId: string;
   tenantId: string;
+  rentPeriod: LeaseRentPeriod | "";
 
   // Dates
   startDate: string;
   endDate: string;
 
   // Financial Terms
-  rentAmount: number; // rate (per day) proposed by the landlord; drives the total
-  rentProposedByAgent: number; // optional agent-proposed rate (HMO + assigned agent only)
+  rentAmount: number;
   securityDeposit: number;
   rentDueDay: number;
 
@@ -83,20 +74,9 @@ interface SimplifiedLeaseData {
   autoEmailInvoices: boolean;
 }
 
-interface PropertyAgentRef {
-  _id?: string;
-  id?: string;
-  name?: string;
-  firstName?: string;
-  lastName?: string;
-}
-
 interface Property {
   _id: string;
   name: string;
-  type?: string; // "hmo" for Houses in Multiple Occupation
-  assignedAgentId?: string | PropertyAgentRef | null;
-  assignedAgent?: PropertyAgentRef | null;
   address: {
     street: string;
     city: string;
@@ -131,16 +111,28 @@ interface SimplifiedLeaseCreationProps {
   onSuccess?: (leaseId?: string) => void;
 }
 
-const HMO_TYPE = "hmo";
+// How often rent is collected.
+const RENT_PERIOD_OPTIONS: Array<{ value: LeaseRentPeriod; label: string }> = [
+  { value: LeaseRentPeriod.MONTHLY, label: "Month" },
+  { value: LeaseRentPeriod.WEEKLY, label: "Week" },
+  { value: LeaseRentPeriod.DAY, label: "Day" },
+];
+
+// "per …" phrasing for the rent amount label.
+const PER_PERIOD_LABEL: Record<LeaseRentPeriod, string> = {
+  [LeaseRentPeriod.MONTHLY]: "per month",
+  [LeaseRentPeriod.WEEKLY]: "per week",
+  [LeaseRentPeriod.DAY]: "per day",
+};
 
 const createInitialLeaseState = (): SimplifiedLeaseData => ({
   propertyId: "",
   unitId: "",
   tenantId: "",
+  rentPeriod: "",
   startDate: "",
   endDate: "",
   rentAmount: 0,
-  rentProposedByAgent: 0,
   securityDeposit: 0,
   rentDueDay: 1,
   lateFeeAmount: 50,
@@ -149,10 +141,6 @@ const createInitialLeaseState = (): SimplifiedLeaseData => ({
   autoGenerateInvoices: true,
   autoEmailInvoices: false,
 });
-
-// Number of days between two dates.
-const daysBetween = (start: Date, end: Date): number =>
-  Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000));
 
 export default function SimplifiedLeaseCreation({
   mode = "create",
@@ -172,12 +160,10 @@ export default function SimplifiedLeaseCreation({
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [initializingLease, setInitializingLease] = useState(mode === "edit");
   const [leaseError, setLeaseError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  // True while a "Save as Draft" submit is in flight (create mode only).
-  const [savingDraft, setSavingDraft] = useState(false);
 
   const isEditMode = mode === "edit";
   const submitLabel = isEditMode
@@ -190,6 +176,45 @@ export default function SimplifiedLeaseCreation({
     ? t("leases.new.form.buttons.resetChanges")
     : t("leases.new.form.buttons.resetForm");
 
+  // ─── Rent-period derived state ────────────────────────────────────────────
+  const isMonthly = leaseData.rentPeriod === LeaseRentPeriod.MONTHLY;
+  const isDayOrWeek =
+    leaseData.rentPeriod === LeaseRentPeriod.DAY ||
+    leaseData.rentPeriod === LeaseRentPeriod.WEEKLY;
+  const perPeriodLabel = leaseData.rentPeriod
+    ? PER_PERIOD_LABEL[leaseData.rentPeriod]
+    : "";
+
+  const rentCollectionNote = isMonthly
+    ? "Rent is collected automatically each month."
+    : leaseData.rentPeriod === LeaseRentPeriod.DAY
+      ? "Rent is collected daily."
+      : leaseData.rentPeriod === LeaseRentPeriod.WEEKLY
+        ? "Rent is collected weekly."
+        : "";
+
+  // For Day/Week periods, calculate the total from the selected date range:
+  //  - Day:  number of days  × rent amount
+  //  - Week: number of weeks × rent amount (whole weeks, rounded up)
+  const rentPricing = (() => {
+    if (!isDayOrWeek) return null;
+    if (!leaseData.startDate || !leaseData.endDate) return null;
+    const start = new Date(leaseData.startDate + "T00:00:00");
+    const end = new Date(leaseData.endDate + "T00:00:00");
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start)
+      return null;
+    const days = Math.max(
+      0,
+      Math.round((end.getTime() - start.getTime()) / 86_400_000)
+    );
+    const isDay = leaseData.rentPeriod === LeaseRentPeriod.DAY;
+    const periods = isDay ? days : Math.ceil(days / 7);
+    const total = periods * (leaseData.rentAmount || 0);
+    return { days, periods, isDay, total };
+  })();
+  const computedTotal = rentPricing ? rentPricing.total : 0;
+
+  // Fetch properties and tenants on component mount
   useEffect(() => {
     fetchProperties();
     fetchTenants();
@@ -202,16 +227,25 @@ export default function SimplifiedLeaseCreation({
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // The API returns properties directly in data.data
         const properties = Array.isArray(data.data) ? data.data : [];
+
+        // Ensure all properties have a units array (even if empty)
         const normalizedProperties = properties.map((property: any) => ({
           ...property,
           units: Array.isArray(property.units) ? property.units : [],
         }));
+
         setProperties(normalizedProperties);
       } else {
         toast.error(
           t("leases.new.form.toasts.loadPropertiesError"),
-          data.error ? { description: data.error, duration: 5000 } : undefined
+          data.error
+            ? {
+              description: data.error,
+              duration: 5000,
+            }
+            : undefined
         );
         setProperties([]);
       }
@@ -232,7 +266,12 @@ export default function SimplifiedLeaseCreation({
       } else {
         toast.error(
           t("leases.new.form.toasts.loadTenantsError"),
-          data.error ? { description: data.error, duration: 5000 } : undefined
+          data.error
+            ? {
+              description: data.error,
+              duration: 5000,
+            }
+            : undefined
         );
       }
     } catch (error) {
@@ -242,9 +281,13 @@ export default function SimplifiedLeaseCreation({
 
   const mapLeaseToFormData = (lease: LeaseResponse): SimplifiedLeaseData => {
     const propertyId =
-      typeof lease.propertyId === "string" ? lease.propertyId : lease.propertyId?._id || "";
+      typeof lease.propertyId === "string"
+        ? lease.propertyId
+        : lease.propertyId?._id || "";
     const tenantId =
-      typeof lease.tenantId === "string" ? lease.tenantId : lease.tenantId?._id || "";
+      typeof lease.tenantId === "string"
+        ? lease.tenantId
+        : lease.tenantId?._id || "";
     const unitId =
       typeof lease.unitId === "string" ? lease.unitId : lease.unit?._id || "";
 
@@ -255,15 +298,16 @@ export default function SimplifiedLeaseCreation({
       propertyId: propertyId || "",
       unitId: unitId || "",
       tenantId: tenantId || "",
+      rentPeriod: ((lease as any).rentPeriod as LeaseRentPeriod) || "",
       startDate: lease.startDate ? lease.startDate.slice(0, 10) : "",
       endDate: lease.endDate ? lease.endDate.slice(0, 10) : "",
       rentAmount: lease.terms?.rentAmount ?? 0,
-      rentProposedByAgent: (lease.terms as any)?.rentProposedByAgent ?? 0,
       securityDeposit: lease.terms?.securityDeposit ?? 0,
       rentDueDay: paymentConfig?.rentDueDay ?? 1,
       lateFeeAmount: lateFeeConfig?.feeAmount ?? lease.terms?.lateFee ?? 0,
       lateFeeGracePeriodDays: lateFeeConfig?.gracePeriodDays ?? 0,
-      lateFeeType: lateFeeConfig?.feeType === "percentage" ? "percentage" : "fixed",
+      lateFeeType:
+        lateFeeConfig?.feeType === "percentage" ? "percentage" : "fixed",
       autoGenerateInvoices: paymentConfig?.autoGenerateInvoices ?? true,
       autoEmailInvoices: paymentConfig?.autoEmailInvoices ?? false,
     };
@@ -323,7 +367,10 @@ export default function SimplifiedLeaseCreation({
     validateField(field, value);
   };
 
-  const setError = (field: keyof SimplifiedLeaseData, message: string | null) => {
+  const setError = (
+    field: keyof SimplifiedLeaseData,
+    message: string | null
+  ) => {
     setFieldErrors((prev) => {
       const next = { ...prev };
       if (message) next[field] = message;
@@ -332,11 +379,27 @@ export default function SimplifiedLeaseCreation({
     });
   };
 
+  // Switching to a monthly tenancy hides + clears the date range (open-ended).
+  const handleRentPeriodChange = (value: string) => {
+    handleInputChange("rentPeriod", value);
+    if (value === LeaseRentPeriod.MONTHLY) {
+      handleInputChange("startDate", "");
+      handleInputChange("endDate", "");
+      setError("startDate", null);
+      setError("endDate", null);
+    }
+  };
+
   const getFieldErrorMessage = (
     field: keyof SimplifiedLeaseData,
     value: any
   ): string | null => {
     let message: string | null = null;
+
+    // Start/end dates only apply to Day and Week tenancies.
+    const requiresDates =
+      leaseData.rentPeriod === LeaseRentPeriod.DAY ||
+      leaseData.rentPeriod === LeaseRentPeriod.WEEKLY;
 
     if (field === "propertyId" && !value)
       message = t("leases.new.form.validation.propertyRequired");
@@ -344,31 +407,27 @@ export default function SimplifiedLeaseCreation({
       message = t("leases.new.form.validation.unitRequired");
     if (field === "tenantId" && !value)
       message = t("leases.new.form.validation.tenantRequired");
-    if (field === "startDate" && !value)
+    if (field === "rentPeriod" && !value)
+      message = t("leases.new.form.validation.rentPeriodRequired", {
+        defaultValue: "Please select a rent period",
+      });
+    if (field === "startDate" && !value && requiresDates)
       message = t("leases.new.form.validation.startDateRequired");
-    if (field === "endDate" && !value)
+    if (field === "endDate" && !value && requiresDates)
       message = t("leases.new.form.validation.endDateRequired");
-
     if (field === "rentAmount" && (typeof value !== "number" || value <= 0))
       message = t("leases.new.form.validation.rentPositive");
-
-    // Agent-proposed rent is optional, but if present it cannot be negative.
-    if (
-      field === "rentProposedByAgent" &&
-      value !== undefined &&
-      value !== null &&
-      (typeof value !== "number" || value < 0)
-    )
-      message = "Agent-proposed rent cannot be negative";
-
     if (field === "securityDeposit" && (typeof value !== "number" || value < 0))
       message = t("leases.new.form.validation.securityDepositNonNegative");
     if (field === "lateFeeAmount" && (typeof value !== "number" || value < 0))
       message = t("leases.new.form.validation.lateFeeNonNegative");
-    if (field === "lateFeeGracePeriodDays" && (typeof value !== "number" || value < 0))
+    if (
+      field === "lateFeeGracePeriodDays" &&
+      (typeof value !== "number" || value < 0)
+    )
       message = t("leases.new.form.validation.gracePeriodNonNegative");
 
-    if (field === "endDate" && value && leaseData.startDate) {
+    if (field === "endDate" && value && requiresDates && leaseData.startDate) {
       const start = new Date(leaseData.startDate);
       const end = new Date(value);
       if (end <= start)
@@ -378,7 +437,10 @@ export default function SimplifiedLeaseCreation({
     return message;
   };
 
-  const validateField = (field: keyof SimplifiedLeaseData, value: any): boolean => {
+  const validateField = (
+    field: keyof SimplifiedLeaseData,
+    value: any
+  ): boolean => {
     const message = getFieldErrorMessage(field, value);
     setError(field, message);
     return !message;
@@ -393,6 +455,7 @@ export default function SimplifiedLeaseCreation({
       ["propertyId", leaseData.propertyId],
       ["unitId", leaseData.unitId],
       ["tenantId", leaseData.tenantId],
+      ["rentPeriod", leaseData.rentPeriod],
       ["startDate", leaseData.startDate],
       ["endDate", leaseData.endDate],
       ["rentAmount", leaseData.rentAmount],
@@ -400,15 +463,8 @@ export default function SimplifiedLeaseCreation({
       ["lateFeeAmount", leaseData.lateFeeAmount],
       ["lateFeeGracePeriodDays", leaseData.lateFeeGracePeriodDays],
     ];
-
-    // Only validate the agent-proposed rent when the field is actually shown.
-    if (isHmoWithAgent()) {
-      checks.push(["rentProposedByAgent", leaseData.rentProposedByAgent]);
-    }
-
     const messages: string[] = [];
     const invalidFields: Array<keyof SimplifiedLeaseData> = [];
-
     checks.forEach(([f, v]) => {
       const message = getFieldErrorMessage(f, v);
       setError(f, message);
@@ -417,7 +473,6 @@ export default function SimplifiedLeaseCreation({
         messages.push(message);
       }
     });
-
     return { ok: messages.length === 0, messages, invalidFields };
   };
 
@@ -426,10 +481,10 @@ export default function SimplifiedLeaseCreation({
       propertyId: "propertySelect",
       unitId: "unitSelect",
       tenantId: "tenantSelect",
+      rentPeriod: "rentPeriodSelect",
       startDate: "startDatePicker",
       endDate: "endDatePicker",
       rentAmount: "rentAmount",
-      rentProposedByAgent: "rentProposedByAgent",
       securityDeposit: "securityDeposit",
       rentDueDay: "rentDueDaySelect",
       lateFeeAmount: "lateFeeAmount",
@@ -447,7 +502,9 @@ export default function SimplifiedLeaseCreation({
     }
   };
 
-  const focusFirstInvalid = (invalidFields: Array<keyof SimplifiedLeaseData>) => {
+  const focusFirstInvalid = (
+    invalidFields: Array<keyof SimplifiedLeaseData>
+  ) => {
     if (invalidFields.length > 0) {
       focusField(invalidFields[0]);
     }
@@ -457,50 +514,30 @@ export default function SimplifiedLeaseCreation({
     return properties.find((p) => p._id === leaseData.propertyId);
   };
 
-  // Resolve the assigned managing agent (id + display name) for the selected
-  // property, tolerating either a populated object or a plain id string.
-  const selectedPropertyAgent = (): { id: string; name: string } | null => {
-    const property = getSelectedProperty();
-    if (!property) return null;
-
-    const raw: PropertyAgentRef | null =
-      property.assignedAgentId && typeof property.assignedAgentId === "object"
-        ? property.assignedAgentId
-        : property.assignedAgent && typeof property.assignedAgent === "object"
-        ? property.assignedAgent
-        : null;
-
-    const id = raw
-      ? raw._id || raw.id || ""
-      : typeof property.assignedAgentId === "string"
-      ? property.assignedAgentId
-      : "";
-
-    if (!id) return null;
-
-    const name = raw
-      ? raw.name || `${raw.firstName || ""} ${raw.lastName || ""}`.trim()
-      : "";
-
-    return { id, name };
-  };
-
-  // Scenario 2 applies only to HMO properties that have an assigned agent.
-  const isHmoWithAgent = (): boolean => {
-    const property = getSelectedProperty();
-    return !!(property && property.type === HMO_TYPE && selectedPropertyAgent());
-  };
-
   const getAvailableUnits = () => {
     const property = getSelectedProperty();
-    if (!property || !Array.isArray(property.units)) return [];
+
+    if (!property || !Array.isArray(property.units)) {
+      return [];
+    }
 
     const selectedUnitId = leaseData.unitId;
+
     const availableUnits = property.units.filter((unit) => {
-      if (!unit || typeof unit !== "object") return false;
-      if (!unit.unitNumber) return false;
-      if (mode === "edit" && unit._id === selectedUnitId) return true;
-      const status = typeof unit.status === "string" ? unit.status.toLowerCase() : "";
+      if (!unit || typeof unit !== "object") {
+        return false;
+      }
+
+      if (!unit.unitNumber) {
+        return false;
+      }
+
+      if (mode === "edit" && unit._id === selectedUnitId) {
+        return true;
+      }
+
+      const status =
+        typeof unit.status === "string" ? unit.status.toLowerCase() : "";
       return status === PropertyStatus.AVAILABLE;
     });
 
@@ -509,8 +546,12 @@ export default function SimplifiedLeaseCreation({
       selectedUnitId &&
       !availableUnits.some((unit) => unit._id === selectedUnitId)
     ) {
-      const selectedUnit = property.units.find((unit) => unit?._id === selectedUnitId);
-      if (selectedUnit) return [selectedUnit, ...availableUnits];
+      const selectedUnit = property.units.find(
+        (unit) => unit?._id === selectedUnitId
+      );
+      if (selectedUnit) {
+        return [selectedUnit, ...availableUnits];
+      }
     }
 
     return availableUnits;
@@ -521,36 +562,13 @@ export default function SimplifiedLeaseCreation({
     return availableUnits.find((unit) => unit?._id === leaseData?.unitId);
   };
 
-  // Changing the property also drops any agent-proposed rent that no longer
-  // applies (e.g. switching to a non-HMO or an HMO with no assigned agent).
-  const handlePropertyChange = (value: string) => {
-    handleInputChange("propertyId", value);
-    handleInputChange("unitId", "");
-
-    const property = properties.find((p) => p._id === value);
-    const rawAgent =
-      property?.assignedAgentId && typeof property.assignedAgentId === "object"
-        ? property.assignedAgentId
-        : property?.assignedAgent && typeof property.assignedAgent === "object"
-        ? property.assignedAgent
-        : null;
-    const agentId = rawAgent
-      ? rawAgent._id || rawAgent.id
-      : typeof property?.assignedAgentId === "string"
-      ? property.assignedAgentId
-      : "";
-    const nextIsHmoWithAgent = !!(property?.type === HMO_TYPE && agentId);
-
-    if (!nextIsHmoWithAgent) {
-      handleInputChange("rentProposedByAgent", 0);
-    }
-  };
-
   const handleUnitChange = (unitId: string) => {
     handleInputChange("unitId", unitId);
 
     // Auto-fill rent amount and security deposit when unit is selected
-    const selectedUnit = getAvailableUnits().find((unit) => unit._id === unitId);
+    const selectedUnit = getAvailableUnits().find(
+      (unit) => unit._id === unitId
+    );
     if (selectedUnit) {
       if (selectedUnit.rentAmount) {
         handleInputChange("rentAmount", selectedUnit.rentAmount);
@@ -561,30 +579,8 @@ export default function SimplifiedLeaseCreation({
     }
   };
 
-  // Auto-calculated total = rent rate x days between start and end.
-  const pricing = useMemo(() => {
-    if (!leaseData.startDate || !leaseData.endDate) return null;
-    const start = new Date(leaseData.startDate + "T00:00:00");
-    const end = new Date(leaseData.endDate + "T00:00:00");
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return null;
-
-    const days = daysBetween(start, end);
-    const rate = leaseData.rentAmount || 0;
-    return { days, rate, total: days * rate };
-  }, [leaseData.startDate, leaseData.endDate, leaseData.rentAmount]);
-
-  const totalAmount = pricing ? pricing.total : 0;
-
-  // Agent-proposed total = agent rate x the same number of days. Informational
-  // only — the landlord total above is the figure that drives the lease.
-  const agentTotalAmount = pricing
-    ? pricing.days * (leaseData.rentProposedByAgent || 0)
-    : 0;
-
-  // Difference between the landlord total and the agent total (landlord − agent).
-  // Positive => landlord proposes more; negative => agent proposes more.
-  const rentTotalDifference = totalAmount - agentTotalAmount;
-
+  // Shared create/edit submit. `asDraft` only applies on create and persists the
+  // lease with a draft status instead of active.
   const persistLease = async (asDraft: boolean) => {
     const { ok, messages, invalidFields } = validateAll();
     if (!ok) {
@@ -605,25 +601,20 @@ export default function SimplifiedLeaseCreation({
     if (asDraft) setSavingDraft(true);
     else setSubmitting(true);
 
-    const includeAgentRent = isHmoWithAgent();
-
+    // Monthly tenancies are open-ended: anchor the start to today and omit the
+    // end date. Day/Week tenancies use the selected range.
+    const todayStr = format(new Date(), "yyyy-MM-dd");
     const basePayload = {
       propertyId: leaseData.propertyId,
       unitId: leaseData.unitId,
       tenantId: leaseData.tenantId,
+      rentPeriod: leaseData.rentPeriod,
       startDate: leaseData.startDate,
       endDate: leaseData.endDate,
       terms: {
-        rentAmount: leaseData.rentAmount, // rate proposed by landlord
-        // Only persist the agent-proposed rent for HMO + assigned-agent.
-        ...(includeAgentRent
-          ? {
-              rentProposedByAgent: leaseData.rentProposedByAgent,
-              agentTotalAmount,
-              rentTotalDifference,
-            }
-          : {}),
-        totalAmount, // auto-calculated total (rate x days)
+        rentAmount: leaseData.rentAmount,
+        // Persist the calculated total for Day/Week tenancies.
+        ...(isDayOrWeek ? { totalAmount: computedTotal } : {}),
         securityDeposit: leaseData.securityDeposit,
         lateFee: leaseData.lateFeeAmount,
         utilities: [],
@@ -648,65 +639,90 @@ export default function SimplifiedLeaseCreation({
     };
 
     const targetLeaseId = leaseId ?? initialLease?._id;
-    const endpoint = mode === "edit" && targetLeaseId ? `/api/leases/${targetLeaseId}` : "/api/leases";
+    const endpoint =
+      mode === "edit" && targetLeaseId
+        ? `/api/leases/${targetLeaseId}`
+        : "/api/leases";
     const method = mode === "edit" ? "PUT" : "POST";
     const payload =
       mode === "edit"
         ? basePayload
         : {
-            ...basePayload,
-            status: asDraft ? LeaseStatus.DRAFT : LeaseStatus.ACTIVE,
-          };
+          ...basePayload,
+          status: asDraft ? LeaseStatus.DRAFT : LeaseStatus.ACTIVE,
+        };
 
     try {
       const response = await fetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || result.message || t("leases.new.form.errors.saveLeaseGeneric"));
+        throw new Error(
+          result.error ||
+          result.message ||
+          t("leases.new.form.errors.saveLeaseGeneric")
+        );
       }
 
       const resultLease = result.data?.lease ?? result.data ?? null;
       const resultLeaseId =
-        resultLease?._id ?? targetLeaseId ?? (typeof result.data?.id === "string" ? result.data.id : undefined);
+        resultLease?._id ??
+        targetLeaseId ??
+        (typeof result.data?.id === "string" ? result.data.id : undefined);
 
       if (mode === "edit") {
         toast.success(t("leases.new.form.toasts.updateSuccess"));
+
         setLeaseError(null);
+
         if (resultLease) {
           hydrateLeaseData(resultLease);
         } else if (targetLeaseId) {
           void loadLeaseDetails(targetLeaseId);
         }
-        if (onSuccess) onSuccess(resultLeaseId);
-        else if (resultLeaseId) window.location.href = `/dashboard/leases/${resultLeaseId}`;
+
+        if (onSuccess) {
+          onSuccess(resultLeaseId);
+        } else if (resultLeaseId) {
+          window.location.href = `/dashboard/leases/${resultLeaseId}`;
+        }
         return;
       }
 
       toast.success(
         asDraft
           ? t("leases.new.form.toasts.draftCreated", {
-              defaultValue: "Lease saved as draft",
-            })
+            defaultValue: "Lease saved as draft",
+          })
           : t("leases.new.form.toasts.createSuccess")
       );
 
       if (result.data?.invoiceGeneration) {
-        const { invoicesGenerated, errors: invoiceErrors } = result.data.invoiceGeneration;
+        const { invoicesGenerated, errors: invoiceErrors } =
+          result.data.invoiceGeneration;
         if (invoicesGenerated > 0) {
           toast.success(
-            t("leases.new.form.toasts.invoicesGenerated", { values: { count: invoicesGenerated } }),
-            { description: t("leases.new.form.toasts.invoicesAvailable"), duration: 6000 }
+            t("leases.new.form.toasts.invoicesGenerated", {
+              values: { count: invoicesGenerated },
+            }),
+            {
+              description: t("leases.new.form.toasts.invoicesAvailable"),
+              duration: 6000,
+            }
           );
         }
         if (Array.isArray(invoiceErrors) && invoiceErrors.length > 0) {
           toast.warning(
-            t("leases.new.form.toasts.invoiceWarnings", { values: { warnings: invoiceErrors.join(", ") } })
+            t("leases.new.form.toasts.invoiceWarnings", {
+              values: { warnings: invoiceErrors.join(", ") },
+            })
           );
         }
       }
@@ -715,9 +731,13 @@ export default function SimplifiedLeaseCreation({
       setOriginalLeaseData(createInitialLeaseState());
 
       const navigateAfterCreate = () => {
-        if (onSuccess) onSuccess(resultLeaseId);
-        else if (resultLeaseId) window.location.href = `/dashboard/leases/${resultLeaseId}`;
-        else window.location.href = "/dashboard/leases";
+        if (onSuccess) {
+          onSuccess(resultLeaseId);
+        } else if (resultLeaseId) {
+          window.location.href = `/dashboard/leases/${resultLeaseId}`;
+        } else {
+          window.location.href = "/dashboard/leases";
+        }
       };
 
       setTimeout(navigateAfterCreate, 2000);
@@ -728,11 +748,14 @@ export default function SimplifiedLeaseCreation({
         mode === "edit"
           ? t("leases.new.form.toasts.updateError")
           : asDraft
-          ? t("leases.new.form.toasts.draftError", {
+            ? t("leases.new.form.toasts.draftError", {
               defaultValue: "Couldn't save draft",
             })
-          : t("leases.new.form.toasts.createError"),
-        { description: message, duration: 5000 }
+            : t("leases.new.form.toasts.createError"),
+        {
+          description: message,
+          duration: 5000,
+        }
       );
     } finally {
       if (asDraft) setSavingDraft(false);
@@ -753,8 +776,6 @@ export default function SimplifiedLeaseCreation({
     );
   }
 
-  const agentRent = selectedPropertyAgent();
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -767,7 +788,9 @@ export default function SimplifiedLeaseCreation({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => void loadLeaseDetails(leaseId ?? initialLease?._id ?? "")}
+                  onClick={() =>
+                    void loadLeaseDetails(leaseId ?? initialLease?._id ?? "")
+                  }
                 >
                   {t("leases.new.form.actions.retryLoadLease")}
                 </Button>
@@ -791,30 +814,50 @@ export default function SimplifiedLeaseCreation({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="property">
-                  {t("leases.new.form.sections.propertyTenant.labels.property", { values: { count: properties.length } })}
+                  {t(
+                    "leases.new.form.sections.propertyTenant.labels.property",
+                    {
+                      values: { count: properties.length },
+                    }
+                  )}
                 </Label>
                 <Select
                   value={leaseData.propertyId}
-                  onValueChange={handlePropertyChange}
+                  onValueChange={(value) => {
+                    handleInputChange("propertyId", value);
+                    handleInputChange("unitId", ""); // Reset unit when property changes
+                  }}
                 >
                   <SelectTrigger id="propertySelect">
-                    <SelectValue placeholder={t("leases.new.form.sections.propertyTenant.placeholders.property")} />
+                    <SelectValue
+                      placeholder={t(
+                        "leases.new.form.sections.propertyTenant.placeholders.property"
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {properties.map((property) => (
                       <SelectItem key={property._id} value={property._id}>
-                        {property.name} - {property.address?.street}, {property.address?.city}
+                        {property.name} - {property.address?.street},{" "}
+                        {property.address?.city}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {fieldErrors.propertyId && <p className="text-destructive text-sm">{fieldErrors.propertyId}</p>}
+                {fieldErrors.propertyId && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.propertyId}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="unit">
                   {leaseData.propertyId
-                    ? t("leases.new.form.sections.propertyTenant.labels.unitWithCount", { values: { count: getAvailableUnits().length } })
+                    ? t(
+                      "leases.new.form.sections.propertyTenant.labels.unitWithCount",
+                      { values: { count: getAvailableUnits().length } }
+                    )
                     : t("leases.new.form.sections.propertyTenant.labels.unit")}
                 </Label>
                 <Select
@@ -826,12 +869,20 @@ export default function SimplifiedLeaseCreation({
                     <SelectValue
                       placeholder={
                         !leaseData.propertyId
-                          ? t("leases.new.form.sections.propertyTenant.placeholders.selectPropertyFirst")
+                          ? t(
+                            "leases.new.form.sections.propertyTenant.placeholders.selectPropertyFirst"
+                          )
                           : loadingProperties
-                          ? t("leases.new.form.sections.propertyTenant.placeholders.loadingUnits")
-                          : getAvailableUnits().length === 0
-                          ? t("leases.new.form.sections.propertyTenant.placeholders.noUnits")
-                          : t("leases.new.form.sections.propertyTenant.placeholders.unit")
+                            ? t(
+                              "leases.new.form.sections.propertyTenant.placeholders.loadingUnits"
+                            )
+                            : getAvailableUnits().length === 0
+                              ? t(
+                                "leases.new.form.sections.propertyTenant.placeholders.noUnits"
+                              )
+                              : t(
+                                "leases.new.form.sections.propertyTenant.placeholders.unit"
+                              )
                       }
                     />
                   </SelectTrigger>
@@ -840,45 +891,108 @@ export default function SimplifiedLeaseCreation({
                       getAvailableUnits().map((unit) => (
                         <SelectItem key={unit._id} value={unit._id}>
                           <div className="flex items-center justify-between w-full">
-                            <span>{t("leases.new.form.sections.propertyTenant.unitLabel", { values: { unitNumber: unit.unitNumber } })}</span>
+                            <span>
+                              {t(
+                                "leases.new.form.sections.propertyTenant.unitLabel",
+                                { values: { unitNumber: unit.unitNumber } }
+                              )}
+                            </span>
                             <span className="text-xs text-gray-500 ml-2">
-                              {t("leases.new.form.sections.propertyTenant.unitSummary", {
-                                values: {
-                                  bedrooms: unit.bedrooms ?? 0,
-                                  bathrooms: unit.bathrooms ?? 0,
-                                  rent: formatCurrency(unit.rentAmount ?? 0),
-                                },
-                              })}
+                              {t(
+                                "leases.new.form.sections.propertyTenant.unitSummary",
+                                {
+                                  values: {
+                                    bedrooms: unit.bedrooms ?? 0,
+                                    bathrooms: unit.bathrooms ?? 0,
+                                    rent: formatCurrency(unit.rentAmount ?? 0),
+                                    perMonth: t("leases.labels.perMonth"),
+                                  },
+                                }
+                              )}
                             </span>
                           </div>
                         </SelectItem>
                       ))
                     ) : leaseData.propertyId ? (
                       <div className="px-2 py-1 text-sm text-gray-500">
-                        {t("leases.new.form.sections.propertyTenant.messages.noUnitsInProperty")}
+                        {t(
+                          "leases.new.form.sections.propertyTenant.messages.noUnitsInProperty"
+                        )}
                       </div>
                     ) : null}
                   </SelectContent>
                 </Select>
-                {fieldErrors.unitId && <p className="text-destructive text-sm">{fieldErrors.unitId}</p>}
+                {fieldErrors.unitId && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.unitId}
+                  </p>
+                )}
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tenant">{t("leases.new.form.sections.propertyTenant.labels.tenant")}</Label>
-              <Select value={leaseData.tenantId} onValueChange={(value) => handleInputChange("tenantId", value)}>
-                <SelectTrigger id="tenantSelect">
-                  <SelectValue placeholder={t("leases.new.form.sections.propertyTenant.placeholders.tenant")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {tenants.map((tenant) => (
-                    <SelectItem key={tenant._id} value={tenant._id}>
-                      {tenant.firstName} {tenant.lastName} - {tenant.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {fieldErrors.tenantId && <p className="text-destructive text-sm">{fieldErrors.tenantId}</p>}
+              <div className="space-y-2">
+                <Label htmlFor="tenant">
+                  {t("leases.new.form.sections.propertyTenant.labels.tenant")}
+                </Label>
+                <Select
+                  value={leaseData.tenantId}
+                  onValueChange={(value) => handleInputChange("tenantId", value)}
+                >
+                  <SelectTrigger id="tenantSelect">
+                    <SelectValue
+                      placeholder={t(
+                        "leases.new.form.sections.propertyTenant.placeholders.tenant"
+                      )}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map((tenant) => (
+                      <SelectItem key={tenant._id} value={tenant._id}>
+                        {tenant.firstName} {tenant.lastName} - {tenant.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldErrors.tenantId && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.tenantId}
+                  </p>
+                )}
+              </div>
+
+              {/* Rent period — how often rent is collected */}
+              <div className="space-y-2">
+                <Label htmlFor="rentPeriod">
+                  {t(
+                    "leases.new.form.sections.propertyTenant.labels.rentPeriod",
+                    { defaultValue: "Rent period" }
+                  )}
+                </Label>
+                <Select
+                  value={leaseData.rentPeriod}
+                  onValueChange={handleRentPeriodChange}
+                >
+                  <SelectTrigger id="rentPeriodSelect">
+                    <SelectValue
+                      placeholder={t(
+                        "leases.new.form.sections.propertyTenant.placeholders.rentPeriod",
+                        { defaultValue: "Select rent period" }
+                      )}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RENT_PERIOD_OPTIONS.map((period) => (
+                      <SelectItem key={period.value} value={period.value}>
+                        {period.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldErrors.rentPeriod && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.rentPeriod}
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -894,21 +1008,31 @@ export default function SimplifiedLeaseCreation({
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">{t("leases.new.form.sections.selectedUnit.labels.unit")}</div>
+                  <div className="text-xs text-gray-500 mb-1">
+                    {t("leases.new.form.sections.selectedUnit.labels.unit")}
+                  </div>
                   <div className="font-medium">
-                    {getSelectedUnit()?.unitNumber} ({getSelectedUnit()?.unitType})
+                    {getSelectedUnit()?.unitNumber} (
+                    {getSelectedUnit()?.unitType})
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">{t("leases.new.form.sections.selectedUnit.labels.size")}</div>
+                  <div className="text-xs text-gray-500 mb-1">
+                    {t("leases.new.form.sections.selectedUnit.labels.size")}
+                  </div>
                   <div className="font-medium">
                     {t("leases.new.form.sections.selectedUnit.sizeValue", {
-                      values: { bedrooms: getSelectedUnit()?.bedrooms ?? 0, bathrooms: getSelectedUnit()?.bathrooms ?? 0 },
+                      values: {
+                        bedrooms: getSelectedUnit()?.bedrooms ?? 0,
+                        bathrooms: getSelectedUnit()?.bathrooms ?? 0,
+                      },
                     })}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">{t("leases.new.form.sections.selectedUnit.labels.area")}</div>
+                  <div className="text-xs text-gray-500 mb-1">
+                    {t("leases.new.form.sections.selectedUnit.labels.area")}
+                  </div>
                   <div className="font-medium">
                     {t("leases.new.form.sections.selectedUnit.areaValue", {
                       values: { area: getSelectedUnit()?.squareFootage ?? 0 },
@@ -916,99 +1040,149 @@ export default function SimplifiedLeaseCreation({
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">{t("leases.new.form.sections.selectedUnit.labels.rent")}</div>
+                  <div className="text-xs text-gray-500 mb-1">
+                    {t("leases.new.form.sections.selectedUnit.labels.rent")}
+                  </div>
                   <div className="font-medium text-green-600">
                     {t("leases.new.form.sections.selectedUnit.rentValue", {
                       values: {
-                        amount: formatCurrency(getSelectedUnit()?.rentAmount ?? 0),
+                        amount: formatCurrency(
+                          getSelectedUnit()?.rentAmount ?? 0
+                        ),
+                        perMonth: t("leases.labels.perMonth"),
                       },
                     })}
                   </div>
                 </div>
               </div>
-              {(getSelectedUnit()?.rentAmount || getSelectedUnit()?.securityDeposit) && (
-                <div className="mt-3 text-xs text-muted-foreground flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3" />
-                  {t("leases.new.form.sections.selectedUnit.autoFillNote")}
-                </div>
-              )}
+              {(getSelectedUnit()?.rentAmount ||
+                getSelectedUnit()?.securityDeposit) && (
+                  <div className="mt-3 text-xs text-muted-foreground flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    {t("leases.new.form.sections.selectedUnit.autoFillNote")}
+                  </div>
+                )}
             </CardContent>
           </Card>
         )}
 
-        {/* Lease Dates */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               {t("leases.new.form.sections.dates.title")}
             </CardTitle>
-            <CardDescription>{t("leases.new.form.sections.dates.description")}</CardDescription>
+            <CardDescription>
+              {t("leases.new.form.sections.dates.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="startDate">{t("leases.new.form.sections.dates.labels.startDate")}</Label>
+                <Label htmlFor="startDate">
+                  {t("leases.new.form.sections.dates.labels.startDate")}
+                </Label>
                 <FormDatePicker
                   id="startDatePicker"
                   key={`start-date-${leaseData.startDate}`}
-                  value={leaseData.startDate ? new Date(leaseData.startDate + "T00:00:00") : undefined}
+                  value={
+                    leaseData.startDate
+                      ? new Date(leaseData.startDate + "T00:00:00")
+                      : undefined
+                  }
                   onChange={(date) => {
                     if (date) {
-                      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                      handleInputChange("startDate", format(localDate, "yyyy-MM-dd"));
+                      // Create a new date to avoid timezone issues
+                      const localDate = new Date(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        date.getDate()
+                      );
+                      handleInputChange(
+                        "startDate",
+                        format(localDate, "yyyy-MM-dd")
+                      );
                     } else {
                       handleInputChange("startDate", "");
                     }
                   }}
-                  placeholder={t("leases.new.form.sections.dates.placeholders.startDate")}
-                  // disabled={(date) => {
-                  //   const today = new Date();
-                  //   today.setHours(0, 0, 0, 0);
-                  //   const checkDate = new Date(date);
-                  //   checkDate.setHours(0, 0, 0, 0);
-                  //   return checkDate < today;
-                  // }}
+                  placeholder={t(
+                    "leases.new.form.sections.dates.placeholders.startDate"
+                  )}
+                  format="dd/MM/yyyy"
+                  fromYear={new Date().getFullYear()}
+                  toYear={new Date().getFullYear() + 5}
                 />
-                {fieldErrors.startDate && <p className="text-destructive text-sm">{fieldErrors.startDate}</p>}
+                {fieldErrors.startDate && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.startDate}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="endDate">{t("leases.new.form.sections.dates.labels.endDate")}</Label>
+                <Label htmlFor="endDate">
+                  {t("leases.new.form.sections.dates.labels.endDate")}
+                </Label>
                 <FormDatePicker
                   id="endDatePicker"
                   key={`end-date-${leaseData.endDate}-${leaseData.startDate}`}
-                  value={leaseData.endDate ? new Date(leaseData.endDate + "T00:00:00") : undefined}
+                  value={
+                    leaseData.endDate
+                      ? new Date(leaseData.endDate + "T00:00:00")
+                      : undefined
+                  }
                   onChange={(date) => {
                     if (date) {
-                      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                      handleInputChange("endDate", format(localDate, "yyyy-MM-dd"));
+                      // Create a new date to avoid timezone issues
+                      const localDate = new Date(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        date.getDate()
+                      );
+                      handleInputChange(
+                        "endDate",
+                        format(localDate, "yyyy-MM-dd")
+                      );
                     } else {
                       handleInputChange("endDate", "");
                     }
                   }}
-                  placeholder={t("leases.new.form.sections.dates.placeholders.endDate")}
+                  placeholder={t(
+                    "leases.new.form.sections.dates.placeholders.endDate"
+                  )}
+                  format="dd/MM/yyyy"
                   disabled={(date) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const checkDate = new Date(date);
                     checkDate.setHours(0, 0, 0, 0);
+
                     if (!leaseData.startDate) return checkDate < today;
-                    const startDate = new Date(leaseData.startDate + "T00:00:00");
+
+                    const startDate = new Date(
+                      leaseData.startDate + "T00:00:00"
+                    );
                     startDate.setHours(0, 0, 0, 0);
                     return checkDate <= startDate;
                   }}
                   fromYear={new Date().getFullYear()}
                   toYear={new Date().getFullYear() + 10}
                 />
-                {fieldErrors.endDate && <p className="text-destructive text-sm">{fieldErrors.endDate}</p>}
+                {fieldErrors.endDate && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.endDate}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Live duration readout from the selected dates */}
-            {pricing && (
+            {/* Live duration / period readout */}
+            {rentPricing && (
               <p className="text-xs text-muted-foreground">
-                {`${pricing.days} day${pricing.days === 1 ? "" : "s"} selected.`}
+                {`${rentPricing.days} day${rentPricing.days === 1 ? "" : "s"
+                  } selected — ${rentPricing.periods} ${rentPricing.isDay ? "day" : "week"
+                  }${rentPricing.periods === 1 ? "" : "s"} of rent.`}
               </p>
             )}
           </CardContent>
@@ -1021,143 +1195,123 @@ export default function SimplifiedLeaseCreation({
               <PoundSterling className="h-5 w-5" />
               {t("leases.details.financial.title")}
             </CardTitle>
-            <CardDescription>{t("leases.new.form.sections.financial.description")}</CardDescription>
+            <CardDescription>
+              {t("leases.new.form.sections.financial.description")}
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Rent rate (proposed by landlord) + auto-calculated Total Amount */}
-            <div className="grid gap-4 md:grid-cols-2">
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="rentAmount">Rent proposed by landlord (per day)</Label>
+                <Label htmlFor="rentAmount">
+                  {t("leases.details.financial.rent")}
+                  {perPeriodLabel ? ` (${perPeriodLabel})` : ""}
+                </Label>
                 <Input
                   id="rentAmount"
                   type="number"
                   min="0"
                   step="0.01"
                   value={leaseData.rentAmount}
-                  onChange={(e) => handleInputChange("rentAmount", parseFloat(e.target.value) || 0)}
-                  placeholder="40.00"
+                  onChange={(e) =>
+                    handleInputChange(
+                      "rentAmount",
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
+                  placeholder="2000.00"
                   required
                 />
-                {fieldErrors.rentAmount && <p className="text-destructive text-sm">{fieldErrors.rentAmount}</p>}
+                {fieldErrors.rentAmount && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.rentAmount}
+                  </p>
+                )}
+                {rentCollectionNote && (
+                  <p className="text-xs text-muted-foreground">
+                    {rentCollectionNote}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="totalAmount">Total amount (landlord)</Label>
-                <Input
-                  id="totalAmount"
-                  type="number"
-                  value={totalAmount}
-                  readOnly
-                  disabled
-                  className="bg-muted font-medium"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {pricing && pricing.rate > 0
-                    ? `${pricing.days} days × ${formatCurrency(pricing.rate)} = ${formatCurrency(pricing.total)}`
-                    : "Set the rent amount and lease dates to calculate the total."}
-                </p>
-              </div>
-            </div>
-
-            {/* Scenario 2: agent-proposed rent + its own total — HMO with an assigned agent only */}
-            {isHmoWithAgent() && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="rentProposedByAgent">Rent proposed by agent (per day)</Label>
-                  <Input
-                    id="rentProposedByAgent"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={leaseData.rentProposedByAgent}
-                    onChange={(e) =>
-                      handleInputChange("rentProposedByAgent", parseFloat(e.target.value) || 0)
-                    }
-                    placeholder="0.00"
-                  />
-                  {fieldErrors.rentProposedByAgent && (
-                    <p className="text-destructive text-sm">{fieldErrors.rentProposedByAgent}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {agentRent?.name
-                      ? `Agent: ${agentRent.name}. For reference — the landlord rate drives the total.`
-                      : "Managing agent's proposed daily rent for this HMO (for reference)."}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="agentTotalAmount">Total amount (agent)</Label>
-                  <Input
-                    id="agentTotalAmount"
-                    type="number"
-                    value={agentTotalAmount}
-                    readOnly
-                    disabled
-                    className="bg-muted font-medium"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {pricing && leaseData.rentProposedByAgent > 0
-                      ? `${pricing.days} days × ${formatCurrency(leaseData.rentProposedByAgent)} = ${formatCurrency(agentTotalAmount)}`
-                      : "For reference — does not change the landlord total."}
-                  </p>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="rentTotalDifference">Difference (landlord total − agent total)</Label>
-                  <Input
-                    id="rentTotalDifference"
-                    type="number"
-                    value={rentTotalDifference}
-                    readOnly
-                    disabled
-                    className="bg-muted font-medium"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {pricing && leaseData.rentProposedByAgent > 0
-                      ? rentTotalDifference === 0
-                        ? "Landlord and agent totals match."
-                        : rentTotalDifference > 0
-                        ? `Landlord total is ${formatCurrency(Math.abs(rentTotalDifference))} higher than the agent total.`
-                        : `Agent total is ${formatCurrency(Math.abs(rentTotalDifference))} higher than the landlord total.`
-                      : "Enter the agent rent and lease dates to see the difference."}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="securityDeposit">{t("leases.details.financial.securityDeposit")}</Label>
+                <Label htmlFor="securityDeposit">
+                  {t("leases.details.financial.securityDeposit")}
+                </Label>
                 <Input
                   id="securityDeposit"
                   type="number"
                   min="0"
                   step="0.01"
                   value={leaseData.securityDeposit}
-                  onChange={(e) => handleInputChange("securityDeposit", parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "securityDeposit",
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
                   placeholder="2000.00"
                 />
-                {fieldErrors.securityDeposit && <p className="text-destructive text-sm">{fieldErrors.securityDeposit}</p>}
+                {fieldErrors.securityDeposit && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.securityDeposit}
+                  </p>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="rentDueDay">{t("leases.new.form.sections.financial.labels.rentDueDay")}</Label>
-                <Select
-                  value={leaseData.rentDueDay.toString()}
-                  onValueChange={(value) => handleInputChange("rentDueDay", parseInt(value))}
-                >
-                  <SelectTrigger id="rentDueDaySelect">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={day.toString()}>
-                        {t("leases.new.form.sections.financial.labels.rentDueDayOption", { values: { day } })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Monthly: collection day. Day/Week: calculated total. */}
+              {isMonthly && (
+                <div className="space-y-2">
+                  <Label htmlFor="rentDueDay">
+                    {t("leases.new.form.sections.financial.labels.rentDueDay")}
+                  </Label>
+                  <Select
+                    value={leaseData.rentDueDay.toString()}
+                    onValueChange={(value) =>
+                      handleInputChange("rentDueDay", parseInt(value))
+                    }
+                  >
+                    <SelectTrigger id="rentDueDaySelect">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {t(
+                            "leases.new.form.sections.financial.labels.rentDueDayOption",
+                            { values: { day } }
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Rent is collected automatically each month on this day.
+                  </p>
+                </div>
+              )}
+
+              {isDayOrWeek && (
+                <div className="space-y-2">
+                  <Label htmlFor="totalAmount">Total amount</Label>
+                  <Input
+                    id="totalAmount"
+                    type="number"
+                    value={computedTotal}
+                    readOnly
+                    disabled
+                    className="bg-muted font-medium"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {rentPricing
+                      ? `${rentPricing.days} ${rentPricing.days ? "day" : "week"
+                      }${rentPricing.periods === 1 ? "" : "s"
+                      } × ${formatCurrency(
+                        leaseData.rentAmount || 0
+                      )} = ${formatCurrency(computedTotal)}`
+                      : "Select start and end dates to calculate the total."}
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1169,51 +1323,85 @@ export default function SimplifiedLeaseCreation({
               <AlertTriangle className="h-5 w-5" />
               {t("leases.new.form.sections.lateFees.title")}
             </CardTitle>
-            <CardDescription>{t("leases.new.form.sections.lateFees.description")}</CardDescription>
+            <CardDescription>
+              {t("leases.new.form.sections.lateFees.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="lateFeeAmount">{t("leases.new.form.sections.lateFees.labels.amount")}</Label>
+                <Label htmlFor="lateFeeAmount">
+                  {t("leases.new.form.sections.lateFees.labels.amount")}
+                </Label>
                 <Input
                   id="lateFeeAmount"
                   type="number"
                   min="0"
                   step="0.01"
                   value={leaseData.lateFeeAmount}
-                  onChange={(e) => handleInputChange("lateFeeAmount", parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "lateFeeAmount",
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
                   placeholder="50.00"
                 />
-                {fieldErrors.lateFeeAmount && <p className="text-destructive text-sm">{fieldErrors.lateFeeAmount}</p>}
+                {fieldErrors.lateFeeAmount && (
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.lateFeeAmount}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lateFeeGracePeriodDays">{t("leases.new.form.sections.lateFees.labels.gracePeriod")}</Label>
+                <Label htmlFor="lateFeeGracePeriodDays">
+                  {t("leases.new.form.sections.lateFees.labels.gracePeriod")}
+                </Label>
                 <Input
                   id="lateFeeGracePeriodDays"
                   type="number"
                   min="0"
                   value={leaseData.lateFeeGracePeriodDays}
-                  onChange={(e) => handleInputChange("lateFeeGracePeriodDays", parseInt(e.target.value) || 0)}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "lateFeeGracePeriodDays",
+                      parseInt(e.target.value) || 0
+                    )
+                  }
                   placeholder="5"
                 />
                 {fieldErrors.lateFeeGracePeriodDays && (
-                  <p className="text-destructive text-sm">{fieldErrors.lateFeeGracePeriodDays}</p>
+                  <p className="text-destructive text-sm">
+                    {fieldErrors.lateFeeGracePeriodDays}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lateFeeType">{t("leases.new.form.sections.lateFees.labels.type")}</Label>
+                <Label htmlFor="lateFeeType">
+                  {t("leases.new.form.sections.lateFees.labels.type")}
+                </Label>
                 <Select
                   value={leaseData.lateFeeType}
-                  onValueChange={(value: "fixed" | "percentage") => handleInputChange("lateFeeType", value)}
+                  onValueChange={(value: "fixed" | "percentage") =>
+                    handleInputChange("lateFeeType", value)
+                  }
                 >
                   <SelectTrigger id="lateFeeTypeSelect">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fixed">{t("leases.new.form.sections.lateFees.options.fixedAmount")}</SelectItem>
-                    <SelectItem value="percentage">{t("leases.new.form.sections.lateFees.options.percentageOfRent")}</SelectItem>
+                    <SelectItem value="fixed">
+                      {t(
+                        "leases.new.form.sections.lateFees.options.fixedAmount"
+                      )}
+                    </SelectItem>
+                    <SelectItem value="percentage">
+                      {t(
+                        "leases.new.form.sections.lateFees.options.percentageOfRent"
+                      )}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1228,12 +1416,16 @@ export default function SimplifiedLeaseCreation({
               <CheckCircle className="h-5 w-5" />
               {t("leases.new.form.sections.automation.title")}
             </CardTitle>
-            <CardDescription>{t("leases.new.form.sections.automation.description")}</CardDescription>
+            <CardDescription>
+              {t("leases.new.form.sections.automation.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="autoGenerateInvoices">{t("leases.new.form.sections.automation.labels.autoGenerate")}</Label>
+                <Label htmlFor="autoGenerateInvoices">
+                  {t("leases.new.form.sections.automation.labels.autoGenerate")}
+                </Label>
                 <p className="text-sm text-muted-foreground">
                   {t("leases.new.form.sections.automation.help.autoGenerate")}
                 </p>
@@ -1241,7 +1433,9 @@ export default function SimplifiedLeaseCreation({
               <Switch
                 id="autoGenerateInvoices"
                 checked={leaseData.autoGenerateInvoices}
-                onCheckedChange={(checked) => handleInputChange("autoGenerateInvoices", checked)}
+                onCheckedChange={(checked) =>
+                  handleInputChange("autoGenerateInvoices", checked)
+                }
               />
             </div>
 
@@ -1249,7 +1443,9 @@ export default function SimplifiedLeaseCreation({
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="autoEmailInvoices">{t("leases.new.form.sections.automation.labels.autoEmail")}</Label>
+                <Label htmlFor="autoEmailInvoices">
+                  {t("leases.new.form.sections.automation.labels.autoEmail")}
+                </Label>
                 <p className="text-sm text-muted-foreground">
                   {t("leases.new.form.sections.automation.help.autoEmail")}
                 </p>
@@ -1257,7 +1453,9 @@ export default function SimplifiedLeaseCreation({
               <Switch
                 id="autoEmailInvoices"
                 checked={leaseData.autoEmailInvoices}
-                onCheckedChange={(checked) => handleInputChange("autoEmailInvoices", checked)}
+                onCheckedChange={(checked) =>
+                  handleInputChange("autoEmailInvoices", checked)
+                }
                 disabled={!leaseData.autoGenerateInvoices}
               />
             </div>
@@ -1268,47 +1466,11 @@ export default function SimplifiedLeaseCreation({
         <Card>
           <CardHeader>
             <CardTitle>{t("leases.new.form.sections.review.title")}</CardTitle>
-            <CardDescription>{t("leases.new.form.sections.review.description")}</CardDescription>
+            <CardDescription>
+              {t("leases.new.form.sections.review.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Total summary from the selected date range */}
-            {pricing && pricing.rate > 0 && (
-              <div className="rounded-lg border p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {`Landlord — ${pricing.days} days × ${formatCurrency(pricing.rate)}`}
-                  </span>
-                  <span className="text-lg font-semibold text-green-600">
-                    {formatCurrency(pricing.total)}
-                  </span>
-                </div>
-                {isHmoWithAgent() && leaseData.rentProposedByAgent > 0 && (
-                  <div className="mt-2 flex items-center justify-between border-t pt-2">
-                    <span className="text-sm text-muted-foreground">
-                      {`Agent — ${pricing.days} days × ${formatCurrency(leaseData.rentProposedByAgent)}`}
-                    </span>
-                    <span className="text-base font-medium">
-                      {formatCurrency(agentTotalAmount)}
-                    </span>
-                  </div>
-                )}
-                {isHmoWithAgent() && leaseData.rentProposedByAgent > 0 && rentTotalDifference !== 0 && (
-                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      {rentTotalDifference > 0 ? "Landlord higher by" : "Agent higher by"}
-                    </span>
-                    <span>{formatCurrency(Math.abs(rentTotalDifference))}</span>
-                  </div>
-                )}
-                {leaseData.securityDeposit > 0 && (
-                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Security deposit (held, not part of total)</span>
-                    <span>{formatCurrency(leaseData.securityDeposit)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
             {leaseData.autoGenerateInvoices && (
               <Alert>
                 <CheckCircle className="h-4 w-4" />
@@ -1317,10 +1479,14 @@ export default function SimplifiedLeaseCreation({
                     values: {
                       depositPart:
                         leaseData.securityDeposit > 0
-                          ? t("leases.new.form.sections.review.fragments.securityDeposit")
+                          ? t(
+                            "leases.new.form.sections.review.fragments.securityDeposit"
+                          )
                           : "",
                       emailPart: leaseData.autoEmailInvoices
-                        ? t("leases.new.form.sections.review.fragments.autoEmail")
+                        ? t(
+                          "leases.new.form.sections.review.fragments.autoEmail"
+                        )
                         : "",
                     },
                   })}
@@ -1341,12 +1507,14 @@ export default function SimplifiedLeaseCreation({
                     setOriginalLeaseData(createInitialLeaseState());
                   }
                 }}
-                disabled={submitting || savingDraft || (isEditMode && initializingLease)}
+                disabled={
+                  submitting || savingDraft || (isEditMode && initializingLease)
+                }
               >
                 {resetLabel}
               </Button>
 
-              {/* Save as Draft — creates the lease with a draft status (create mode only) */}
+              {/* Save as Draft — creates the lease with a draft status (create only) */}
               {!isEditMode && (
                 <Button
                   type="button"
@@ -1360,7 +1528,7 @@ export default function SimplifiedLeaseCreation({
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  {t("leases.new.form.draft.saveButton", {
+                  {t("leases.new.form.buttons.saveDraft", {
                     defaultValue: "Save as Draft",
                   })}
                 </Button>
@@ -1368,7 +1536,9 @@ export default function SimplifiedLeaseCreation({
 
               <Button
                 type="submit"
-                disabled={submitting || savingDraft || (isEditMode && initializingLease)}
+                disabled={
+                  submitting || savingDraft || (isEditMode && initializingLease)
+                }
                 className="flex-1"
               >
                 {submitting ? (

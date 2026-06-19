@@ -246,7 +246,7 @@ export function EditUnitDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Unit Preview Card */}
-            <Card className="border-blue-100 bg-blue-50/50">
+            <Card className="border-blue-100 bg-primary/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center justify-between">
                   <span>{t("properties.units.form.preview.title")}</span>

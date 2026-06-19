@@ -279,9 +279,9 @@ export default function UnitDetailsModal({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-2xl w-[96vw] max-w-[1400px] h-[68vh] max-h-[750px] overflow-hidden flex flex-col">
+      <div className="relative bg-white dark:bg-background rounded-lg shadow-2xl w-[96vw] max-w-[1400px] h-[68vh] max-h-[750px] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-center justify-between p-6 border-b dark:border-gray-800 bg-white dark:bg-primary/10">
           <div>
             {loading ? (
               <div className="space-y-2">
@@ -446,7 +446,7 @@ export default function UnitDetailsModal({
                     <CardContent className="p-2">
                       <div className="flex items-center space-x-3">
                         <div className="p-3 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
-                          <PoundSterling className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                          <PoundSterling className="h-6 w-6 text-primary dark:text-primary" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">

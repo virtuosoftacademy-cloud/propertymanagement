@@ -457,7 +457,7 @@ const getRentRange = (
     : (amount: number) =>
       new Intl.NumberFormat(undefined, {
         style: "currency",
-        currency: "USD",
+        currency: "GBP",
       }).format(amount);
 
   if (bounds.min === bounds.max) {

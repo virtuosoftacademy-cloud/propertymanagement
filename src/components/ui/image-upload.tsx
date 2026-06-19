@@ -197,10 +197,10 @@ export function ImageUpload({
             compact ? "p-4" : "p-8"
           } ${
             dragActive
-              ? "border-blue-400 bg-blue-50/50 dark:border-blue-500 dark:bg-blue-950/30 scale-[1.02]"
+              ? "border-primary-400 bg-blue-50/50 dark:border-primary dark:bg-blue-950/30 scale-[1.02]"
               : disabled
               ? "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 cursor-not-allowed"
-              : "border-gray-300 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-950/20"
+              : "border-gray-300 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary hover:bg-blue-50/30 dark:hover:bg-background"
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -217,7 +217,7 @@ export function ImageUpload({
                   }`}
                 >
                   <Loader2
-                    className={`text-blue-600 dark:text-blue-400 animate-spin ${
+                    className={`text-primary dark:text-primary-400 animate-spin ${
                       compact ? "h-5 w-5" : "h-8 w-8"
                     }`}
                   />
@@ -250,19 +250,19 @@ export function ImageUpload({
             <div className={compact ? "space-y-2" : "space-y-4"}>
               <div className="relative">
                 <div
-                  className={`mx-auto bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950/30 dark:to-blue-900/30 rounded-full flex items-center justify-center ${
+                  className={`mx-auto bg-linear-to-br bg-foreground dark:bg-background border-primary-200 dark:border-primary rounded-full flex items-center justify-center ${
                     compact ? "w-10 h-10" : "w-16 h-16"
                   }`}
                 >
                   <Upload
-                    className={`text-blue-600 dark:text-blue-400 ${
+                    className={`text-primary dark:text-primary-400 ${
                       compact ? "h-5 w-5" : "h-8 w-8"
                     }`}
                   />
                 </div>
                 {dragActive && (
                   <div
-                    className={`absolute inset-0 mx-auto bg-blue-200 dark:bg-blue-900 rounded-full animate-ping opacity-75 ${
+                    className={`absolute inset-0 mx-auto bg-primary-200 dark:bg-primary rounded-full animate-ping opacity-75 ${
                       compact ? "w-10 h-10" : "w-16 h-16"
                     }`}
                   ></div>
@@ -313,7 +313,7 @@ export function ImageUpload({
                   type="button"
                   variant="outline"
                   size={compact ? "sm" : "default"}
-                  className="bg-white dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:border-blue-300 dark:hover:border-blue-600"
+                  className="bg-white dark:bg-background hover:bg-blue-50 dark:hover:bg-blue-950/20 border-primary-200 dark:border-primary text-primary dark:text-primary-400 hover:border-primary-300 dark:hover:border-primary"
                 >
                   <ImageIcon className="h-4 w-4 mr-2" />
                   {t("common.upload.chooseFiles")}
@@ -339,7 +339,7 @@ export function ImageUpload({
         <div className="mt-6 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
-              <ImageIcon className="h-4 w-4 mr-2 text-blue-600" />
+              <ImageIcon className="h-4 w-4 mr-2 text-primary" />
               {t("common.upload.uploadedImages", {
                 values: { count: images.length },
               })}
@@ -367,8 +367,8 @@ export function ImageUpload({
             {images.map((image, index) => (
               <div key={image.publicId || index} className="relative group">
                 <div
-                  className={`relative overflow-hidden rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-blue-300 dark:hover:border-blue-500 transition-colors ${
-                    compact ? "aspect-[4/3] h-20" : "aspect-[4/3] h-32"
+                  className={`relative overflow-hidden rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary transition-colors ${
+                    compact ? "aspect-4/3 h-20" : "aspect-4/3 h-32"
                   }`}
                 >
                   <Image

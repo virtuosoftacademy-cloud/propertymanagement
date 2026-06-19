@@ -19,7 +19,7 @@ function Input({ className, type, error, ...props }: InputProps) {
           "hover:border-gray-300 hover:shadow-md",
           "focus:border-primary focus:ring-2 focus:ring-primary/20 focus:shadow-lg",
           "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-50",
-          "dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-gray-600 dark:focus:border-primary dark:focus:ring-primary/20",
+          "dark:border-gray-700 dark:bg-background dark:hover:border-gray-600 dark:focus:border-primary dark:focus:ring-primary/20",
           "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
           error && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
           className

@@ -530,11 +530,11 @@ export function EnhancedPropertyForm({
 
   return (
     <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-            <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30">
-              <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 rounded-xl">
+              <Building2 className="h-5 w-5 text-primary dark:text-primary" />
             </div>
             {t("properties.form.general.title")}
           </CardTitle>
@@ -868,11 +868,11 @@ export function EnhancedPropertyForm({
       </Card>
 
       {/* Property Units — unchanged */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-            <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-              <Home className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 rounded-xl bg-primary-100 dark:bg-primary-900/30">
+              <Home className="h-5 w-5 text-primary dark:text-primary-dark" />
             </div>
             {t("properties.form.units.title")}
           </CardTitle>
@@ -881,8 +881,8 @@ export function EnhancedPropertyForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="text-sm text-gray-600 bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-            <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+          <div className="text-sm text-gray-500 rounded-lg p-3 border bg-foreground dark:bg-background border-primary-200 dark:border-primary">
+            <p className="font-medium text-primary dark:text-primary-dark mb-1">
               Smart Unit Management
             </p>
             <p>
@@ -892,7 +892,7 @@ export function EnhancedPropertyForm({
             </p>
           </div>
           {units.map((unit, index) => (
-            <Card key={unit.id} className="p-4">
+            <Card key={unit.id} className="dark:bg-accent/50 p-4">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">
@@ -1052,11 +1052,11 @@ export function EnhancedPropertyForm({
       </Card>
 
       {/* Amenities — unchanged */}
-      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader className="pb-6">
           <CardTitle className="flex items-center gap-3 text-xl font-semibold">
-            <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-              <Star className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 rounded-xl bg-primary-100 dark:bg-primary-900/30">
+              <Star className="h-5 w-5 text-primary dark:text-dark-primary" />
             </div>
             {t("properties.form.amenities.title")}
           </CardTitle>
@@ -1073,8 +1073,8 @@ export function EnhancedPropertyForm({
                 <div
                   key={item}
                   className={`group relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md ${selectedAmenities.includes(item)
-                    ? "border-blue-500 bg-blue-50 text-blue-700 shadow-blue-100 dark:bg-blue-950/30 dark:border-blue-400 dark:text-blue-300"
-                    : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-blue-600 dark:hover:bg-blue-950/20"
+                    ? "border-primary bg-primary-50 text-primary shadow-primary-100 dark:bg-primary-950/30 dark:border-primary-400 dark:text-primary-300"
+                    : "border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-primary-600 dark:hover:bg-primary-950/20"
                     }`}
                   onClick={() => handleAmenityToggle(item)}
                 >
@@ -1083,7 +1083,7 @@ export function EnhancedPropertyForm({
                       checked={selectedAmenities.includes(item)}
                       onChange={() => { }}
                       className={`pointer-events-none transition-colors ${selectedAmenities.includes(item)
-                        ? "data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                        ? "data-[state=checked]:bg-primary-600 data-[state=checked]:border-primary-600"
                         : ""
                         }`}
                     />
@@ -1092,7 +1092,7 @@ export function EnhancedPropertyForm({
                     </span>
                   </div>
                   {selectedAmenities.includes(item) && (
-                    <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full" />
+                    <div className="absolute top-2 right-2 w-2 h-2 bg-primary-500 rounded-full" />
                   )}
                 </div>
               );
@@ -1114,14 +1114,14 @@ export function EnhancedPropertyForm({
                     handleAddCustomAmenity();
                   }
                 }}
-                className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:focus:border-blue-400"
+                className="flex-1 border-gray-300 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:focus:border-primary-400"
               />
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleAddCustomAmenity}
                 disabled={!customAmenity.trim()}
-                className="px-4 border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-950/20"
+                className="px-4 border-primary-300 text-primary-600 hover:bg-primary-50 hover:border-primary-400 disabled:opacity-50 disabled:cursor-not-allowed dark:border-primary-600 dark:text-primary-400 dark:hover:bg-primary-950/20"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -1129,8 +1129,8 @@ export function EnhancedPropertyForm({
           </div>
 
           {selectedAmenities.length > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-              <Label className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-4 block">
+            <div className="bg-foreground dark:bg-background rounded-xl p-6 border border-primary-200 dark:border-primary-800">
+              <Label className="text-sm font-semibold text-primary-800 dark:text-primary-300 mb-4 block">
                 {t("properties.form.amenities.selected.label", {
                   values: { count: selectedAmenities.length },
                 })}
@@ -1140,12 +1140,12 @@ export function EnhancedPropertyForm({
                   <Badge
                     key={item}
                     variant="secondary"
-                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 border border-blue-300 text-blue-700 hover:bg-blue-200 transition-colors dark:bg-blue-900/50 dark:border-blue-700 dark:text-blue-300"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-primary-100 border border-primary-300 text-primary-700 hover:bg-primary-200 transition-colors dark:bg-primary-900/50 dark:border-primary-700 dark:text-primary-300"
                   >
                     <span className="font-medium">{item}</span>
                     <button
                       type="button"
-                      className="ml-1 p-0.5 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                      className="ml-1 p-0.5 rounded-full hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -1155,7 +1155,7 @@ export function EnhancedPropertyForm({
                         values: { name: item },
                       })}
                     >
-                      <X className="h-3.5 w-3.5 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-100" />
+                      <X className="h-3.5 w-3.5 text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-100" />
                     </button>
                   </Badge>
                 ))}
@@ -1166,7 +1166,7 @@ export function EnhancedPropertyForm({
       </Card>
 
       {/* Images — unchanged */}
-      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader className="pb-6">
           <CardTitle className="flex items-center gap-3 text-xl font-semibold">
             <div className="p-2 rounded-xl bg-green-100 dark:bg-green-900/30">

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -277,33 +277,33 @@ export default function PropertyDetailsPage() {
         {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="animate-pulse h-10 w-32 bg-gray-200 dark:bg-gray-800 rounded-md" />
+            <div className="animate-pulse h-10 w-32 bg-gray-200 dark:bg-primary/10 rounded-md" />
             <div className="space-y-2">
-              <div className="animate-pulse h-9 w-64 bg-gray-200 dark:bg-gray-800 rounded-md" />
+              <div className="animate-pulse h-9 w-64 bg-gray-200 dark:bg-primary/10 rounded-md" />
               <div className="flex items-center space-x-2">
-                <div className="animate-pulse h-6 w-20 bg-gray-200 dark:bg-gray-800 rounded-md" />
-                <div className="animate-pulse h-6 w-24 bg-gray-200 dark:bg-gray-800 rounded-md" />
+                <div className="animate-pulse h-6 w-20 bg-gray-200 dark:bg-primary/10 rounded-md" />
+                <div className="animate-pulse h-6 w-24 bg-gray-200 dark:bg-primary/10 rounded-md" />
               </div>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="animate-pulse h-10 w-32 bg-gray-200 dark:bg-gray-800 rounded-md" />
-            <div className="animate-pulse h-10 w-10 bg-gray-200 dark:bg-gray-800 rounded-md" />
+            <div className="animate-pulse h-10 w-32 bg-gray-200 dark:bg-primary/10 rounded-md" />
+            <div className="animate-pulse h-10 w-10 bg-gray-200 dark:bg-primary/10 rounded-md" />
           </div>
         </div>
 
         {/* Content Skeleton */}
         <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-900 rounded-xl border shadow-sm p-6">
-            <div className="animate-pulse w-full h-96 bg-gray-200 dark:bg-gray-800 rounded-lg" />
+          <div className="bg-white dark:bg-background rounded-xl border shadow-sm p-6">
+            <div className="animate-pulse w-full h-96 bg-gray-200 dark:bg-primary/10 rounded-lg" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[...Array(4)].map((_, index) => (
               <div
                 key={index}
-                className="bg-white dark:bg-gray-900 rounded-xl border shadow-sm p-6"
+                className="bg-white dark:bg-background rounded-xl border shadow-sm p-6"
               >
-                <div className="animate-pulse h-16 bg-gray-200 dark:bg-gray-800 rounded-md" />
+                <div className="animate-pulse h-16 bg-gray-200 dark:bg-primary/10 rounded-md" />
               </div>
             ))}
           </div>
@@ -438,49 +438,49 @@ export default function PropertyDetailsPage() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-2">
+        <div className="bg-white dark:bg-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-2">
           <TabsList className="grid w-full grid-cols-5 bg-transparent rounded-lg h-auto gap-2">
             <TabsTrigger
               value="overview"
-              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-linear-to-r data-[state=active]:from-primary data-[state=active]:to-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
             >
-              <Building2 className="h-4 w-4 text-blue-600 group-data-[state=active]:text-white" />
+              <Building2 className="h-4 w-4 text-primary group-data-[state=active]:text-white" />
               <span className="font-medium text-sm text-gray-700 dark:text-gray-300 group-data-[state=active]:text-white">
                 {t("properties.details.tabs.overview")}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="details"
-              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-linear-to-r data-[state=active]:from-primary data-[state=active]:to-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
             >
-              <Eye className="h-4 w-4 text-blue-600 group-data-[state=active]:text-white" />
+              <Eye className="h-4 w-4 text-primary group-data-[state=active]:text-white" />
               <span className="font-medium text-sm text-gray-700 dark:text-gray-300 group-data-[state=active]:text-white">
                 {t("properties.details.tabs.details")}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="units"
-              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-700 data-[state=active]:to-blue-800 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-linear-to-r data-[state=active]:from-primary data-[state=active]:to-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
             >
-              <Building2 className="h-4 w-4 text-blue-600 group-data-[state=active]:text-white" />
+              <Building2 className="h-4 w-4 text-primary group-data-[state=active]:text-white" />
               <span className="font-medium text-sm text-gray-700 dark:text-gray-300 group-data-[state=active]:text-white">
                 {t("properties.details.tabs.units")}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="images"
-              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-800 data-[state=active]:to-blue-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-linear-to-r data-[state=active]:from-primary data-[state=active]:to-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
             >
-              <Camera className="h-4 w-4 text-blue-600 group-data-[state=active]:text-white" />
+              <Camera className="h-4 w-4 text-primary group-data-[state=active]:text-white" />
               <span className="font-medium text-sm text-gray-700 dark:text-gray-300 group-data-[state=active]:text-white">
                 {t("properties.details.tabs.images")}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="amenities"
-              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-900 data-[state=active]:to-indigo-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+              className="group flex items-center gap-2 py-2 px-3 rounded-lg bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 data-[state=active]:bg-linear-to-r data-[state=active]:from-primary data-[state=active]:to-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
             >
-              <Star className="h-4 w-4 text-blue-600 group-data-[state=active]:text-white" />
+              <Star className="h-4 w-4 text-primary group-data-[state=active]:text-white" />
               <span className="font-medium text-sm text-gray-700 dark:text-gray-300 group-data-[state=active]:text-white">
                 {t("properties.details.tabs.amenities")}
               </span>
@@ -492,11 +492,11 @@ export default function PropertyDetailsPage() {
           {/* Enhanced Property Basic Information - Minimal Style */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Property Type */}
-            <Card className="border border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 hover:shadow-md transition-all duration-300">
+            <Card className="border border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-background hover:shadow-md transition-all duration-300">
               <CardContent className="">
                 <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  <div className="p-2 bg-gray-50 dark:bg-primary/10 rounded-lg">
+                    <Building2 className="h-6 w-6 text-primary dark:text-primary" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white capitalize">
@@ -513,10 +513,10 @@ export default function PropertyDetailsPage() {
             </Card>
 
             {/* Total Units (for multi-unit) or Bedrooms (for single unit) */}
-            <Card className="border border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 hover:shadow-md transition-all duration-300">
+            <Card className="border border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-background hover:shadow-md transition-all duration-300">
               <CardContent className="">
                 <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="p-2 bg-gray-50 dark:bg-primary/10 rounded-lg">
                     <Bed className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
@@ -533,10 +533,10 @@ export default function PropertyDetailsPage() {
             </Card>
 
             {/* Bathrooms */}
-            <Card className="border border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 hover:shadow-md transition-all duration-300">
+            <Card className="border border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-background hover:shadow-md transition-all duration-300">
               <CardContent className="">
                 <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="p-2 bg-gray-50 dark:bg-primary/10 rounded-lg">
                     <Bath className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
@@ -553,10 +553,10 @@ export default function PropertyDetailsPage() {
             </Card>
 
             {/* Square Footage */}
-            <Card className="border border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 hover:shadow-md transition-all duration-300">
+            <Card className="border border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-background hover:shadow-md transition-all duration-300">
               <CardContent className="">
                 <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="p-2 bg-gray-50 dark:bg-primary/10 rounded-lg">
                     <Square className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
@@ -581,12 +581,12 @@ export default function PropertyDetailsPage() {
 
           {/* Multi-Unit Property Statistics - Minimal Style */}
           {property?.isMultiUnit && units.length > 0 && (
-            <Card className="border p-0 border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
-              <CardHeader className="bg-blue-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 p-6">
+            <Card className="border p-0 border-gray-100 dark:border-gray-700 shadow-sm bg-foreground dark:bg-background overflow-hidden">
+              <CardHeader className="bg-blue-50 dark:bg-primary/10 border-b border-gray-100 dark:border-gray-700 p-6">
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                      <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    <div className="p-2 bg-blue-100 dark:bg-primary-900 rounded-lg">
+                      <Building2 className="h-6 w-6 text-primary dark:text-primary-400" />
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -609,7 +609,7 @@ export default function PropertyDetailsPage() {
                     {canModifyProperty() && (
                       <Button
                         onClick={() => setShowAddUnitDialog(true)}
-                        className="bg-blue-600 text-white hover:bg-blue-700"
+                        className="bg-primary text-white hover:bg-primary-700"
                       >
                         <Building2 className="h-4 w-4 mr-2" />
                         {t("properties.details.overview.actions.addUnit")}
@@ -658,7 +658,7 @@ export default function PropertyDetailsPage() {
 
                       {/* Unit Status Summary - Minimal Style */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                        <div className="text-center p-6 bg-gray-50 dark:bg-primary/10 rounded-lg border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                           <div className="text-3xl font-bold text-green-600 mb-2">
                             {unitStats.available}
                           </div>
@@ -680,7 +680,7 @@ export default function PropertyDetailsPage() {
                           </div>
                         </div>
 
-                        <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                        <div className="text-center p-6 bg-gray-50 dark:bg-primary/10 rounded-lg border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                           <div className="text-3xl font-bold text-blue-600 mb-2">
                             {unitStats.occupied}
                           </div>
@@ -702,7 +702,7 @@ export default function PropertyDetailsPage() {
                           </div>
                         </div>
 
-                        <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                        <div className="text-center p-6 bg-gray-50 dark:bg-primary/10 rounded-lg border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                           <div className="text-3xl font-bold text-yellow-600 mb-2">
                             {unitStats.maintenance}
                           </div>
@@ -725,7 +725,7 @@ export default function PropertyDetailsPage() {
                           </div>
                         </div>
 
-                        <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                        <div className="text-center p-6 bg-gray-50 dark:bg-primary/10 rounded-lg border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                           <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                             {unitStats.total}
                           </div>
@@ -747,11 +747,11 @@ export default function PropertyDetailsPage() {
           {/* Enhanced Property Location & Financial Overview */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Property Location Card - Minimal Style */}
-            <Card className="border p-0 border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
-              <CardHeader className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 p-6">
+            <Card className="border p-0 border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-background overflow-hidden">
+              <CardHeader className="bg-gray-50 dark:bg-primary/10 border-b border-gray-100 dark:border-gray-700 p-6">
                 <CardTitle className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                    <MapPin className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  <div className="p-2 bg-primary/10 dark:bg-primary/90 rounded-lg">
+                    <MapPin className="h-6 w-6 text-primary dark:text-foreground" />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -808,8 +808,8 @@ export default function PropertyDetailsPage() {
             </Card>
 
             {/* Financial Overview - Minimal Style */}
-            <Card className="border p-0 border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
-              <CardHeader className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 p-6">
+            <Card className="border p-0 border-gray-100 dark:border-gray-700 shadow-sm bg-white dark:bg-background overflow-hidden">
+              <CardHeader className="bg-gray-50 dark:bg-primary/10 border-b border-gray-100 dark:border-gray-700 p-6">
                 <CardTitle className="flex items-center space-x-3">
                   <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
                     <PoundSterling className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -827,7 +827,7 @@ export default function PropertyDetailsPage() {
               <CardContent>
                 <div className="space-y-4 mb-4">
                   <div className="grid grid-cols-1 gap-4">
-                    <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                    <div className="p-6 bg-gray-50 dark:bg-primary/10 rounded-lg border border-gray-100 dark:border-gray-700">
                       <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block uppercase tracking-wide">
                         {t("properties.details.financial.nightRent.label")}
                       </label>
@@ -847,7 +847,7 @@ export default function PropertyDetailsPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                      <div className="p-4 bg-gray-50 dark:bg-primary/10 rounded-lg border border-gray-100 dark:border-gray-700">
                         <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block uppercase tracking-wide">
                           {t(
                             "properties.details.financial.securityDeposit.label"
@@ -866,7 +866,7 @@ export default function PropertyDetailsPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                      <div className="p-4 bg-gray-50 dark:bg-primary/10 rounded-lg border border-gray-100 dark:border-gray-700">
                         <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block uppercase tracking-wide">
                           {t(
                             "properties.details.financial.pricePerSquareFoot.label",
@@ -917,10 +917,10 @@ export default function PropertyDetailsPage() {
 
         <TabsContent value="details" className="space-y-6">
           {/* Property Specifications - Minimal Style */}
-          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
+          <div className="bg-white dark:bg-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
             <div className="flex items-center gap-4 mb-8">
-              <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <Building2 className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+              <div className="p-3 rounded-lg bg-primary/10">
+                <Building2 className="h-7 w-7 text-primary dark:text-primary" />
               </div>
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -934,7 +934,7 @@ export default function PropertyDetailsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Property Type Card */}
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+              <div className="p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900">
                     <Home className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -951,7 +951,7 @@ export default function PropertyDetailsPage() {
               </div>
 
               {/* Status Card */}
-              {/* <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+              {/* <div className="p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900">
                     <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -993,7 +993,7 @@ export default function PropertyDetailsPage() {
               </div> */}
 
               {/* Total Units Card */}
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+              <div className="p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900">
                     <Building2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -1008,7 +1008,7 @@ export default function PropertyDetailsPage() {
               </div>
 
               {/* Year Built Card */}
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+              <div className="p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900">
                     <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -1025,7 +1025,7 @@ export default function PropertyDetailsPage() {
 
               {/* Description Card - Full Width */}
               {property?.description && (
-                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300 md:col-span-3">
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300 md:col-span-3">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900">
                       <Eye className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -1044,10 +1044,10 @@ export default function PropertyDetailsPage() {
 
           {/* HMO Compliance Licence — only shown for HMO properties */}
           {isHmo && (
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
+            <div className="bg-white dark:bg-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
               <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 rounded-lg bg-emerald-100 dark:bg-emerald-900">
-                  <ShieldCheck className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                <div className="p-3 rounded-lg bg-primary/10">
+                  <ShieldCheck className="h-7 w-7 text-primary dark:text-primary" />
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -1065,7 +1065,7 @@ export default function PropertyDetailsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Licence Number */}
-                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900">
                       <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -1083,7 +1083,7 @@ export default function PropertyDetailsPage() {
                 </div>
 
                 {/* Issue Date */}
-                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900">
                       <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -1102,7 +1102,7 @@ export default function PropertyDetailsPage() {
                 </div>
 
                 {/* Expiry Date + status badge */}
-                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-300">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-900">
                       <Calendar className="h-4 w-4 text-rose-600 dark:text-rose-400" />
@@ -1147,7 +1147,7 @@ export default function PropertyDetailsPage() {
 
           {/* Property Features */}
           {property?.features && property.features.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
+            <div className="bg-white dark:bg-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
               <div className="flex items-center gap-4 mb-8">
                 <div className="p-3 rounded-lg bg-amber-100 dark:bg-amber-900">
                   <Star className="h-7 w-7 text-amber-600 dark:text-amber-400" />
@@ -1166,7 +1166,7 @@ export default function PropertyDetailsPage() {
                 {property.features.map((feature: string, index: number) => (
                   <div
                     key={index}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-200"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-200"
                   >
                     <Star className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1180,10 +1180,10 @@ export default function PropertyDetailsPage() {
 
           {/* Property Amenities */}
           {property?.amenities && property.amenities.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
+            <div className="bg-white dark:bg-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm p-8">
               <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900">
-                  <Building2 className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                <div className="p-3 rounded-lg bg-primary/10">
+                  <Building2 className="h-7 w-7 text-primary dark:text-primary" />
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -1199,9 +1199,9 @@ export default function PropertyDetailsPage() {
                 {property.amenities.map((amenity: any, index: number) => (
                   <div
                     key={index}
-                    className="flex items-center gap-3 p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-200"
+                    className="flex items-center gap-3 p-4 rounded-lg bg-gray-50 dark:bg-primary/10 border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-all duration-200"
                   >
-                    <div className="shrink-0 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                    <div className="shrink-0 w-2.5 h-2.5 bg-primary rounded-full"></div>
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {amenity.name || amenity}
                     </span>

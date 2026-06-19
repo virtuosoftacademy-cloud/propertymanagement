@@ -324,7 +324,7 @@ export interface IProperty extends Document {
   type: PropertyType;
   status: PropertyStatus;
   address: IAddress;
-  
+
   yearBuilt?: number;
   amenities: IAmenity[];
 
@@ -336,11 +336,11 @@ export interface IProperty extends Document {
   attachments: IPropertyAttachment[];
 
   images: string[];
-  
+
   hmoLicenseNumber?: string;
   hmoLicenseIssueDate?: Date;
   hmoLicenseExpiry?: Date;
-  
+
   ownerId: Types.ObjectId;
   managerId?: Types.ObjectId;
   assignedAgentId?: Types.ObjectId;
@@ -554,6 +554,12 @@ export enum LeaseStatus {
   RENEWED = "renewed",
 }
 
+export enum LeaseRentPeriod {
+  MONTHLY = "monthly",
+  WEEKLY = "weekly",
+  DAY = "day"
+}
+
 export interface ILeasePaymentConfig {
   rentDueDay: number; // Day of month rent is due (1-31)
   lateFeeConfig: ILateFeeConfig;
@@ -570,21 +576,8 @@ export interface ILeasePaymentConfig {
 }
 
 export interface ILeaseTerms {
-  /** Rent rate proposed by the landlord; used to compute the total (rate × days) */
   rentAmount: number;
-
-  /** Auto-calculated landlord total (rentAmount × number of days) */
-  totalAmount?: number;
-
-  /** Rent rate proposed by the managing agent (HMO + assigned agent only) */
-  rentProposedByAgent?: number;
-
-  /** Auto-calculated agent total (rentProposedByAgent × number of days) */
-  agentTotalAmount?: number;
-
-  /** Difference between the totals (totalAmount − agentTotalAmount); +ve = landlord higher */
-  rentTotalDifference?: number;
-
+  totalAmount: number;
   securityDeposit?: number;
   lateFee?: number;
   utilities?: string[];
@@ -595,10 +588,12 @@ export interface ILeaseTerms {
 export interface ILease extends Document {
   _id: Types.ObjectId;
   propertyId: Types.ObjectId;
-  unitId: Types.ObjectId; // References specific unit within the property
-  tenantId: Types.ObjectId; // Now references User with role 'tenant'
-  startDate: Date;
-  endDate: Date;
+  unitId: Types.ObjectId;
+  tenantId: Types.ObjectId;
+  signedBy: Types.ObjectId;
+  rentPeriod: LeaseRentPeriod;
+  startDate?: Date;
+  endDate?: Date;
   status: LeaseStatus;
   // Aggregate payment status derived from linked payments
   paymentStatus?: "current" | "pending" | "overdue";

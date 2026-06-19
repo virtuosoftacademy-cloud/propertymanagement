@@ -555,46 +555,17 @@ export const leasePaymentConfigSchema = z.object({
 });
 
 export const leaseTermsSchema = z.object({
-  // Rent rate proposed by the landlord; used to compute the total
-  // (rate × days between start and end)
   rentAmount: z
     .number()
     .min(0, "Rent cannot be negative")
     .max(100000, "Rent too high"),
-
-  // Auto-calculated landlord total the form submits (rentAmount × number of days)
+  // Calculated total for Day/Week tenancies (rate x number of periods).
+  // Optional — Monthly tenancies don't carry a fixed total.
   totalAmount: z
     .number()
-    .min(0, "Total cannot be negative")
-    .max(100_000_000, "Total too high")
+    .min(0, "Total amount cannot be negative")
+    .max(100000000, "Total amount too high")
     .optional(),
-
-  // ─── Agent-proposed rent (HMO properties with an assigned agent only) ───
-  // Optional, since the assigned agent is optional. Informational; does not
-  // change the landlord total that drives the lease.
-
-  // Rent rate proposed by the managing agent.
-  rentProposedByAgent: z
-    .number()
-    .min(0, "Agent rent cannot be negative")
-    .max(100000, "Agent rent too high")
-    .optional(),
-
-  // Auto-calculated agent total (rentProposedByAgent × number of days).
-  agentTotalAmount: z
-    .number()
-    .min(0, "Agent total cannot be negative")
-    .max(100_000_000, "Agent total too high")
-    .optional(),
-
-  // Difference between the totals (totalAmount − agentTotalAmount). May be
-  // negative when the agent proposes more, so the lower bound is negative.
-  rentTotalDifference: z
-    .number()
-    .min(-100_000_000, "Difference out of range")
-    .max(100_000_000, "Difference out of range")
-    .optional(),
-
   securityDeposit: z
     .number()
     .min(0, "Security deposit cannot be negative")
@@ -636,6 +607,8 @@ export const leaseSchema = z
     propertyId: z.string().min(1, "Property ID is required"),
     unitId: z.string().min(1, "Unit ID is required"),
     tenantId: z.string().min(1, "Tenant ID is required"),
+    // How rent is collected. Monthly tenancies are open-ended (no end date).
+    rentPeriod: z.enum(["monthly", "weekly", "day"]).default("monthly"),
     startDate: z
       .string()
       .min(1, "Start date is required")
@@ -646,6 +619,7 @@ export const leaseSchema = z
         }
         return date;
       }),
+    // End date is only required for bounded (Day/Week) tenancies — see refine.
     endDate: z
       .string()
       .min(1, "End date is required")
@@ -669,9 +643,23 @@ export const leaseSchema = z
       .optional(),
     notes: z.string().max(2000, "Notes too long").optional(),
   })
-  .refine((data) => data.endDate > data.startDate, {
-    message: "End date must be after start date",
-    path: ["endDate"],
+  .superRefine((data, ctx) => {
+    // Day/Week tenancies must have an end date; Monthly tenancies may omit it.
+    if (data.rentPeriod !== "monthly" && !data.endDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "End date is required for daily and weekly tenancies",
+        path: ["endDate"],
+      });
+    }
+    // When an end date is present it must be after the start date.
+    if (data.endDate && data.startDate && data.endDate <= data.startDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "End date must be after start date",
+        path: ["endDate"],
+      });
+    }
   });
 
 // Lease update schema (partial without refinement for updates)
@@ -679,6 +667,7 @@ export const leaseUpdateSchema = z.object({
   propertyId: z.string().min(1, "Property ID is required").optional(),
   unitId: z.string().min(1, "Unit ID is required").optional(),
   tenantId: z.string().min(1, "Tenant ID is required").optional(),
+  rentPeriod: z.enum(["monthly", "weekly", "day"]).optional(),
   startDate: z
     .string()
     .min(1, "Start date is required")
@@ -714,6 +703,7 @@ export const leaseUpdateSchema = z.object({
     .optional(),
   notes: z.string().max(2000, "Notes too long").optional(),
 });
+
 // ============================================================================
 // PAYMENT VALIDATIONS
 // ============================================================================

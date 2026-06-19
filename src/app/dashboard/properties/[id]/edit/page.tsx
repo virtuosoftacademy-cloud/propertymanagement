@@ -154,7 +154,7 @@ export default function EditPropertyPage() {
         </Alert>
       )}
 
-      <Card>
+      <Card className="bg-linear-to-br from-white to-gray-50/50 dark:from-foreground/5 dark:to-background">
         <CardContent className="p-6">
           <EnhancedPropertyForm
             initialData={propertyData}

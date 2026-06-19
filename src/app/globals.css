@@ -131,7 +131,7 @@
   /* Primary Blue Theme - Dark */
   --primary: oklch(54.92% 0.088 195.90);
   --primary-light:oklch(54.92% 0.088 195.90);
-  --primary-dark: oklch(54.92% 0.088 195.90);
+  --primary-dark: oklch(77.886% 0.12411 196.922);
   --primary-foreground: oklch(0.982 0.018 155.826);
 
   /* Secondary Colors - Dark */

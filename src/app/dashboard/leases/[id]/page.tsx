@@ -695,16 +695,19 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                 </CardHeader>
                 <CardContent className="space-y-4 lg:space-y-6">
                   <div className="grid grid-cols-1 gap-3 lg:gap-4">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
-                      <span className="text-success font-semibold text-sm lg:text-base">
-                        {hasAgentRent
-                          ? "Total amount (landlord)"
-                          : t("leases.details.financial.totalAmount")}
-                      </span>
-                      <span className="font-bold text-lg lg:text-xl text-success">
-                        {formatCurrency(lease.terms.totalAmount)}
-                      </span>
-                    </div>
+                    
+                    {(lease.terms.totalAmount ?? 0) > 0 && (
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
+                        <span className="text-success font-semibold text-sm lg:text-base">
+                          {hasAgentRent
+                            ? "Total amount (landlord)"
+                            : t("leases.details.financial.totalAmount")}
+                        </span>
+                        <span className="font-bold text-lg lg:text-xl text-success">
+                          {formatCurrency(lease.terms.totalAmount)}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
                       <span className="text-success font-semibold text-sm lg:text-base">
                         {hasAgentRent

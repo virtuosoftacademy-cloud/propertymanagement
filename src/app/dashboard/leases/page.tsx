@@ -534,16 +534,21 @@ const fetchLeases = async (
       id: "totalAmount",
       header: t("leases.table.totalAmount"),
       visibility: "md",
-      cell: (lease) => (
-        <div>
-          <div className="font-medium">
-            {formatCurrency(lease.unit?.totalAmount || lease.terms?.totalAmount)}
+      cell: (lease) => {
+        // Day/Week leases carry a calculated total; Monthly leases have a 0
+        // total, so fall back to the recurring rent amount for those.
+        const total = lease.unit?.totalAmount || lease.terms?.totalAmount || 0;
+        const displayAmount =
+          total !== 0 ? total : lease.terms?.rentAmount ?? 0;
+        return (
+          <div>
+            <div className="font-medium">{formatCurrency(displayAmount)}</div>
+            {/* <div className="text-sm text-muted-foreground">
+              {t("leases.labels.perMonth")}
+            </div> */}
           </div>
-          {/* <div className="text-sm text-muted-foreground">
-            {t("leases.labels.perMonth")}
-          </div> */}
-        </div>
-      ),
+        );
+      },
     },
     {
       id: "startDate",

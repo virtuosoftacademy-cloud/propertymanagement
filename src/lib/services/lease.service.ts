@@ -3,7 +3,7 @@
  * Comprehensive service for lease management with CRUD operations and lifecycle methods
  */
 
-import { ILease, LeaseStatus } from "@/types";
+import { ILease, LeaseRentPeriod, LeaseStatus } from "@/types";
 
 export interface LeaseQueryParams {
   page?: number;
@@ -22,8 +22,9 @@ export interface LeaseFormData {
   propertyId: string;
   unitId: string;
   tenantId: string;
-  startDate: string;
-  endDate: string;
+  rentPeriod?: LeaseRentPeriod;
+  startDate?: string;
+  endDate?: string;
   status?: LeaseStatus;
   terms: {
     rentAmount: number;
@@ -110,11 +111,13 @@ export interface LeaseResponse {
     applicationDate?: string;
     tenantStatus?: string;
   };
+  rentPeriod: LeaseRentPeriod;
   startDate: string;
   endDate: string;
   status: LeaseStatus;
   terms: {
     rentAmount: number;
+    totalAmount: number;
     securityDeposit: number;
     lateFee: number;
     petDeposit?: number;
