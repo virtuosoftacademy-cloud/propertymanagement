@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             className={cn(
               "fixed md:relative inset-y-0 left-0 z-50 md:z-auto",
               "transition-transform duration-300 ease-in-out",
-              "md:flex md:flex-col md:flex-shrink-0",
+              "md:flex md:flex-col md:shrink-0",
               isMobileMenuOpen
                 ? "translate-x-0"
                 : "-translate-x-full md:translate-x-0"

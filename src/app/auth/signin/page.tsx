@@ -1,10 +1,7 @@
-// features/auth/components/LoginForm.tsx  (or wherever SignInPage lives)
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -39,9 +36,9 @@ const DEFAULT_BRANDING: Branding = {
   logoLight: "/images/logo-light.png",
   logoDark: "/images/logo-dark.png",
   favicon: "/favicon.ico",
-  primaryColor: "#3B82F6",
-  secondaryColor: "#64748B",
-  companyName: "PropertyPro",
+  primaryColor: "#188182",
+  secondaryColor: "#1F1F1F",
+  companyName: "Tenure",
 };
 
 export default function SignInPage() {

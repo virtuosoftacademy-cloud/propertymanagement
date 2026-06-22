@@ -114,18 +114,22 @@ const createTenantSchema = (t: (key: string) => string) =>
       }),
       ssn: z
         .string()
+        .min(9,
+          { message: t("tenants.form.validation.ssnInvalid") }
+        )
         .optional()
         .transform((val) => {
           if (!val || val.trim() === "") return undefined;
           return val.trim();
         })
-        .refine(
-          (val) => {
-            if (!val) return true;
-            return /^\d{3}-?\d{2}-?\d{4}$/.test(val);
-          },
-          { message: t("tenants.form.validation.ssnInvalid") }
-        ),
+      // .refine(
+      //   (val) => {
+      //     if (!val) return true;
+      //     return /^\d{2} ?\d{2} ?\d{2} ?\d{2} ?\d{1}$/.test(val);
+      //   },
+      //   { message: t("tenants.form.validation.ssnInvalid") }
+      // )
+      ,
 
       // Employment Information
       employer: z.string().optional(),
@@ -839,6 +843,7 @@ export default function NewTenantPage() {
                             </FormLabel>
                             <FormControl>
                               <Input
+                                maxLength={9}
                                 placeholder={t("tenants.form.fields.ssn.placeholder")}
                                 className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
                                 {...field}

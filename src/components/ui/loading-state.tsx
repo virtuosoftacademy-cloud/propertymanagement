@@ -6,7 +6,7 @@
 "use client";
 
 import React from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -109,14 +109,14 @@ export function LoadingCard({
       <CardContent className="flex flex-col items-center justify-center py-8 space-y-4">
         <LoadingSpinner size="lg" variant="spinner" />
         <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold text-blue-800">{title}</h3>
-          <p className="text-blue-700 text-sm max-w-md">{message}</p>
+          <h3 className="text-lg font-semibold text-primary">{title}</h3>
+          <p className="text-primary-700 text-sm max-w-md">{message}</p>
         </div>
         {onCancel && (
           <Button
             onClick={onCancel}
             variant="outline"
-            className="border-blue-300 text-blue-700 hover:bg-blue-100"
+            className="border-primary-300 text-primary hover:bg-blue-100"
           >
             {cancelText}
           </Button>

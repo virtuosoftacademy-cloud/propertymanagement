@@ -1,6 +1,6 @@
 {
-  "name": "PropertyPro - Property Management System",
-  "short_name": "PropertyPro",
+  "name": "Tenure - Property Management Software",
+  "short_name": "Tenure",
   "description": "Comprehensive property management solution for landlords, property managers, and tenants",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -8,7 +8,7 @@
   "theme_color": "#2563eb",
   "orientation": "portrait-primary",
   "scope": "/",
-  "lang": "en-US",
+  "lang": "en-GBP",
   "categories": ["business", "productivity", "finance"],
   "icons": [
     {
@@ -120,14 +120,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "PropertyPro Dashboard - Desktop View"
+      "label": "Tenure Dashboard - Desktop View"
     },
     {
       "src": "/screenshots/mobile-dashboard.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "PropertyPro Dashboard - Mobile View"
+      "label": "Tenure Dashboard - Mobile View"
     },
     {
       "src": "/screenshots/mobile-properties.png",

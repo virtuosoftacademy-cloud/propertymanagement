@@ -130,11 +130,11 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
   }, [error, errorType]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-br from-background via-background to-muted/20">
       <Card className="max-w-3xl w-full border-border/60 shadow-2xl overflow-hidden">
         <CardContent className="p-0">
           {/* Decorative Header */}
-          <div className="relative h-32 bg-gradient-to-r from-destructive/10 via-destructive/5 to-transparent overflow-hidden">
+          <div className="relative h-32 bg-linear-to-r from-destructive/10 via-destructive/5 to-transparent overflow-hidden">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-4 left-8 w-32 h-32 rounded-full bg-destructive blur-3xl" />
               <div className="absolute bottom-4 right-8 w-40 h-40 rounded-full bg-destructive/60 blur-3xl" />

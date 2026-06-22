@@ -818,8 +818,8 @@ const fetchLeases = async (
           {/* Main Header */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-2">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
-                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 bg-primary/5 dark:bg-primary/10 rounded-lg border border-primary/30 dark:border-primary">
+                <FileText className="h-5 w-5 text-primary dark:text-primary" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">

@@ -290,7 +290,7 @@ export function EnhancedPropertyForm({
         unitType: "apartment" as const,
         floor: 1,
         bedrooms: 1,
-        bathrooms: 1,
+        bathrooms: 0,
         squareFootage: 500,
         rentAmount: 1000,
         securityDeposit: 1000,
@@ -966,7 +966,7 @@ export function EnhancedPropertyForm({
                   </div>
                   <div className="space-y-2">
                     <Label>{t("properties.form.units.fields.bathrooms")}</Label>
-                    <Input min={1} type="number" value={unit.bathrooms}
+                    <Input min={0} type="number" value={unit.bathrooms}
                       onChange={(e) => { const n = [...units]; n[index].bathrooms = parseInt(e.target.value) || 0; setUnits(n); }}
                     />
                   </div>

@@ -250,7 +250,7 @@ export function ImageUpload({
             <div className={compact ? "space-y-2" : "space-y-4"}>
               <div className="relative">
                 <div
-                  className={`mx-auto bg-linear-to-br bg-foreground dark:bg-background border-primary-200 dark:border-primary rounded-full flex items-center justify-center ${
+                  className={`mx-auto bg-linear-to-br bg-primary/5 dark:bg-background border-white dark:border-primary rounded-full flex items-center justify-center ${
                     compact ? "w-10 h-10" : "w-16 h-16"
                   }`}
                 >

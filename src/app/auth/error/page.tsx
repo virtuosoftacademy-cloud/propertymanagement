@@ -135,7 +135,7 @@ function AuthErrorContent() {
   const ErrorIcon = errorDetails.icon;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-br from-background via-background to-muted/20">
       <Card className="max-w-lg w-full border-border/60 shadow-xl">
         <CardHeader className="text-center pb-4">
           <div className="mx-auto mb-4 relative">

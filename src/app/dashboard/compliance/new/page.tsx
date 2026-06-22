@@ -113,7 +113,7 @@ export default function NewComplianceReportPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold tracking-tight bg-linear-to-r from-primary to-primary bg-clip-text text-transparent">
               {t("New Compliance Report")}
             </h1>
             <p className="text-muted-foreground">
@@ -123,7 +123,6 @@ export default function NewComplianceReportPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="hover:bg-blue-50 hover:text-blue-600 border transition-colors"
             onClick={() => router.back()}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -156,7 +155,7 @@ export default function NewComplianceReportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold tracking-tight bg-linear-to-r from-primary to-primary bg-clip-text text-transparent">
             {t("New Compliance Report")}
           </h1>
           <p className="text-muted-foreground">
@@ -164,13 +163,13 @@ export default function NewComplianceReportPage() {
           </p>
         </div>
         <Button
+          className="hover:bg-gray/20!"
           variant="ghost"
           size="sm"
-          className="hover:bg-blue-50 hover:text-blue-600 border transition-colors"
           onClick={handleCancel}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          {t("Back to Compliance Reports")}
+          {t("Back to Reports")}
         </Button>
       </div>
 

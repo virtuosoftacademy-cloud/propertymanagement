@@ -4,7 +4,11 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState
+} from "react";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import {
   Card,
@@ -17,7 +21,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle
+} from "@/components/ui/alert";
 import {
   AnalyticsCard,
   AnalyticsCardGrid,
@@ -187,7 +195,7 @@ export default function DashboardPage() {
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const response = await fetch("/api/dashboard/overview", {
           signal: controller.signal,
@@ -598,6 +606,10 @@ export default function DashboardPage() {
               {t("dashboard.actions.analytics")}
             </Button>
           </Link>
+          {/* <Button onClick={handleExport} size="sm" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Export
+          </Button> */}
         </div>
       </div>
 

@@ -411,7 +411,7 @@ export default function NewMaintenanceRequestPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold tracking-tight bg-linear-to-r from-primary to-primary bg-clip-text text-transparent">
             {t("maintenance.new.header.title")}
           </h1>
           <p className="text-muted-foreground">
@@ -419,9 +419,8 @@ export default function NewMaintenanceRequestPage() {
           </p>
         </div>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className="hover:bg-blue-50 hover:text-blue-600 border transition-colors"
           onClick={() =>
             router.push(
               isTenant

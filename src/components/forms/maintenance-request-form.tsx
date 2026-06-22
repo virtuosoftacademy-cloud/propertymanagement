@@ -443,10 +443,10 @@ export function MaintenanceRequestForm({
           className="space-y-8"
         >
           {/* Request Details */}
-          <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
+          <Card className="border-0">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                <div className="p-2 rounded-lg bg-linear-to-br from-primary to-primary text-white">
                   <Wrench className="h-5 w-5" />
                 </div>
                 {t("maintenance.form.requestDetails.title")}
@@ -603,7 +603,7 @@ export function MaintenanceRequestForm({
           </Card>
 
           {(showPropertyTenantSection ?? !isTenantView) && (
-            <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
+            <Card className="border-0">
               <CardHeader className="pb-6">
                 <CardTitle className="flex items-center gap-3 text-xl">
                   <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
@@ -756,7 +756,7 @@ export function MaintenanceRequestForm({
                           <SelectContent>
                             {loadingTenants ? (
                               <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                                 {t("maintenance.form.tenant.loading")}
                               </div>
                             ) : filteredTenants.length > 0 ? (
@@ -986,13 +986,12 @@ export function MaintenanceRequestForm({
           </Card>
 
           {/* Submit Button */}
-          <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
-            <CardContent className="pt-6">
+          <div className="py-3">
               <div className="flex justify-end space-x-4">
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11 px-6 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
+                  size={"sm"}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1004,7 +1003,7 @@ export function MaintenanceRequestForm({
                 <Button
                   type="submit"
                   disabled={isLoading || submitDisabled}
-                  className="h-11 px-8 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-11 px-8 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading
                     ? t("maintenance.form.buttons.submitting")
@@ -1014,8 +1013,7 @@ export function MaintenanceRequestForm({
                         : t("maintenance.form.buttons.submitRequest"))}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
         </form>
       </Form>
     </div>

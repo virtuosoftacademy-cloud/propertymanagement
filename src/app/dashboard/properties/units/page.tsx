@@ -134,7 +134,7 @@ function UnitCard({ unit, onViewDetails }: UnitCardProps) {
           <StatusBadge status={unit.unitStatus} />
         </div>
         <div className="absolute top-3 right-3">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/5 dark:bg-primary/10 text-primary dark:text-primary border border-primary/30 dark:border-primary">
             <Home className="h-3 w-3 mr-1" />
             <span>
               {unit.unitType.charAt(0).toUpperCase() + unit.unitType.slice(1)}
@@ -833,7 +833,7 @@ export default function AllUnitsPage() {
                             <div className="font-medium text-gray-900 dark:text-gray-100">
                               <Link
                                 href={`/dashboard/properties/${unit._id}/units/${unit.unitId}`}
-                                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                className="hover:text-primary dark:hover:text-primary-dark transition-colors"
                               >
                                 {t("properties.available.card.unit")}{" "}
                                 {unit.unitNumber}
@@ -855,7 +855,7 @@ export default function AllUnitsPage() {
                           <div className="font-medium text-gray-900 dark:text-gray-100">
                             <Link
                               href={`/dashboard/properties/${unit._id}`}
-                              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                              className="hover:text-primary dark:hover:text-primary-dark transition-colors"
                             >
                               {unit.name}
                             </Link>

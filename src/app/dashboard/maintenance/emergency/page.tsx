@@ -1086,7 +1086,7 @@ export default function EmergencyMaintenancePage() {
 
       {/* Bulk Actions Bar */}
       {showBulkActions && (
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-primary/70 bg-primary/5">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">

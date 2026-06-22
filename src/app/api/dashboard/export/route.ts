@@ -48,9 +48,9 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
             .populate(
               includeDetails
                 ? [
-                    { path: "tenantId", select: "firstName lastName email" },
-                    { path: "propertyId", select: "name" },
-                  ]
+                  { path: "tenantId", select: "firstName lastName email" },
+                  { path: "propertyId", select: "name" },
+                ]
                 : []
             )
             .lean(),
@@ -88,9 +88,9 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
             .populate(
               includeDetails
                 ? [
-                    { path: "tenantId", select: "firstName lastName" },
-                    { path: "propertyId", select: "name" },
-                  ]
+                  { path: "tenantId", select: "firstName lastName" },
+                  { path: "propertyId", select: "name" },
+                ]
                 : []
             )
             .lean(),
@@ -131,20 +131,21 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         summary,
         data: includeDetails
           ? {
-              properties,
-              leases,
-              tenants,
-              maintenance,
-              payments,
-            }
+            properties,
+            leases,
+            tenants,
+            maintenance,
+            payments,
+          }
           : {
-              propertyCount: properties.length,
-              leaseCount: leases.length,
-              tenantCount: tenants.length,
-              maintenanceCount: maintenance.length,
-              paymentCount: payments.length,
-            },
+            propertyCount: properties.length,
+            leaseCount: leases.length,
+            tenantCount: tenants.length,
+            maintenanceCount: maintenance.length,
+            paymentCount: payments.length,
+          },
       };
+      const safeExportData = JSON.parse(JSON.stringify(exportData))
 
       if (format === "csv") {
         // Convert to CSV format for summary data
@@ -170,15 +171,14 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
           status: 200,
           headers: {
             "Content-Type": "text/csv",
-            "Content-Disposition": `attachment; filename="dashboard-export-${
-              now.toISOString().split("T")[0]
-            }.csv"`,
+            "Content-Disposition": `attachment; filename="dashboard-export-${now.toISOString().split("T")[0]
+              }.csv"`,
           },
         });
       }
 
       return createSuccessResponse(
-        exportData,
+        safeExportData,
         "Dashboard data exported successfully"
       );
     } catch (error) {

@@ -531,7 +531,7 @@ export function Sidebar({ className }: SidebarProps) {
             // Main parent active state (full primary styling)
             isActive &&
             level === 0 &&
-            "bg-gradient-to-r from-primary/20 to-primary-light/20 text-primary border border-primary/20 shadow-sm",
+            "bg-linear-to-r from-primary/20 to-primary-light/20 text-primary border border-primary/20 shadow-sm",
             // Parent with active child (subtle primary styling)
             isParentActive &&
             "bg-primary/10 text-primary border border-primary/10",
@@ -544,12 +544,12 @@ export function Sidebar({ className }: SidebarProps) {
         >
           {/* Tree structure indicator for child items */}
           {level > 0 && (
-            <div className="absolute left-[-12px] top-1/2 w-3 h-px bg-gray-300 dark:bg-gray-600" />
+            <div className="absolute -left-3 top-1/2 w-3 h-px bg-gray-300 dark:bg-gray-600" />
           )}
 
           {/* Active indicator - only for main parent active state */}
           {isActive && level === 0 && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-primary to-primary-light rounded-r-full shadow-sm" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-linear-to-b from-primary to-primary-light rounded-r-full shadow-sm" />
           )}
 
           <item.icon
@@ -701,7 +701,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "flex h-full flex-col bg-white dark:bg-sidebar border-r border-gray-200 dark:border-gray-800 overflow-hidden relative transition-[width] duration-300 ease-in-out",
+        "flex h-full flex-col bg-white dark:bg-sidebar border-r border-gray-200 dark:border-primary/30 overflow-hidden relative transition-[width] duration-300 ease-in-out",
         isCollapsed ? "w-16" : "w-64",
         className
       )}
@@ -709,8 +709,8 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Header */}
       <div
         className={cn(
-          "flex h-16 items-center flex-shrink-0 border-b border-gray-200 dark:border-gray-800 gap-2",
-          isCollapsed ? "px-2" : "px-4"
+          "flex h-16 items-center border-b border-gray-200 dark:border-gray-800 gap-0",
+          isCollapsed ? "px-0 -mr-4" : "px-4"
         )}
       >
         <Link
@@ -729,17 +729,15 @@ export function Sidebar({ className }: SidebarProps) {
               height={isCollapsed ? 32 : 36}
               className={cn(
                 "object-contain",
-                isCollapsed ? "h-8 w-8" : "h-8 w-auto max-w-35"
+                isCollapsed ? "size-10 -mr-3" : "h-8 w-auto max-w-35"
               )}
             />
           </div>
         </Link>
-        <Button
-          variant="ghost"
-          size="icon"
+        <div
           className={cn(
-            "ml-auto h-8 w-8 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
-            isCollapsed && "ml-0"
+            "ml-auto",
+            isCollapsed && "mr-6"
           )}
           onClick={() => setIsCollapsed((prev) => !prev)}
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -749,7 +747,7 @@ export function Sidebar({ className }: SidebarProps) {
           ) : (
             <ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           )}
-        </Button>
+        </div>
       </div>
 
       {/* Navigation */}
