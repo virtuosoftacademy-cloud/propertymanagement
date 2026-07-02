@@ -52,11 +52,11 @@ export interface LeaseInvoiceProps {
 export function LeaseInvoice({
   lease,
   companyInfo = {
-    name: "PropertyPro Management",
+    name: "Tenure Property Management",
     address: "123 Business Ave, Suite 100, City, State 12345",
-    phone: "+1 (555) 123-4567",
-    email: "info@PropertyPro.com",
-    website: "www.PropertyPro.com",
+    phone: "+44 20 7946 0123",
+    email: "info@Tenure.com",
+    website: "www.Tenure.co.uk",
   },
   invoiceNumber,
   issueDate,
@@ -132,7 +132,7 @@ export function LeaseInvoice({
       case LeaseStatus.TERMINATED:
         return "bg-gray-100 text-gray-800 border-gray-200";
       default:
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-blue-100 text-blue-800 border-primary/30";
     }
   };
 
@@ -241,7 +241,7 @@ export function LeaseInvoice({
                     {companyInfo.email}
                   </p>
                   {companyInfo.website && (
-                    <p className="text-blue-600">{companyInfo.website}</p>
+                    <p className="text-primary">{companyInfo.website}</p>
                   )}
                 </div>
               </div>
@@ -284,7 +284,7 @@ export function LeaseInvoice({
               {/* Property Information */}
               <div className="party">
                 <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
-                  <Home className="h-5 w-5 text-blue-600" />
+                  <Home className="h-5 w-5 text-primary" />
                   Property Information
                 </h3>
                 <div className="space-y-2 text-sm">
@@ -324,7 +324,7 @@ export function LeaseInvoice({
               {/* Tenant Information */}
               <div className="party">
                 <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
-                  <User className="h-5 w-5 text-blue-600" />
+                  <User className="h-5 w-5 text-primary" />
                   Tenant Information
                 </h3>
                 <div className="space-y-2 text-sm">
@@ -355,7 +355,7 @@ export function LeaseInvoice({
             {/* Lease Details */}
             <div className="lease-details bg-gray-50 p-6 rounded-lg mb-8">
               <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
-                <FileText className="h-5 w-5 text-blue-600" />
+                <FileText className="h-5 w-5 text-primary" />
                 Lease Details
               </h3>
               <div className="details-grid grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -431,53 +431,53 @@ export function LeaseInvoice({
             </div>
 
             {/* Financial Summary */}
-            <div className="financial-summary bg-blue-50 p-6 rounded-lg mb-8">
+            <div className="financial-summary bg-primary/5 p-6 rounded-lg mb-8">
               <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
-                <PoundSterling className="h-5 w-5 text-blue-600" />
+                <PoundSterling className="h-5 w-5 text-primary" />
                 Financial Summary
               </h3>
               <div className="summary-grid space-y-3">
-                <div className="summary-item flex justify-between py-3 border-b border-blue-200">
-                  <span className="summary-label font-medium text-blue-900">
+                <div className="summary-item flex justify-between py-3 border-b border-primary/30">
+                  <span className="summary-label font-medium text-primary">
                     Total Rent:
                   </span>
-                  <span className="summary-value font-semibold text-blue-900">
+                  <span className="summary-value font-semibold text-primary">
                     {formatCurrency(lease.terms?.totalAmount || 0)}
                   </span>
                 </div>
-                <div className="summary-item flex justify-between py-3 border-b border-blue-200">
-                  <span className="summary-label font-medium text-blue-900">
+                <div className="summary-item flex justify-between py-3 border-b border-primary/30">
+                  <span className="summary-label font-medium text-primary">
                     Security Deposit:
                   </span>
-                  <span className="summary-value font-semibold text-blue-900">
+                  <span className="summary-value font-semibold text-primary">
                     {formatCurrency(lease.terms?.securityDeposit || 0)}
                   </span>
                 </div>
-                <div className="summary-item flex justify-between py-3 border-b border-blue-200">
-                  <span className="summary-label font-medium text-blue-900">
+                <div className="summary-item flex justify-between py-3 border-b border-primary/30">
+                  <span className="summary-label font-medium text-primary">
                     Late Fee:
                   </span>
-                  <span className="summary-value font-semibold text-blue-900">
+                  <span className="summary-value font-semibold text-primary">
                     {formatCurrency(lease.terms?.lateFee || 0)}
                   </span>
                 </div>
                 {lease.terms?.petDeposit && lease.terms?.petDeposit > 0 && (
-                  <div className="summary-item flex justify-between py-3 border-b border-blue-200">
-                    <span className="summary-label font-medium text-blue-900">
+                  <div className="summary-item flex justify-between py-3 border-b border-primary/30">
+                    <span className="summary-label font-medium text-primary">
                       Pet Deposit:
                     </span>
-                    <span className="summary-value font-semibold text-blue-900">
+                    <span className="summary-value font-semibold text-primary">
                       {formatCurrency(lease.terms?.petDeposit || 0)}
                     </span>
                   </div>
                 )}
 
                 {/* Total Initial Payment */}
-                <div className="total-row summary-item flex justify-between py-3 border-t-2 border-blue-600 mt-4">
-                  <span className="summary-label font-bold text-blue-900 text-lg">
+                <div className="total-row summary-item flex justify-between py-3 border-t-2 border-primary mt-4">
+                  <span className="summary-label font-bold text-primary text-lg">
                     Total Initial Payment:
                   </span>
-                  <span className="summary-value font-bold text-blue-900 text-lg">
+                  <span className="summary-value font-bold text-primary text-lg">
                     {formatCurrency(
                       (lease.terms?.totalAmount || 0) +
                         (lease.terms?.securityDeposit || 0) +
@@ -579,7 +579,7 @@ export function LeaseInvoice({
             <div className="footer text-center text-gray-500 text-sm mt-12 pt-6 border-t border-gray-200">
               <p className="mb-2">
                 This invoice was generated on {formatDate(new Date())} by
-                PropertyPro Management System
+                Tenure Property Management System
               </p>
               <p className="mb-2">
                 For questions regarding this invoice, please contact us at{" "}

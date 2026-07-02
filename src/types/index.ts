@@ -90,7 +90,7 @@ export interface IUser extends Document, IUserMethods {
   deletedAt?: Date;
   // Tenant-specific fields (only applicable when role is 'tenant')
   dateOfBirth?: Date;
-  ssn?: string; // Encrypted
+  nino?: string; // Encrypted
   employmentInfo?: {
     employer: string;
     position: string;
@@ -391,7 +391,7 @@ export interface ITenant extends Document {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
   dateOfBirth?: Date;
-  ssn?: string; // Encrypted
+  nino?: string;
   employmentInfo?: {
     employer: string;
     position: string;
@@ -458,7 +458,7 @@ export interface IApplication extends Document {
     email: string;
     phone: string;
     dateOfBirth: Date;
-    ssn?: string; // Encrypted
+    nino?: string; // Encrypted
   };
   employmentInfo?: {
     employer: string;
@@ -555,8 +555,8 @@ export enum LeaseStatus {
 }
 
 export enum LeaseRentPeriod {
-  MONTHLY = "monthly",
-  WEEKLY = "weekly",
+  MONTH = "month",
+  WEEK = "week",
   DAY = "day"
 }
 
@@ -907,7 +907,7 @@ export enum ComplianceCategory {
   ELECTRICAL = "electrical-safety",
   STRUCTURAL = "structural-safety",
   ELEVATOR = "elevator-/-lift-certificate",
-  PEST_CONTROL = "pest-control-certificate",
+  PEST_CONTROL = "pest-control-certificatepest-control-certificate",
   HEALTH_HYGIENE = "health-hygiene",
   HMO = "hmo-license",
 }

@@ -249,11 +249,11 @@ function DataTable<T>({
         <TableRow
           key={rowKey}
           className={cn(
-            "border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors",
+            "border-b border-gray-100 dark:border-gray-700 transition-colors",
             striped &&
               (index % 2 === 0
-                ? "bg-white dark:bg-gray-800"
-                : "bg-gray-50/20 dark:bg-gray-800/50"),
+                ? "bg-white dark:bg-accent/50"
+                : "bg-gray-50/20 dark:bg-accent/50"),
             isSelected && "bg-blue-50/50 dark:bg-blue-900/20",
             onRowClick && "cursor-pointer",
             getRowClassName?.(row, index)
@@ -298,7 +298,7 @@ function DataTable<T>({
     <div className={cn("space-y-4", containerClassName)}>
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
         <Table className={tableClassName}>
-          <TableHeader className="bg-gray-50/50 dark:bg-gray-800/50">
+          <TableHeader className="bg-gray-50/50 dark:bg-accent/50">
             <TableRow className="border-b border-gray-200 dark:border-gray-700">
               {selection?.enabled && (
                 <TableHead className="font-medium text-gray-700 dark:text-gray-300 py-3 px-4 w-12">

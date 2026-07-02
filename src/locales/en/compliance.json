@@ -22,5 +22,9 @@
   "compliance.category.elevator": "Elevator / Lift Certificate",
   "compliance.category.pest-control": "Pest Control Certificate",
   "compliance.category.health-hygiene": "Health & Hygiene Compliance",
-  "compliance.category.hmo-license": "HMO License"
+  "compliance.category.hmo-license": "HMO License",
+  
+  "compliance.details.card.photos":"Photos",
+  "compliance.details.card.photosDescription": "Images related to this compliance report"
+
 }

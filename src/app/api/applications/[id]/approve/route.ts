@@ -53,8 +53,7 @@ export const POST = withRoleAndDB([
       // Check if application can be approved
       const validStatuses = [
         ApplicationStatus.SUBMITTED,
-        ApplicationStatus.UNDER_REVIEW,
-        ApplicationStatus.SCREENING_IN_PROGRESS,
+        ApplicationStatus.UNDER_REVIEW
       ];
 
       if (!validStatuses.includes(application.status)) {

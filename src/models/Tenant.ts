@@ -93,18 +93,22 @@ const TenantSchema = new Schema<ITenant>(
         message: "Tenant must be between 18 and 120 years old",
       },
     },
-    ssn: {
+    nino: {
       type: String,
       trim: true,
       select: false, // Don't include in queries by default for security
+      set: (v: string) => (v ? v.replace(/\s+/g, "").toUpperCase() : v), // Strip spaces
       validate: {
-        validator: function (ssn: string) {
-          if (!ssn) return true; // Optional field
-          // Basic SSN format validation (XXX-XX-XXXX)
-          return /^\d{3}-\d{2}-\d{4}$/.test(ssn);
+        validator: function (nino: string) {
+          if (!nino) return true; // Optional field
+          // UK National Insurance number: 2 prefix letters, 6 digits, 1 suffix (A–D).
+          // Excludes invalid prefix letters (D, F, I, Q, U, V first; O second) and
+          // the disallowed prefixes BG, GB, KN, NK, NT, TN, ZZ.
+          const normalised = nino.replace(/\s+/g, "").toUpperCase();
+          return /^(?!BG|GB|KN|NK|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/.test(
+            normalised
+          );
         },
-        message: "Please enter a valid SSN format (XXX-XX-XXXX)",
-      },
     },
     employmentInfo: {
       type: EmploymentInfoSchema,
@@ -189,14 +193,14 @@ const TenantSchema = new Schema<ITenant>(
       type: Date,
       default: null,
     },
-  },
+  }},
   {
     timestamps: true,
     toJSON: {
       virtuals: true,
       transform: function (doc, ret) {
         delete ret.__v;
-        delete ret.ssn; // Never expose SSN in JSON
+        delete ret.nino; // Never expose NINO in JSON
         return ret;
       },
     },

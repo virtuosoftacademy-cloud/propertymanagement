@@ -244,9 +244,9 @@ export async function POST(request: NextRequest) {
       _id: maintenanceData.tenantId,
       role: UserRole.TENANT,
     });
-    if (!tenant) {
-      return createErrorResponse("Tenant not found", 404);
-    }
+    // if (tenant) {
+    //   return createErrorResponse("Tenant not found", 404);
+    // }
 
     // Role-based authorization
     if (user.role === UserRole.TENANT) {
@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
       ...maintenanceData,
       status: MaintenanceStatus.SUBMITTED,
     });
+
     await maintenanceRequest.save();
 
     // Populate property, tenant, and assigned user information

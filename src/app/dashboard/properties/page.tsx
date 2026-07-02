@@ -146,6 +146,8 @@ function PropertyCard({
         return <Building2 className="h-4 w-4" />;
       case PropertyType.TOWNHOUSE:
         return <Building2 className="h-4 w-4" />;
+      case PropertyType.HMO:
+        return <Building2 className="h-4 w-4" />;
       default:
         return <Building2 className="h-4 w-4" />;
     }
@@ -175,9 +177,9 @@ function PropertyCard({
   const rentRange = getRentRange(property?.units, formatCurrency);
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200 overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-800 p-0 gap-0 rounded-lg">
+    <Card className="group hover:shadow-lg transition-all duration-200 overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-accent/50 p-0 gap-0 rounded-lg">
       {/* Featured Image */}
-      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-t-lg m-0 p-0">
+      <div className="relative h-48 overflow-hidden bg-linear-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-accent/50 rounded-t-lg m-0 p-0">
         {hasImage ? (
           <Image
             src={featuredImage!}
@@ -1235,7 +1237,7 @@ export default function PropertiesPage() {
           </div>
 
           {/* Integrated Filters Bar */}
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/60 dark:border-gray-700/60">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 bg-gray-50/50 dark:bg-accent/50 rounded-lg border border-gray-200/60 dark:border-gray-700/60">
             {/* Search */}
             <div className="flex-1 min-w-0">
               <GlobalSearch
@@ -1261,7 +1263,7 @@ export default function PropertiesPage() {
                   )
                 }
               >
-                <SelectTrigger className="w-[140px] h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <SelectTrigger className="w-[140px] h-10 border-gray-200 dark:border-gray-700 bg-white">
                   <SelectValue placeholder={t("properties.filters.type.all")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -1289,7 +1291,7 @@ export default function PropertiesPage() {
                   )
                 }
               >
-                <SelectTrigger className="w-[140px] h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <SelectTrigger className="w-[140px] h-10 border-gray-200 dark:border-gray-700 bg-white">
                   <SelectValue
                     placeholder={t("properties.filters.status.all")}
                   />
@@ -1314,7 +1316,7 @@ export default function PropertiesPage() {
                 value={currentPriceRangeId}
                 onValueChange={handlePriceRangeChange}
               >
-                <SelectTrigger className="w-[170px] h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <SelectTrigger className="w-[170px] h-10 border-gray-200 dark:border-gray-700 bg-white">
                   <SelectValue
                     placeholder={t("properties.filters.priceRange.placeholder", {
                       defaultValue: "Price range",
@@ -1351,7 +1353,7 @@ export default function PropertiesPage() {
                   }));
                 }}
               >
-                <SelectTrigger className="w-[160px] h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <SelectTrigger className="w-[160px] h-10 border-gray-200 dark:border-gray-700 bg-white">
                   <SelectValue
                     placeholder={t("properties.filters.sort.placeholder")}
                   />

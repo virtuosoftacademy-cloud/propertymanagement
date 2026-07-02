@@ -83,7 +83,7 @@ export function PropertyRowCard({
         return "🏠";
       case PropertyType.APARTMENT:
         return "🏢";
-      case PropertyType.CONDO:
+      case PropertyType.HMO:
         return "🏘️";
       case PropertyType.TOWNHOUSE:
         return "🏘️";
@@ -151,11 +151,11 @@ export function PropertyRowCard({
   const rentRange = getRentRange(property?.units);
 
   return (
-    <Card className="group hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-800 p-0 gap-0 rounded-lg">
+    <Card className="group hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-accent/50 p-0 gap-0 rounded-lg">
       <CardContent className="p-0">
         <div className="flex items-center h-24 sm:h-20">
           {/* Property Image */}
-          <div className="relative w-24 h-24 sm:w-32 sm:h-20 shrink-0 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-l-lg m-0 p-0">
+          <div className="relative w-24 h-24 sm:w-32 sm:h-20 shrink-0 overflow-hidden bg-linear-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-l-lg m-0 p-0">
             {hasImage ? (
               <Image
                 src={featuredImage!}
@@ -166,7 +166,7 @@ export function PropertyRowCard({
                 priority={false}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
+              <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-accent/50">
                 <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 dark:text-gray-500" />
               </div>
             )}

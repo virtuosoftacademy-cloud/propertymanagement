@@ -508,11 +508,11 @@ export default function MaintenancePage() {
         cell: (request) => (
           <div>
             <div className="font-medium text-sm truncate">
-              {request?.tenant?.user?.firstName || "N/A"}{" "}
+              {request?.tenant?.user?.firstName || "No tenant"}{" "}
               {request?.tenant?.user?.lastName || ""}
             </div>
             <div className="text-xs text-muted-foreground truncate">
-              {request?.tenant?.user?.email || "N/A"}
+              {request?.tenant?.user?.email || " "}
             </div>
           </div>
         ),
@@ -1197,7 +1197,7 @@ export default function MaintenancePage() {
                             {t("maintenance.card.tenant")}
                           </div>
                           <div className="truncate">
-                            {request?.tenant?.user?.firstName || "N/A"}{" "}
+                            {request?.tenant?.user?.firstName || "No tenant"}{" "}
                             {request?.tenant?.user?.lastName || ""}
                           </div>
                         </div>

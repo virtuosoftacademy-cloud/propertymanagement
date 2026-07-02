@@ -113,15 +113,15 @@ interface SimplifiedLeaseCreationProps {
 
 // How often rent is collected.
 const RENT_PERIOD_OPTIONS: Array<{ value: LeaseRentPeriod; label: string }> = [
-  { value: LeaseRentPeriod.MONTHLY, label: "Month" },
-  { value: LeaseRentPeriod.WEEKLY, label: "Week" },
+  { value: LeaseRentPeriod.MONTH, label: "Month" },
+  { value: LeaseRentPeriod.WEEK, label: "Week" },
   { value: LeaseRentPeriod.DAY, label: "Day" },
 ];
 
 // "per …" phrasing for the rent amount label.
 const PER_PERIOD_LABEL: Record<LeaseRentPeriod, string> = {
-  [LeaseRentPeriod.MONTHLY]: "per month",
-  [LeaseRentPeriod.WEEKLY]: "per week",
+  [LeaseRentPeriod.MONTH]: "per month",
+  [LeaseRentPeriod.WEEK]: "per week",
   [LeaseRentPeriod.DAY]: "per day",
 };
 
@@ -177,10 +177,10 @@ export default function SimplifiedLeaseCreation({
     : t("leases.new.form.buttons.resetForm");
 
   // ─── Rent-period derived state ────────────────────────────────────────────
-  const isMonthly = leaseData.rentPeriod === LeaseRentPeriod.MONTHLY;
+  const isMonthly = leaseData.rentPeriod === LeaseRentPeriod.MONTH;
   const isDayOrWeek =
     leaseData.rentPeriod === LeaseRentPeriod.DAY ||
-    leaseData.rentPeriod === LeaseRentPeriod.WEEKLY;
+    leaseData.rentPeriod === LeaseRentPeriod.WEEK;
   const perPeriodLabel = leaseData.rentPeriod
     ? PER_PERIOD_LABEL[leaseData.rentPeriod]
     : "";
@@ -189,7 +189,7 @@ export default function SimplifiedLeaseCreation({
     ? "Rent is collected automatically each month."
     : leaseData.rentPeriod === LeaseRentPeriod.DAY
       ? "Rent is collected daily."
-      : leaseData.rentPeriod === LeaseRentPeriod.WEEKLY
+      : leaseData.rentPeriod === LeaseRentPeriod.WEEK
         ? "Rent is collected weekly."
         : "";
 
@@ -382,7 +382,7 @@ export default function SimplifiedLeaseCreation({
   // Switching to a monthly tenancy hides + clears the date range (open-ended).
   const handleRentPeriodChange = (value: string) => {
     handleInputChange("rentPeriod", value);
-    if (value === LeaseRentPeriod.MONTHLY) {
+    if (value === LeaseRentPeriod.MONTH) {
       handleInputChange("startDate", "");
       handleInputChange("endDate", "");
       setError("startDate", null);
@@ -399,7 +399,7 @@ export default function SimplifiedLeaseCreation({
     // Start/end dates only apply to Day and Week tenancies.
     const requiresDates =
       leaseData.rentPeriod === LeaseRentPeriod.DAY ||
-      leaseData.rentPeriod === LeaseRentPeriod.WEEKLY;
+      leaseData.rentPeriod === LeaseRentPeriod.WEEK;
 
     if (field === "propertyId" && !value)
       message = t("leases.new.form.validation.propertyRequired");

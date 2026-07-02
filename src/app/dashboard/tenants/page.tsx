@@ -132,7 +132,7 @@ export default function TenantsPage() {
       setIsStatsLoading(true);
 
       const params = new URLSearchParams();
-      params.set("limit", "1000");
+      params.set("limit", "2000");
 
       const response = await fetch(`/api/tenants?${params.toString()}`);
       if (!response.ok) {

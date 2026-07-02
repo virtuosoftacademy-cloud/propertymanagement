@@ -214,10 +214,10 @@ export default function MaintenanceRequestDetailPage() {
         const usersArray = Array.isArray(data?.data)
           ? data.data
           : Array.isArray(data?.data?.users)
-          ? data.data.users
-          : Array.isArray(data?.users)
-          ? data.users
-          : [];
+            ? data.data.users
+            : Array.isArray(data?.users)
+              ? data.users
+              : [];
 
         // Filter for managers and technicians/maintenance staff
         // Excludes "user" or "admin" unless they match these keywords
@@ -367,9 +367,9 @@ export default function MaintenanceRequestDetailPage() {
           .catch(() => ({ message: "Unknown error" }));
         throw new Error(
           errorData.message ||
-            `HTTP ${response.status}: ${t(
-              "maintenance.details.toasts.assignError"
-            )}`
+          `HTTP ${response.status}: ${t(
+            "maintenance.details.toasts.assignError"
+          )}`
         );
       }
 
@@ -598,7 +598,7 @@ export default function MaintenanceRequestDetailPage() {
           {request?.status !== MaintenanceStatus.CANCELLED && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button  variant="outline" size="sm">
+                <Button variant="outline" size="sm">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -614,13 +614,13 @@ export default function MaintenanceRequestDetailPage() {
                     <>
                       {(!request?.assignedTo ||
                         request.status === MaintenanceStatus.SUBMITTED) && (
-                        <DropdownMenuItem
-                          onClick={() => setAssignDialogOpen(true)}
-                        >
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          {t("maintenance.actions.assignTechnician")}
-                        </DropdownMenuItem>
-                      )}
+                          <DropdownMenuItem
+                            onClick={() => setAssignDialogOpen(true)}
+                          >
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            {t("maintenance.actions.assignTechnician")}
+                          </DropdownMenuItem>
+                        )}
                       {request?.status === MaintenanceStatus.ASSIGNED && (
                         <>
                           <DropdownMenuItem
@@ -870,48 +870,49 @@ export default function MaintenanceRequestDetailPage() {
           </Card>
 
           {/* Tenant Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                {t("maintenance.details.card.tenant")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Avatar>
-                  <AvatarImage src={request?.tenant?.user?.avatar} />
-                  <AvatarFallback>
-                    {request?.tenant?.user?.firstName?.[0] || "N"}
-                    {request?.tenant?.user?.lastName?.[0] || "A"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h4 className="font-medium">
-                    {request?.tenant?.user?.firstName ||
-                      t("maintenance.details.labels.na")}{" "}
-                    {request?.tenant?.user?.lastName || ""}
-                  </h4>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-3 w-3" />
-                      <span>
-                        {request?.tenant?.user?.email ||
-                          t("maintenance.details.labels.na")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3 w-3" />
-                      <span>
-                        {request?.tenant?.user?.phone ||
-                          t("maintenance.details.labels.na")}
-                      </span>
+          {request?.tenant?.user &&(
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  {t("maintenance.details.card.tenant")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <Avatar>
+                    <AvatarImage src={request?.tenant?.user?.avatar} />
+                    <AvatarFallback>
+                      {request?.tenant?.user?.firstName?.[0] || "N"}
+                      {request?.tenant?.user?.lastName?.[0] || "A"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h4 className="font-medium">
+                      {request?.tenant?.user?.firstName ||
+                        t("maintenance.details.labels.na")}{" "}
+                      {request?.tenant?.user?.lastName || ""}
+                    </h4>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-3 w-3" />
+                        <span>
+                          {request?.tenant?.user?.email ||
+                            t("maintenance.details.labels.na")}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3 w-3" />
+                        <span>
+                          {request?.tenant?.user?.phone ||
+                            t("maintenance.details.labels.na")}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>)}
 
           {/* Assigned Technician */}
           {request?.assignedTo ? (

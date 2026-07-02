@@ -56,7 +56,7 @@ const maintenanceRequestFormSchema = z.object({
   priority: z.nativeEnum(MaintenancePriority),
   propertyId: z.string().min(1, "Property is required"),
   unitId: z.string().optional(),
-  tenantId: z.string().min(1, "Tenant is required"),
+  tenantId: z.string().optional(),
   assignedTo: z.string().optional(),
   estimatedCost: z.number().min(0, "Cost cannot be negative").optional(),
   scheduledDate: z
@@ -395,11 +395,6 @@ export function MaintenanceRequestForm({
         return;
       }
 
-      if (!data.tenantId) {
-        toast.error(t("maintenance.form.validation.tenantRequired"));
-        form.setFocus("tenantId");
-        return;
-      }
 
       if (!data.category) {
         toast.error(t("maintenance.form.validation.categoryRequired"));
@@ -606,7 +601,7 @@ export function MaintenanceRequestForm({
             <Card className="border-0">
               <CardHeader className="pb-6">
                 <CardTitle className="flex items-center gap-3 text-xl">
-                  <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                  <div className="p-2 rounded-lg bg-linear-to-br from-green-500 to-emerald-600 text-white">
                     <Building2 className="h-5 w-5" />
                   </div>
                   {t("maintenance.form.propertyTenant.title")}
@@ -636,7 +631,7 @@ export function MaintenanceRequestForm({
                           value={field.value || undefined}
                         >
                           <FormControl>
-                            <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200">
+                            <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary/20 transition-all duration-200">
                               {isTenantView && field.value ? (
                                 <span className="truncate">
                                   {properties.find((p) => p.id === field.value)
@@ -738,10 +733,17 @@ export function MaintenanceRequestForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          {t("maintenance.form.tenant.label")}
+                          {t("maintenance.form.tenant.label")}{" "}
+                          <span className="text-xs font-normal text-muted-foreground">
+                            {t("maintenance.form.tenant.optional", {
+                              defaultValue: "(Optional)",
+                            })}
+                          </span>
                         </FormLabel>
                         <Select
-                          onValueChange={field.onChange}
+                          onValueChange={(value) =>
+                            field.onChange(value === "NONE" ? "" : value)
+                          }
                           value={field.value || undefined}
                         >
                           <FormControl>
@@ -754,6 +756,11 @@ export function MaintenanceRequestForm({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="NONE">
+                              {t("maintenance.form.tenant.none", {
+                                defaultValue: "No tenant",
+                              })}
+                            </SelectItem>
                             {loadingTenants ? (
                               <div className="p-2 text-sm text-muted-foreground flex items-center gap-2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />

@@ -585,7 +585,7 @@ export default function PropertyDetailsPage() {
               <CardHeader className="bg-blue-50 dark:bg-primary/10 border-b border-gray-100 dark:border-gray-700 p-6">
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 dark:bg-primary-900 rounded-lg">
+                    <div className="p-2 bg-blue-100 dark:bg-primary/20 rounded-lg">
                       <Building2 className="h-6 w-6 text-primary dark:text-primary-400" />
                     </div>
                     <div>

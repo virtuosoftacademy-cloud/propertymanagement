@@ -43,11 +43,6 @@ import { ComplianceActions } from "@/components/compliance/compliance-actions";
 import Image from "next/image";
 
 // ────────────────────────────────────────────────
-// Types
-// ────────────────────────────────────────────────
-
-
-// ────────────────────────────────────────────────
 // Component
 // ────────────────────────────────────────────────
 export default function ComplianceReportDetailPage() {
@@ -351,50 +346,7 @@ export default function ComplianceReportDetailPage() {
                 </div>
               </div>
 
-              {report.images && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-3">
-                      Attached Documents ({report.images.length})
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {report.images.map((doc, index) => {
-                        const label = getDocLabel(doc, index);
-                        const isImage = isImageDoc(doc);
-                        return (
-                          <a
-                            key={`${doc.url}-${index}`}
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
-                          >
-                            <div className="shrink-0 h-10 w-10 rounded bg-muted flex items-center justify-center">
-                              {isImage ? (
-                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                              ) : (
-                                <FileText className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {label}
-                              </p>
-                              {doc.size && (
-                                <p className="text-xs text-muted-foreground">
-                                  {formatFileSize(doc.size)}
-                                </p>
-                              )}
-                            </div>
-                            <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
+              
             </CardContent>
           </Card>
 
@@ -408,7 +360,7 @@ export default function ComplianceReportDetailPage() {
                   {report?.images.length})
                 </CardTitle>
                 <CardDescription>
-                  {t("maintenance.details.card.photosDescription")}
+                  {t("compliance.details.card.photosDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>

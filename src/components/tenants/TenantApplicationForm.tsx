@@ -44,7 +44,7 @@ const tenantApplicationSchema = z.object({
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
-  ssn: z.string().optional(),
+  nino: z.string().optional(),
 
   employmentInfo: z.object({
     employer: z.string().min(1, "Employer is required"),

@@ -89,20 +89,9 @@ export const userSchema = z.object({
     ])
     .optional(),
   dateOfBirth: z.date().optional(),
-  ssn: z
+  nino: z
     .string()
-    .optional()
-    .transform((val) => {
-      if (!val || val.trim() === "") return undefined;
-      return val.trim();
-    })
-    .refine(
-      (val) => {
-        if (!val) return true; // Allow empty/undefined values
-        return /^\d{3}-?\d{2}-?\d{4}$/.test(val);
-      },
-      { message: "Invalid SSN format" }
-    ),
+    .optional(),
   employmentInfo: employmentInfoSchema.optional(),
   emergencyContacts: z
     .array(emergencyContactSchema)
@@ -381,7 +370,7 @@ export const propertyUpdateSchema = propertyCreateBaseSchema
   .partial()
   .omit({ ownerId: true, managerId: true }) // Regular users can't change ownership or management
   .superRefine(refineHmoLicenceDates);
-  
+
 export const propertyQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(10),
@@ -425,31 +414,23 @@ export const tenantSchema = z.object({
       if (typeof val === "string") return new Date(val);
       return val;
     }),
-  ssn: z
+  nino: z
     .string()
     .optional()
     .transform((val) => {
       if (!val || val.trim() === "") return undefined;
-      return val.trim();
+      // Normalise: strip spaces + uppercase ("qq 12 34 56 c" -> "QQ123456C")
+      return val.replace(/\s+/g, "").toUpperCase();
     })
     .refine(
       (val) => {
-        if (!val) return true; // Allow empty/undefined values
-        return /^\d{3}-?\d{2}-?\d{4}$/.test(val);
+        if (!val) return true;
+        return /^(?!BG|GB|KN|NK|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/.test(
+          val
+        );
       },
-      { message: "Invalid SSN format" }
-    )
-    .transform((val) => {
-      if (!val) return val;
-      // Remove any existing dashes and add them in the correct format
-      const cleaned = val.replace(/\D/g, "");
-      if (cleaned.length === 9) {
-        return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 5)}-${cleaned.slice(
-          5
-        )}`;
-      }
-      return val;
-    }),
+      { message: "Invalid National Insurance number" }
+    ),
   employmentInfo: employmentInfoSchema.optional(),
   emergencyContacts: z
     .array(emergencyContactSchema)
@@ -608,7 +589,7 @@ export const leaseSchema = z
     unitId: z.string().min(1, "Unit ID is required"),
     tenantId: z.string().min(1, "Tenant ID is required"),
     // How rent is collected. Monthly tenancies are open-ended (no end date).
-    rentPeriod: z.enum(["monthly", "weekly", "day"]).default("monthly"),
+    rentPeriod: z.enum(["month", "week", "day"]).default("month"),
     startDate: z
       .string()
       .min(1, "Start date is required")
@@ -645,10 +626,10 @@ export const leaseSchema = z
   })
   .superRefine((data, ctx) => {
     // Day/Week tenancies must have an end date; Monthly tenancies may omit it.
-    if (data.rentPeriod !== "monthly" && !data.endDate) {
+    if (data.rentPeriod !== "month" && !data.endDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "End date is required for daily and weekly tenancies",
+        message: "End date is required for daily and week tenancies",
         path: ["endDate"],
       });
     }
@@ -667,7 +648,7 @@ export const leaseUpdateSchema = z.object({
   propertyId: z.string().min(1, "Property ID is required").optional(),
   unitId: z.string().min(1, "Unit ID is required").optional(),
   tenantId: z.string().min(1, "Tenant ID is required").optional(),
-  rentPeriod: z.enum(["monthly", "weekly", "day"]).optional(),
+  rentPeriod: z.enum(["month", "week", "day"]).optional(),
   startDate: z
     .string()
     .min(1, "Start date is required")
@@ -751,11 +732,23 @@ export const paymentUpdateSchema = paymentCreateSchema.partial().extend({
 // MAINTENANCE VALIDATIONS
 // ============================================================================
 
+// Optional reference-id fields (tenant/unit/assignee) can arrive as an empty
+// string when nothing is selected in the form. Coerce "" (or whitespace) to
+// undefined so it doesn't reach Mongoose as "" and fail ObjectId casting —
+// keeping these fields genuinely optional end-to-end.
+const optionalRefId = z
+  .string()
+  .optional()
+  .transform((val) => {
+    const trimmed = val?.trim();
+    return trimmed ? trimmed : undefined;
+  });
+
 export const maintenanceRequestSchema = z.object({
   propertyId: z.string().min(1, "Property ID is required"),
-  unitId: z.string().optional(),
-  tenantId: z.string().min(1, "Tenant ID is required"),
-  assignedTo: z.string().optional(),
+  unitId: optionalRefId,
+  tenantId: optionalRefId,
+  assignedTo: optionalRefId,
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
   description: z
     .string()
@@ -1031,9 +1024,12 @@ export const applicationSchema = z.object({
     email: z.string().email("Invalid email address"),
     phone: z.string().min(1, "Phone number is required"),
     dateOfBirth: z.date(),
-    ssn: z
+    nino: z
       .string()
-      .regex(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format XXX-XX-XXXX")
+      .regex(
+        /^(?!BG|GB|KN|NK|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/,
+        "National Insurance number must be in format QQ123456C"
+      )
       .optional(),
   }),
   employmentInfo: z
@@ -1624,14 +1620,6 @@ export const systemSettingsQuerySchema = z.object({
 // Add these to your @/lib/validations file alongside leaseSchema, etc.
 // ============================================================================
 
-const complianceDocumentSchema = z.object({
-  url: z.string().url("Document URL must be a valid URL"),
-  name: z.string().optional(),
-  size: z.number().int().nonnegative().optional(),
-  mimeType: z.string().optional(),
-  uploadedAt: z.coerce.date().optional(),
-});
-
 // Schema for POST /api/compliance - mirrors the form payload exactly
 export const complianceReportSchema = z
   .object({
@@ -1654,7 +1642,10 @@ export const complianceReportSchema = z
       .min(0, "Cost cannot be negative")
       .max(1_000_000, "Cost cannot exceed $1,000,000")
       .optional(),
-    documents: z.array(complianceDocumentSchema).max(20).optional(),
+    images: z
+    .array(z.string().url("Invalid image URL"))
+    .max(10, "Too many images")
+    .default([]),
     status: z.nativeEnum(ComplianceStatus).optional(),
   })
   .refine((data) => data.expiryDate > data.issueDate, {
@@ -1679,7 +1670,10 @@ export const complianceReportUpdateSchema = z
     expiryDate: z.coerce.date().optional(),
     notes: z.string().max(1000).optional(),
     estimatedCost: z.number().min(0).max(1_000_000).optional(),
-    documents: z.array(complianceDocumentSchema).max(20).optional(),
+    images: z
+    .array(z.string().url("Invalid image URL"))
+    .max(10, "Too many images")
+    .default([]),
     status: z.nativeEnum(ComplianceStatus).optional(),
   })
   .refine(

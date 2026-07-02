@@ -189,7 +189,6 @@ export async function POST(request: NextRequest) {
           ApplicationStatus.DRAFT,
           ApplicationStatus.SUBMITTED,
           ApplicationStatus.UNDER_REVIEW,
-          ApplicationStatus.SCREENING_IN_PROGRESS,
         ],
       },
     });

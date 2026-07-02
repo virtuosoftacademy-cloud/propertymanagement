@@ -141,7 +141,7 @@ export const PUT = withRoleAndDB([
             if (typeof val === "string") return new Date(val);
             return val;
           }),
-        ssn: z.string().optional(),
+        nino: z.string().optional(),
         employmentInfo: z
           .object({
             employer: z.string(),

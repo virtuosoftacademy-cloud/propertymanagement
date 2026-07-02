@@ -332,9 +332,8 @@ export default function ExpiringLeasesPage() {
           <Avatar className="h-8 w-8">
             <AvatarImage
               src={lease.tenantId?.avatar}
-              alt={`${lease.tenantId?.firstName || ""} ${
-                lease.tenantId?.lastName || ""
-              }`}
+              alt={`${lease.tenantId?.firstName || ""} ${lease.tenantId?.lastName || ""
+                }`}
             />
             <AvatarFallback>
               {lease.tenantId?.firstName?.[0] || "T"}
@@ -356,7 +355,7 @@ export default function ExpiringLeasesPage() {
     },
     {
       id: "rentAmount",
-      header: t("leases.expiring.table.rent", { defaultValue: "Rent" }),
+      header: t("leases.expiring.table.rent", { defaultValue: "Rent Amount" }),
       visibility: "md",
       cell: (lease) => (
         <div>
@@ -364,7 +363,7 @@ export default function ExpiringLeasesPage() {
             {formatCurrency(lease.unit?.rentAmount || lease.terms.rentAmount)}
           </div>
           <div className="text-sm text-muted-foreground">
-            {t("leases.labels.perMonth")}
+            per {lease.rentPeriod || "N/A"}
           </div>
         </div>
       ),
@@ -474,7 +473,7 @@ export default function ExpiringLeasesPage() {
       </div>
 
       {/* Stats Cards */}
-      <AnalyticsCardGrid className="lg:grid-cols-4">
+      {/* <AnalyticsCardGrid className="lg:grid-cols-4">
         <AnalyticsCard
           title={t("leases.expiring.stats.next30Days")}
           value={stats.expiring30Days}
@@ -502,7 +501,7 @@ export default function ExpiringLeasesPage() {
           icon={RotateCcw}
           iconColor="info"
         />
-      </AnalyticsCardGrid>
+      </AnalyticsCardGrid> */}
 
       {/* Expiring Leases Display with Integrated Filters */}
       <Card className="gap-2">
@@ -638,8 +637,8 @@ export default function ExpiringLeasesPage() {
                   {filters.search
                     ? t("leases.expiring.empty.noMatches")
                     : t("leases.expiring.empty.noUpcomingInRange", {
-                        values: { days: Number(timeFilter) },
-                      })}
+                      values: { days: Number(timeFilter) },
+                    })}
                 </p>
                 <Button onClick={() => router.push("/dashboard/leases")}>
                   <FileText className="mr-2 h-4 w-4" />
@@ -657,7 +656,7 @@ export default function ExpiringLeasesPage() {
                     <LeaseCard
                       lease={lease}
                       onUpdate={handleLeaseUpdate}
-                      onDelete={() => {}}
+                      onDelete={() => { }}
                     />
                     <div className="absolute top-2 right-2">
                       <Badge
@@ -688,8 +687,8 @@ export default function ExpiringLeasesPage() {
                 description: filters.search
                   ? t("leases.expiring.empty.noMatches")
                   : t("leases.expiring.empty.noUpcomingInRange", {
-                      values: { days: Number(timeFilter) },
-                    }),
+                    values: { days: Number(timeFilter) },
+                  }),
                 action: (
                   <Button onClick={() => router.push("/dashboard/leases")}>
                     <FileText className="mr-2 h-4 w-4" />

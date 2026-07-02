@@ -47,7 +47,7 @@ const applicationSchema = z.object({
       .string()
       .regex(/^[\+]?[\d\s\-\(\)\.]{10,20}$/, "Invalid phone number format"),
     dateOfBirth: z.string().min(1, "Date of birth is required"),
-    ssn: z
+    nino: z
       .string()
       .regex(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in format XXX-XX-XXXX")
       .optional(),
@@ -156,7 +156,7 @@ export function EnhancedApplicationForm({
         email: "",
         phone: "",
         dateOfBirth: "",
-        ssn: "",
+        nino: "",
       },
       employmentInfo: {
         employer: "",

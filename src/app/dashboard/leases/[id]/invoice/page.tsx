@@ -129,11 +129,11 @@ export default function LeaseInvoicePage() {
       <EnhancedLeaseInvoice
         lease={lease}
         companyInfo={{
-          name: "PropertyPro Management",
+          name: "Tenure Property Management",
           address: "123 Business Avenue, Suite 100, Business City, BC 12345",
-          phone: "+1 (555) 123-4567",
-          email: "info@PropertyPro.com",
-          website: "www.PropertyPro.com",
+          phone: "+44 20 7946 0123",
+          email: "info@Tenure.com",
+          website: "www.Tenure.co.uk",
         }}
         onInvoiceGenerated={(fileName) => {
           showSimpleSuccess("Invoice Generated", `Invoice generated: ${fileName}`);

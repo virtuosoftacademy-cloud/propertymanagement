@@ -59,7 +59,7 @@ interface Tenant {
   avatar?: string;
   documents?: string[];
   dateOfBirth?: string;
-  ssn?: string;
+  nino?: string;
   employmentInfo?: {
     employer: string;
     position: string;
@@ -70,7 +70,7 @@ interface Tenant {
     name: string;
     relationship: string;
     phone: string;
-    email?: string;
+    email: string;
   }>;
   creditScore?: number;
   backgroundCheckStatus?: "pending" | "approved" | "rejected";
@@ -94,6 +94,7 @@ interface Tenant {
   statusHistory?: Array<{
     status: string;
     changedBy: {
+      _id: string;
       firstName: string;
       lastName: string;
     };

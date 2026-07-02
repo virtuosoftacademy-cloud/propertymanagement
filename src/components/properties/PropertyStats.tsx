@@ -47,7 +47,7 @@ export default function PropertyStats({
         averageSquareFootage: 0,
         houses: 0,
         apartments: 0,
-        condos: 0,
+        hmos: 0,
         townhouses: 0,
         commercial: 0,
         thisMonthAdded: 0,
@@ -124,8 +124,8 @@ export default function PropertyStats({
     const apartments = properties.filter(
       (p) => p.type === PropertyType.APARTMENT
     ).length;
-    const condos = properties.filter(
-      (p) => p.type === PropertyType.CONDO
+    const hmos = properties.filter(
+      (p) => p.type === PropertyType.HMO
     ).length;
     const townhouses = properties.filter(
       (p) => p.type === PropertyType.TOWNHOUSE
@@ -135,7 +135,7 @@ export default function PropertyStats({
     ).length;
 
     // Financial calculations
-    const totalRentValue = properties.reduce((sum, p) => sum + p.rentAmount, 0);
+    const totalRentValue = properties.reduce((sum, p) => sum + p.units.filter((r)=>r.rentAmount), 0);
     const averageRent = Math.round(totalRentValue / properties.length);
 
     // Square footage
@@ -168,7 +168,7 @@ export default function PropertyStats({
       averageSquareFootage,
       houses,
       apartments,
-      condos,
+      hmos,
       townhouses,
       commercial,
       thisMonthAdded,
@@ -206,7 +206,7 @@ export default function PropertyStats({
         iconColor="info"
       />
 
-      <AnalyticsCard
+      {/* <AnalyticsCard
         title={t("properties.stats.averageRent.title")}
         value={
           stats.averageRent > 0
@@ -216,7 +216,7 @@ export default function PropertyStats({
         description={t("properties.stats.averageRent.description")}
         icon={PoundSterling}
         iconColor="success"
-      />
+      /> */}
 
       <AnalyticsCard
         title={t("properties.stats.underMaintenance.title")}
@@ -226,7 +226,7 @@ export default function PropertyStats({
         iconColor="warning"
       />
 
-      <AnalyticsCard
+      {/* <AnalyticsCard
         title={t("properties.stats.totalRentValue.title")}
         value={
           stats.totalRentValue > 0
@@ -236,7 +236,7 @@ export default function PropertyStats({
         description={t("properties.stats.totalRentValue.description")}
         icon={TrendingUp}
         iconColor="success"
-      />
+      /> */}
 
       {/* Unit-based statistics */}
       <AnalyticsCard
@@ -247,29 +247,29 @@ export default function PropertyStats({
         iconColor="primary"
       />
 
-      <AnalyticsCard
+      {/* <AnalyticsCard
         title={t("properties.stats.availableUnits.title")}
         value={stats.availableUnits}
         description={t("properties.stats.availableUnits.description")}
         icon={CheckCircle}
         iconColor="success"
-      />
+      /> */}
 
-      <AnalyticsCard
+      {/* <AnalyticsCard
         title={t("properties.stats.occupiedUnits.title")}
         value={stats.occupiedUnits}
         description={t("properties.stats.occupiedUnits.description")}
         icon={Users}
         iconColor="info"
-      />
+      /> */}
 
-      <AnalyticsCard
+      {/* <AnalyticsCard
         title={t("properties.stats.unitsInMaintenance.title")}
         value={stats.maintenanceUnits}
         description={t("properties.stats.unitsInMaintenance.description")}
         icon={Wrench}
         iconColor="warning"
-      />
+      /> */}
     </AnalyticsCardGrid>
   );
 }

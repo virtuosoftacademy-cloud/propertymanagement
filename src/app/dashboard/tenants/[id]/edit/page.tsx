@@ -89,7 +89,7 @@ const createTenantSchema = (t: (key: string) => string) =>
     dateOfBirth: z.date({
       required_error: t("tenants.form.validation.dateOfBirthRequired"),
     }),
-    ssn: z
+    nino: z
       .string()
       .optional()
       .transform((val) => {
@@ -216,7 +216,7 @@ export default function EditTenantPage() {
         dateOfBirth: tenant.dateOfBirth
           ? new Date(tenant.dateOfBirth)
           : undefined,
-        ssn: tenant.ssn || "",
+        nino: tenant.ssn || "",
         employer: tenant.employmentInfo?.employer || "",
         position: tenant.employmentInfo?.position || "",
         income: tenant.employmentInfo?.income || undefined,
@@ -264,7 +264,7 @@ export default function EditTenantPage() {
         avatar: avatarUrl || undefined,
         tenantStatus: data.tenantStatus,
         dateOfBirth: data.dateOfBirth || undefined,
-        ssn: data.ssn || undefined,
+        nino: data.ssn || undefined,
         employmentInfo: data.employer
           ? {
               employer: data.employer,

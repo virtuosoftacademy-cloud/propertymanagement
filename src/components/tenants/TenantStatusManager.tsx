@@ -19,13 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -414,6 +408,7 @@ export default function TenantStatusManager({
                           name: `${entry.changedBy.firstName} ${entry.changedBy.lastName}`,
                         },
                       })}
+                      
                     </p>
                     {entry.reason && (
                       <p className="mt-1 text-muted-foreground">

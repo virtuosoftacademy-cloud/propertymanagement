@@ -310,7 +310,7 @@ const LeaseSchema = new Schema<ILease>(
         message: "Invalid rent period",
       },
       required: [true, "Rent period is required"],
-      default: LeaseRentPeriod.MONTHLY,
+      default: LeaseRentPeriod.MONTH,
     },
     startDate: {
       type: Date,
@@ -322,7 +322,7 @@ const LeaseSchema = new Schema<ILease>(
       // tenancies are open-ended and may omit it.
       required: [
         function (this: any) {
-          return this.rentPeriod !== LeaseRentPeriod.MONTHLY;
+          return this.rentPeriod !== LeaseRentPeriod.MONTH;
         },
         "Lease end date is required",
       ],
@@ -526,7 +526,7 @@ LeaseSchema.virtual("progressPercentage").get(function () {
 });
 
 // Virtual for monthly rent
-LeaseSchema.virtual("monthlyRent").get(function () {
+LeaseSchema.virtual("month").get(function () {
   return this.terms.rentAmount;
 });
 

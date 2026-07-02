@@ -19,7 +19,6 @@ const MaintenanceRequestSchema = new Schema<IMaintenanceRequest>(
     tenantId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Tenant ID is required"],
     },
     assignedTo: {
       type: Schema.Types.ObjectId,
@@ -396,11 +395,11 @@ MaintenanceRequestSchema.pre("save", async function (next) {
       role: "tenant",
     });
 
-    if (!tenant) {
-      return next(
-        new Error("Tenant not found or user does not have tenant role")
-      );
-    }
+    // if (tenant) {
+    //   return next(
+    //     new Error("Tenant not found or user does not have tenant role")
+    //   );
+    // }
   }
 
   // Validate assigned user exists and has appropriate role

@@ -75,7 +75,16 @@ const createTenantSchema = (t: (key: string) => string) =>
         .string()
         .min(1, t("tenants.form.validation.lastNameRequired")),
       email: z.string().email(t("tenants.form.validation.emailInvalid")),
-      phone: z.string().min(1, t("tenants.form.validation.phoneRequired")),
+      phone: z
+        .string()
+        .min(1, t("tenants.form.validation.phoneRequired"))
+        .transform((val) =>
+          val.replace(/[\s()-]/g, "").replace(/^(?:\+44|0044)/, "0")
+        )
+        .refine(
+          (val) => /^0\d{9,10}$/.test(val),
+          "Enter a valid phone number (e.g. 07700 900000)"
+        ),
       avatar: z.string().optional(),
 
       // Password Information
@@ -112,24 +121,25 @@ const createTenantSchema = (t: (key: string) => string) =>
       dateOfBirth: z.date({
         required_error: t("tenants.form.validation.dateOfBirthRequired"),
       }),
-      ssn: z
+      nino: z
         .string()
-        .min(9,
-          { message: t("tenants.form.validation.ssnInvalid") }
-        )
         .optional()
         .transform((val) => {
           if (!val || val.trim() === "") return undefined;
-          return val.trim();
+          // Normalise: strip spaces + uppercase ("qq 12 34 56 c" -> "QQ123456C")
+          return val.replace(/\s+/g, "").toUpperCase();
         })
-      // .refine(
-      //   (val) => {
-      //     if (!val) return true;
-      //     return /^\d{2} ?\d{2} ?\d{2} ?\d{2} ?\d{1}$/.test(val);
-      //   },
-      //   { message: t("tenants.form.validation.ssnInvalid") }
-      // )
-      ,
+        .refine(
+          (val) =>
+            !val ||
+            // 2 prefix letters + 6 digits + 1 suffix (A–D). Excludes invalid
+            // prefix letters and the disallowed prefixes BG, GB, KN, NK, NT,
+            // TN, ZZ.
+            /^(?!BG|GB|KN|NK|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/.test(
+              val
+            ),
+          { message: t("tenants.form.validation.ninoInvalid") }
+        ),
 
       // Employment Information
       employer: z.string().optional(),
@@ -143,7 +153,14 @@ const createTenantSchema = (t: (key: string) => string) =>
       // Emergency Contact (All Optional)
       emergencyContactName: z.string().min(1, t("tenants.form.validation.contactNameRequired")),
       emergencyContactRelationship: z.string().min(1, t("tenants.form.validation.contactRelationshipRequired")),
-      emergencyContactPhone: z.string().min(1, t("tenants.form.validation.contactPhoneRequired")),
+      emergencyContactPhone: z.string().min(1, t("tenants.form.validation.contactPhoneRequired"))
+        .transform((val) =>
+          val.replace(/[\s()-]/g, "").replace(/^(?:\+44|0044)/, "0")
+        )
+        .refine(
+          (val) => /^0\d{9,10}$/.test(val),
+          "Enter a valid phone number (e.g. 07700 900000)"
+        ),
       emergencyContactEmail: z
         .string()
         .min(1, t("tenants.form.validation.contactEmailRequired"))
@@ -232,7 +249,7 @@ export default function NewTenantPage() {
       confirmPassword: "",
       tenantStatus: "application_submitted",
       dateOfBirth: undefined,
-      ssn: "",
+      nino: "",
       employer: "",
       position: "",
       income: undefined,
@@ -256,12 +273,12 @@ export default function NewTenantPage() {
 
   // ─── Draft persistence (local) ──────────────────────────────────────────
   // Drafts live in the browser only and deliberately exclude sensitive
-  // fields (password, confirm password, SSN). Uploaded document files aren't
+  // fields (password, confirm password, NINO). Uploaded document files aren't
   // serialisable, so they're not part of a draft.
   const SENSITIVE_DRAFT_FIELDS: (keyof TenantFormData)[] = [
     "password",
     "confirmPassword",
-    "ssn",
+    "nino",
   ];
 
   const saveDraft = () => {
@@ -488,7 +505,7 @@ export default function NewTenantPage() {
         avatar: avatarUrl || undefined,
         tenantStatus: data.tenantStatus,
         dateOfBirth: data.dateOfBirth || undefined,
-        ssn: data.ssn || undefined,
+        nino: data.nino || undefined,
         employmentInfo: data.employer
           ? {
             employer: data.employer,
@@ -577,7 +594,7 @@ export default function NewTenantPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-4 md:p-6">
+    <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20 p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -807,7 +824,7 @@ export default function NewTenantPage() {
                                   >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                     {field.value ? (
-                                      format(field.value, "PPP")
+                                      format(field.value, "dd-MM-yyyy")
                                     ) : (
                                       <span>
                                         {t("tenants.form.fields.dateOfBirth.placeholder")}
@@ -835,16 +852,15 @@ export default function NewTenantPage() {
                       />
                       <FormField
                         control={form.control}
-                        name="ssn"
+                        name="nino"
                         render={({ field }) => (
                           <FormItem className="space-y-3">
                             <FormLabel className="text-sm font-semibold text-muted-foreground">
-                              {t("tenants.form.fields.ssn.label")}
+                              {t("tenants.form.fields.nino.label")}
                             </FormLabel>
                             <FormControl>
                               <Input
-                                maxLength={9}
-                                placeholder={t("tenants.form.fields.ssn.placeholder")}
+                                placeholder={t("tenants.form.fields.nino.placeholder")}
                                 className="h-11 border-2 border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 bg-background/50 transition-all duration-200"
                                 {...field}
                               />
@@ -1073,7 +1089,7 @@ export default function NewTenantPage() {
                                     >
                                       <CalendarIcon className="mr-2 h-4 w-4" />
                                       {field.value ? (
-                                        format(new Date(field.value), "PPP")
+                                        format(new Date(field.value), "dd-MM-yyyy")
                                       ) : (
                                         <span>
                                           {t("tenants.form.fields.employmentStartDate.placeholder")}
@@ -1286,7 +1302,7 @@ export default function NewTenantPage() {
                                 >
                                   <CalendarIcon className="mr-2 h-4 w-4" />
                                   {field.value ? (
-                                    format(new Date(field.value), "PPP")
+                                    format(new Date(field.value), "dd-MM-yyyy")
                                   ) : (
                                     <span>
                                       {t("tenants.form.fields.moveInDate.placeholder")}

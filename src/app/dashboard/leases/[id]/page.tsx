@@ -121,13 +121,23 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
   //   }
   // };
 
-  const getDaysRemaining = () => {
-    if (!lease) return 0;
-    const endDate = new Date(lease.endDate);
-    const now = new Date();
-    const diffTime = endDate.getTime() - now.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
+const getDaysRemaining = () => {
+  // Open-ended leases (e.g. monthly) have no end date — nothing to count down.
+  if (!lease?.endDate) return null;
+
+  const endDate = new Date(lease.endDate);
+  if (isNaN(endDate.getTime())) return null;
+
+  // Count whole days from the start of today so the result doesn't shift with
+  // the current time of day (which caused the off-by-one).
+  const today = new Date(lease.startDate || new Date());
+  today.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+
+  return Math.round(
+    (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+};
 
   const getTotalDays = () => {
     if (!lease?.startDate || !lease?.endDate) return 0;
@@ -136,6 +146,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
     const diffTime = end.getTime() - start.getTime();
     return Math.max(0, Math.round(diffTime / (1000 * 60 * 60 * 24)));
   };
+
   if (loading) {
     return (
       <div className="space-y-8 animate-fade-in-up">
@@ -624,6 +635,13 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Rent Period
+                    </label>
+                    {lease.rentPeriod}
+                  </div>
+
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
                       {t("leases.details.summary.leasePeriod")}
@@ -647,15 +665,15 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                     </p>
                   </div>
 
-                  {lease.status === LeaseStatus.ACTIVE && (
+                  {/* {lease.status === LeaseStatus.ACTIVE && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">
                         {t("leases.details.summary.daysRemaining")}
                       </label>
                       <p
-                        className={`font-semibold ${daysRemaining < 30
+                        className={`font-semibold ${daysRemaining < 1
                           ? "text-red-600"
-                          : daysRemaining < 60
+                          : daysRemaining < 2
                             ? "text-orange-600"
                             : "text-green-600"
                           }`}
@@ -667,7 +685,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                           : t("leases.labels.expired")}
                       </p>
                     </div>
-                  )}
+                  )} */}
 
                   {lease.signedDate && (
                     <div>
@@ -695,7 +713,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                 </CardHeader>
                 <CardContent className="space-y-4 lg:space-y-6">
                   <div className="grid grid-cols-1 gap-3 lg:gap-4">
-                    
+
                     {(lease.terms.totalAmount ?? 0) > 0 && (
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
                         <span className="text-success font-semibold text-sm lg:text-base">
@@ -743,7 +761,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                         {typeof rentDifference === "number" && (
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-muted/40 border border-border/15">
                             <span className="text-muted-foreground font-semibold text-sm lg:text-base">
-                              Rent Difference 
+                              Rent Difference
                             </span>
                             <span className="font-bold text-base lg:text-lg">
                               {formatCurrency(Math.abs(rentDifference))}

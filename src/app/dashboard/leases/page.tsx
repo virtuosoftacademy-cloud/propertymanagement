@@ -58,7 +58,7 @@ import {
   AnalyticsCard,
   AnalyticsCardGrid,
 } from "@/components/analytics/AnalyticsCard";
-import { LeaseStatus, UserRole } from "@/types";
+import { LeaseRentPeriod, LeaseStatus, UserRole } from "@/types";
 import {
   leaseService,
   LeaseResponse,
@@ -72,169 +72,169 @@ import { LeaseStatusBadge } from "@/components/leases/LeaseStatusBadge";
 import { DeleteConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 export default function LeasesPage() {
-const router = useRouter();
-const { data: session, status } = useSession();
-const { t, formatCurrency, currentCurrency } = useLocalizationContext();
-const [leases, setLeases] = useState<LeaseResponse[]>([]);
-const [loading, setLoading] = useState(true);
-const [isSearching, setIsSearching] = useState(false);
-const [searchTerm, setSearchTerm] = useState("");
-// Track if this is the initial load (for showing skeleton loaders only on first load)
-const [isInitialLoad, setIsInitialLoad] = useState(true);
-const [pagination, setPagination] = useState({
-  page: 1,
-  limit: 12,
-  total: 0,
-  pages: 0,
-  hasNext: false,
-  hasPrev: false,
-});
-const [filters, setFilters] = useState<LeaseQueryParams>({
-  page: 1,
-  limit: 12,
-  search: "",
-  status: undefined,
-  sortBy: "createdAt",
-  sortOrder: "desc",
-});
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const { t, formatCurrency, currentCurrency } = useLocalizationContext();
+  const [leases, setLeases] = useState<LeaseResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  // Track if this is the initial load (for showing skeleton loaders only on first load)
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 12,
+    total: 0,
+    pages: 0,
+    hasNext: false,
+    hasPrev: false,
+  });
+  const [filters, setFilters] = useState<LeaseQueryParams>({
+    page: 1,
+    limit: 12,
+    search: "",
+    status: undefined,
+    sortBy: "createdAt",
+    sortOrder: "desc",
+  });
 
-// Redirect tenants to their "My Leases" page
-// UI state/hooks must be declared before any early returns so hooks order is stable
-const viewMode = useViewPreferencesStore((state) => state.leasesView);
-const setViewMode = useViewPreferencesStore((state) => state.setLeasesView);
-const [stats, setStats] = useState({
-  total: 0,
-  active: 0,
-  draft: 0,
-  pending: 0,
-  expired: 0,
-  terminated: 0,
-  expiringThisMonth: 0,
-});
-const [showActiveDeleteDialog, setShowActiveDeleteDialog] = useState(false);
-const [activeDeleteInfoLease, setActiveDeleteInfoLease] =
-  useState<LeaseResponse | null>(null);
-const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
-const [selectedLeases, setSelectedLeases] = useState<string[]>([]);
-const [leaseToDelete, setLeaseToDelete] = useState<LeaseResponse | null>(
-  null
-);
-const [isDeleting, setIsDeleting] = useState(false);
+  // Redirect tenants to their "My Leases" page
+  // UI state/hooks must be declared before any early returns so hooks order is stable
+  const viewMode = useViewPreferencesStore((state) => state.leasesView);
+  const setViewMode = useViewPreferencesStore((state) => state.setLeasesView);
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    draft: 0,
+    pending: 0,
+    expired: 0,
+    terminated: 0,
+    expiringThisMonth: 0,
+  });
+  const [showActiveDeleteDialog, setShowActiveDeleteDialog] = useState(false);
+  const [activeDeleteInfoLease, setActiveDeleteInfoLease] =
+    useState<LeaseResponse | null>(null);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [selectedLeases, setSelectedLeases] = useState<string[]>([]);
+  const [leaseToDelete, setLeaseToDelete] = useState<LeaseResponse | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
 
-const fetchLeases = async (
-  currentFilters: LeaseQueryParams,
-  showFullLoading = false
-) => {
-  try {
-    // Only show full skeleton loaders on initial load, not during search
-    if (showFullLoading) {
-      setLoading(true);
-    }
-    console.log("🔍 fetchLeases called with filters:", currentFilters);
-
-    // TENANT view: fetch from tenant dashboard, then apply filters/sort/pagination client-side
-    if (session?.user?.role === UserRole.TENANT) {
-      const response = await fetch("/api/tenant/dashboard");
-      const data = await response.json();
-
-      if (data.success) {
-        const allLeases: LeaseResponse[] = (data.data?.allLeases ||
-          []) as LeaseResponse[];
-
-        // Apply status + search filters
-        const search = (currentFilters.search || "").toLowerCase().trim();
-        const filtered = allLeases.filter((lease) => {
-          const matchesStatus =
-            !currentFilters.status ||
-            lease.status === currentFilters.status ||
-            (currentFilters.status === LeaseStatus.PENDING &&
-              lease.status === LeaseStatus.PENDING_SIGNATURE);
-          console.log(
-            `Lease ${lease._id}: status=${lease.status}, currentFilters.status=${currentFilters.status}, matchesStatus=${matchesStatus}`
-          );
-          if (!search) return matchesStatus;
-
-          const haystack = [
-            lease.propertyId?.name,
-            lease.propertyId?.address?.street,
-            lease.propertyId?.address?.city,
-            lease.tenantId?.firstName,
-            lease.tenantId?.lastName,
-            lease.tenantId?.email,
-            lease.unit?.unitNumber,
-            lease.status,
-          ]
-            .filter(Boolean)
-            .map((v) => String(v).toLowerCase());
-
-          const matchesSearch = haystack.some((v) => v.includes(search));
-          return matchesStatus && matchesSearch;
-        });
-
-        // Sorting
-        const sortBy = currentFilters.sortBy || "createdAt";
-        const sortOrder = currentFilters.sortOrder || "desc";
-        const get = (obj: any, path: string) =>
-          path
-            .split(".")
-            .reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
-
-        const getSortVal = (lease: LeaseResponse) => {
-          if (sortBy === "terms.totalAmount") {
-            return lease.unit?.totalAmount ?? lease.terms?.totalAmount ?? 0;
-          }
-          const v = get(lease, sortBy);
-          if (!v) return 0;
-          const key = sortBy.toLowerCase();
-          if (
-            key.includes("date") ||
-            key.includes("createdat") ||
-            key.includes("updatedat")
-          ) {
-            const t = new Date(v as any).getTime();
-            return Number.isNaN(t) ? 0 : t;
-          }
-          return typeof v === "number" ? v : String(v).toLowerCase();
-        };
-
-        const sorted = [...filtered].sort((a, b) => {
-          const av = getSortVal(a);
-          const bv = getSortVal(b);
-
-          if (typeof av === "number" && typeof bv === "number") {
-            return sortOrder === "asc" ? av - bv : bv - av;
-          }
-          return sortOrder === "asc"
-            ? String(av).localeCompare(String(bv))
-            : String(bv).localeCompare(String(av));
-        });
-
-        // Pagination
-        const page = currentFilters.page || 1;
-        const limit = currentFilters.limit || 10;
-        const total = sorted.length;
-        const pages = Math.max(1, Math.ceil(total / limit));
-        const start = (page - 1) * limit;
-        const paginated = sorted.slice(start, start + limit);
-
-        setLeases(paginated);
-        setPagination({
-          page,
-          limit,
-          total,
-          pages,
-          hasNext: page < pages,
-          hasPrev: page > 1,
-        });
-      } else {
-        showSimpleError(
-          "Load Error",
-          t("leases.toasts.fetchYourLeasesError")
-        );
+  const fetchLeases = async (
+    currentFilters: LeaseQueryParams,
+    showFullLoading = false
+  ) => {
+    try {
+      // Only show full skeleton loaders on initial load, not during search
+      if (showFullLoading) {
+        setLoading(true);
       }
-    } else {
-      // ADMIN/MANAGER: fetch all leases and apply client-side filtering
-      const baseParams = {
+      console.log("🔍 fetchLeases called with filters:", currentFilters);
+
+      // TENANT view: fetch from tenant dashboard, then apply filters/sort/pagination client-side
+      if (session?.user?.role === UserRole.TENANT) {
+        const response = await fetch("/api/tenant/dashboard");
+        const data = await response.json();
+
+        if (data.success) {
+          const allLeases: LeaseResponse[] = (data.data?.allLeases ||
+            []) as LeaseResponse[];
+
+          // Apply status + search filters
+          const search = (currentFilters.search || "").toLowerCase().trim();
+          const filtered = allLeases.filter((lease) => {
+            const matchesStatus =
+              !currentFilters.status ||
+              lease.status === currentFilters.status ||
+              (currentFilters.status === LeaseStatus.PENDING &&
+                lease.status === LeaseStatus.PENDING_SIGNATURE);
+            console.log(
+              `Lease ${lease._id}: status=${lease.status}, currentFilters.status=${currentFilters.status}, matchesStatus=${matchesStatus}`
+            );
+            if (!search) return matchesStatus;
+
+            const haystack = [
+              lease.propertyId?.name,
+              lease.propertyId?.address?.street,
+              lease.propertyId?.address?.city,
+              lease.tenantId?.firstName,
+              lease.tenantId?.lastName,
+              lease.tenantId?.email,
+              lease.unit?.unitNumber,
+              lease.status,
+            ]
+              .filter(Boolean)
+              .map((v) => String(v).toLowerCase());
+
+            const matchesSearch = haystack.some((v) => v.includes(search));
+            return matchesStatus && matchesSearch;
+          });
+
+          // Sorting
+          const sortBy = currentFilters.sortBy || "createdAt";
+          const sortOrder = currentFilters.sortOrder || "desc";
+          const get = (obj: any, path: string) =>
+            path
+              .split(".")
+              .reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
+
+          const getSortVal = (lease: LeaseResponse) => {
+            if (sortBy === "terms.totalAmount") {
+              return lease.unit?.totalAmount ?? lease.terms?.totalAmount ?? 0;
+            }
+            const v = get(lease, sortBy);
+            if (!v) return 0;
+            const key = sortBy.toLowerCase();
+            if (
+              key.includes("date") ||
+              key.includes("createdat") ||
+              key.includes("updatedat")
+            ) {
+              const t = new Date(v as any).getTime();
+              return Number.isNaN(t) ? 0 : t;
+            }
+            return typeof v === "number" ? v : String(v).toLowerCase();
+          };
+
+          const sorted = [...filtered].sort((a, b) => {
+            const av = getSortVal(a);
+            const bv = getSortVal(b);
+
+            if (typeof av === "number" && typeof bv === "number") {
+              return sortOrder === "asc" ? av - bv : bv - av;
+            }
+            return sortOrder === "asc"
+              ? String(av).localeCompare(String(bv))
+              : String(bv).localeCompare(String(av));
+          });
+
+          // Pagination
+          const page = currentFilters.page || 1;
+          const limit = currentFilters.limit || 10;
+          const total = sorted.length;
+          const pages = Math.max(1, Math.ceil(total / limit));
+          const start = (page - 1) * limit;
+          const paginated = sorted.slice(start, start + limit);
+
+          setLeases(paginated);
+          setPagination({
+            page,
+            limit,
+            total,
+            pages,
+            hasNext: page < pages,
+            hasPrev: page > 1,
+          });
+        } else {
+          showSimpleError(
+            "Load Error",
+            t("leases.toasts.fetchYourLeasesError")
+          );
+        }
+      } else {
+        // ADMIN/MANAGER: fetch all leases and apply client-side filtering
+        const baseParams = {
           search: currentFilters.search,
           sortBy: currentFilters.sortBy,
           sortOrder: currentFilters.sortOrder,
@@ -455,7 +455,7 @@ const fetchLeases = async (
     const end = new Date(endDate);
     const now = new Date();
     const diffTime = end.getTime() - now.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
   };
 
   // Define columns for the DataTable
@@ -465,7 +465,7 @@ const fetchLeases = async (
       header: t("leases.table.propertyUnit"),
       cell: (lease) => (
         <div className="flex items-center space-x-3">
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <Home className="h-8 w-8 text-muted-foreground" />
           </div>
           <div>
@@ -503,9 +503,8 @@ const fetchLeases = async (
           <Avatar className="h-8 w-8">
             <AvatarImage
               src={lease.tenantId?.avatar}
-              alt={`${lease.tenantId?.firstName || ""} ${
-                lease.tenantId?.lastName || ""
-              }`}
+              alt={`${lease.tenantId?.firstName || ""} ${lease.tenantId?.lastName || ""
+                }`}
             />
             <AvatarFallback>
               {lease.tenantId?.firstName?.[0] || "T"}
@@ -543,9 +542,9 @@ const fetchLeases = async (
         return (
           <div>
             <div className="font-medium">{formatCurrency(displayAmount)}</div>
-            {/* <div className="text-sm text-muted-foreground">
-              {t("leases.labels.perMonth")}
-            </div> */}
+            <div className="text-sm text-muted-foreground">
+              per {lease.rentPeriod || "N/A"}
+            </div>
           </div>
         );
       },
@@ -570,29 +569,28 @@ const fetchLeases = async (
         </div>
       ),
     },
-    {
-      id: "daysRemaining",
-      header: t("leases.table.daysRemaining"),
-      visibility: "md",
-      cell: (lease) => {
-        const daysRemaining = getDaysRemaining(lease.endDate);
-        return (
-          <div
-            className={`text-sm font-medium ${
-              daysRemaining < 0
-                ? "text-red-600"
-                : daysRemaining <= 30
-                ? "text-orange-600"
-                : "text-green-600"
-            }`}
-          >
-            {daysRemaining < 0
-              ? t("leases.labels.expired")
-              : t("leases.labels.days", { values: { days: daysRemaining } })}
-          </div>
-        );
-      },
-    },
+    // {
+    //   id: "daysRemaining",
+    //   header: t("leases.table.daysRemaining"),
+    //   visibility: "md",
+    //   cell: (lease) => {
+    //     const daysRemaining = getDaysRemaining(lease.endDate);
+    //     return (
+    //       <div
+    //         className={`text-sm font-medium ${daysRemaining < 0
+    //             ? "text-red-600"
+    //             : daysRemaining <= 30
+    //               ? "text-orange-600"
+    //               : "text-green-600"
+    //           }`}
+    //       >
+    //         {daysRemaining < 0
+    //           ? t("leases.labels.expired")
+    //           : t("leases.labels.days", { values: { days: daysRemaining } })}
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       id: "actions",
       header: t("leases.table.actions"),
@@ -654,14 +652,12 @@ const fetchLeases = async (
             ) : (
               <DeleteConfirmationDialog
                 itemName={
-                  `${
-                    lease.propertyId?.name ||
-                    t("leases.labels.propertyNotAvailable")
+                  `${lease.propertyId?.name ||
+                  t("leases.labels.propertyNotAvailable")
                   } - ` +
-                  `${
-                    lease.tenantId?.firstName && lease.tenantId?.lastName
-                      ? `${lease.tenantId.firstName} ${lease.tenantId.lastName}`
-                      : t("leases.labels.unknownTenant")
+                  `${lease.tenantId?.firstName && lease.tenantId?.lastName
+                    ? `${lease.tenantId.firstName} ${lease.tenantId.lastName}`
+                    : t("leases.labels.unknownTenant")
                   }`
                 }
                 itemType="lease"
@@ -1031,7 +1027,7 @@ const fetchLeases = async (
                     key={lease._id}
                     lease={lease}
                     onUpdate={handleLeaseUpdate}
-                    // onDelete={handleLeaseDelete}
+                  // onDelete={handleLeaseDelete}
                   />
                 ))
               )}

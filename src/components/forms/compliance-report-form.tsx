@@ -35,12 +35,12 @@ import {
 import { FormDatePicker } from "@/components/ui/date-picker";
 import { Home, Calendar, FileText, PoundSterling } from "lucide-react";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
-import { useRouter } from "next/navigation"; // FIX 5: removed unused useParams
+import { useRouter } from "next/navigation";
 import { ImageUpload } from "../ui/image-upload";
 import { ComplianceCategory, ComplianceCategoryLabels } from "@/types";
 
 // ────────────────────────────────────────────────
-// Schema
+//Form validation Schema
 // ────────────────────────────────────────────────
 const complianceReportSchema = z.object({
   propertyId: z.string().min(1, "Property is required"),
@@ -48,7 +48,6 @@ const complianceReportSchema = z.object({
   issueDate: z.string().min(1, "Issue date is required"),
   expiryDate: z.string().min(1, "Expiry date is required"),
   notes: z.string().max(1000, "Notes too long").optional(),
-  images: z.array(z.string()).optional(),
   estimatedCost: z
     .number()
     .min(0, "Cost cannot be negative")
@@ -57,6 +56,7 @@ const complianceReportSchema = z.object({
       (val) => !val || !isNaN(val),
       "Must be a valid number"
     ),
+  images: z.array(z.string()).optional(),
 });
 
 type ComplianceReportFormData = z.infer<typeof complianceReportSchema>;
@@ -79,6 +79,20 @@ interface ComplianceReportFormProps {
     };
   }>;
 }
+
+interface Compliance {
+  key: string;
+  value: string;
+}
+const complianceCategory: Compliance[] = [
+  { key: "fire-safety", value: "Fire Safety Certificate" },
+  { key: "electrical-safety", value: "Electrical Safety" },
+  { key: "structural-safety", value: "Structural Safety" },
+  { key: "elevator-/-lift-certificate", value: "Elevator / Lift Certificate" },
+  { key: "pest-control-certificate", value: "Pest Control Certificate" },
+  { key: "health-hygiene", value: "Health & Hygiene Compliance" },
+  { key: "hmo-license", value: "HMO License" },
+]
 
 export default function ComplianceReportForm({
   mode = "create",
@@ -111,6 +125,26 @@ export default function ComplianceReportForm({
 
   const watchedIssueDate = form.watch("issueDate");
 
+  // In edit mode the report data may arrive after first render. Re-seed the
+  // form and the uploaded files once the report's identity is known so existing
+  // values (category, dates, documents) populate instead of staying blank.
+  useEffect(() => {
+    if (!initialData?._id) return;
+    form.reset({
+      propertyId: initialData.propertyId || "",
+      category: initialData.category || "",
+      issueDate: initialData.issueDate || "",
+      expiryDate: initialData.expiryDate || "",
+      notes: initialData.notes || "",
+      images: initialData.images || [],
+      estimatedCost: initialData.estimatedCost ?? undefined,
+    });
+    setUploadedImages(
+      (initialData.images || []).map((url) => ({ url, publicId: "" }))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?._id]);
+
   useEffect(() => {
     const currentExpiry = form.getValues("expiryDate");
     if (
@@ -131,6 +165,7 @@ export default function ComplianceReportForm({
       expiryDate: data.expiryDate,
       notes: data.notes?.trim() || undefined,
       estimatedCost: data.estimatedCost ?? undefined,
+      images: data.images || undefined
     };
 
     const url =
@@ -175,10 +210,10 @@ export default function ComplianceReportForm({
           className="space-y-8"
         >
           {/* Property & Compliance Type */}
-          <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                <div className="p-2 rounded-lg bg-linear-to-br from-blue-500 to-indigo-600 text-white">
                   <Home className="h-5 w-5" />
                 </div>
                 {t("compliance.form.propertyAndType.title") ||
@@ -206,7 +241,7 @@ export default function ComplianceReportForm({
                         value={field.value || undefined}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200">
+                          <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary/20 transition-all duration-200">
                             <SelectValue placeholder="Select property" />
                           </SelectTrigger>
                         </FormControl>
@@ -228,7 +263,6 @@ export default function ComplianceReportForm({
                   )}
                 />
 
-                {/* FIX 4: use field.value / field.onChange instead of watch/setValue directly */}
                 <FormField
                   control={form.control}
                   name="category"
@@ -243,15 +277,15 @@ export default function ComplianceReportForm({
                         value={field.value || undefined}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200">
+                          <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary/20 transition-all duration-200">
                             <SelectValue placeholder="Select compliance type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {Object.values(ComplianceCategory).map((type) => (
-                            <SelectItem key={type} value={type}>
+                          {complianceCategory.map((type) => (
+                            <SelectItem key={type.key} value={type.key}>
                               <div className="font-medium">
-                                {ComplianceCategoryLabels[type]}
+                                {type.value}
                               </div>
                             </SelectItem>
                           ))}
@@ -266,10 +300,10 @@ export default function ComplianceReportForm({
           </Card>
 
           {/* Validity Period */}
-          <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 text-white">
+                <div className="p-2 rounded-lg bg-linear-to-br from-purple-500 to-pink-600 text-white">
                   <Calendar className="h-5 w-5" />
                 </div>
                 Validity Period
@@ -337,10 +371,10 @@ export default function ComplianceReportForm({
           </Card>
 
           {/* Cost & Additional Notes */}
-          <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+                <div className="p-2 rounded-lg bg-primary text-white">
                   <PoundSterling className="h-5 w-5" />
                 </div>
                 {t("compliance.form.costandAdd.title") ||
@@ -364,7 +398,9 @@ export default function ComplianceReportForm({
                       <Input
                         type="number"
                         placeholder="0"
-                        className="h-11 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
+                        step={0.1}
+                        min={0}
+                        className="h-11 border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary/20 transition-all duration-200"
                         {...field}
                         value={field.value ?? ""}
                         onChange={(e) =>
@@ -395,7 +431,7 @@ export default function ComplianceReportForm({
                     <FormControl>
                       <Textarea
                         placeholder="Remarks, observations, special conditions..."
-                        className="min-h-[120px] resize-y border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
+                        className="min-h-[120px] resize-y border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary/20 transition-all duration-200"
                         {...field}
                         value={field.value ?? ""}
                       />
@@ -411,10 +447,10 @@ export default function ComplianceReportForm({
           </Card>
 
           {/* Supporting Documents */}
-          <Card className="border-0 shadow-lg bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm">
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+                <div className="p-2 rounded-lg bg-linear-to-br from-amber-500 to-orange-600 text-white">
                   <FileText className="h-5 w-5" />
                 </div>
                 {/* FIX 1 (same pattern): || for Supporting Documents card too */}
@@ -453,6 +489,13 @@ export default function ComplianceReportForm({
                 maxFiles={10}
                 folder="PropertyPro/compliance"
                 quality="auto"
+                accept=".pdf,.doc,.docx,image/*"
+                allowedMimeTypes={[
+                  "image/*",
+                  "application/pdf",
+                  "application/msword",
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ]}
               />
             </CardContent>
           </Card>
@@ -471,7 +514,6 @@ export default function ComplianceReportForm({
             <Button
               type="submit"
               disabled={form.formState.isSubmitting}
-              className="h-11 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
             >
               {form.formState.isSubmitting ? (
                 <div className="flex items-center gap-2">
@@ -481,7 +523,7 @@ export default function ComplianceReportForm({
               ) : isEditMode ? (
                 "Save Changes"
               ) : (
-                "Create Compliance Report"
+                "Add Report"
               )}
             </Button>
           </div>

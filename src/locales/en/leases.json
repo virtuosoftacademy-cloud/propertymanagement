@@ -608,7 +608,7 @@
   "leases.new.form.sections.review.invoicesSummary": "Invoices will be automatically generated for this lease including{depositPart} monthly rent payments{emailPart}",
   "leases.new.form.sections.review.fragments.securityDeposit": " security deposit,",
   "leases.new.form.sections.review.fragments.autoEmail": ", and automatically emailed to the tenant",
-
+  "leases.expiring.table.rent": "Rent Amount",
   "leases.expiring.header.title": "Expiring Leases",
   "leases.expiring.header.subtitle": "Manage leases that are expiring soon and require attention",
   "leases.expiring.header.loadingSubtitle": "Manage leases that are expiring soon",

@@ -342,9 +342,8 @@ export default function ActiveLeasesPage() {
           <Avatar className="h-8 w-8">
             <AvatarImage
               src={lease.tenantId?.avatar}
-              alt={`${lease.tenantId?.firstName || ""} ${
-                lease.tenantId?.lastName || ""
-              }`}
+              alt={`${lease.tenantId?.firstName || ""} ${lease.tenantId?.lastName || ""
+                }`}
             />
             <AvatarFallback>
               {lease.tenantId?.firstName?.[0] || "T"}
@@ -366,7 +365,7 @@ export default function ActiveLeasesPage() {
     },
     {
       id: "rentAmount",
-      header: t("leases.table.rentAmount"),
+      header: t("leases.table.totalAmount"),
       visibility: "md",
       cell: (lease) => (
         <div>
@@ -374,7 +373,7 @@ export default function ActiveLeasesPage() {
             {formatCurrency(lease.unit?.rentAmount || lease.terms.rentAmount)}
           </div>
           <div className="text-sm text-muted-foreground">
-            {t("leases.labels.perMonth")}
+            per {lease.rentPeriod || "N/A"}
           </div>
         </div>
       ),
@@ -407,13 +406,12 @@ export default function ActiveLeasesPage() {
         const days = getDaysRemaining(lease.endDate);
         return (
           <div
-            className={`text-sm font-medium ${
-              days < 0
+            className={`text-sm font-medium ${days < 0
                 ? "text-red-600"
                 : days <= 30
-                ? "text-orange-600"
-                : "text-green-600"
-            }`}
+                  ? "text-orange-600"
+                  : "text-green-600"
+              }`}
           >
             {days < 0
               ? t("leases.labels.expired")
@@ -697,7 +695,7 @@ export default function ActiveLeasesPage() {
                     key={lease._id}
                     lease={lease}
                     onUpdate={handleLeaseUpdate}
-                    // onDelete={() => {}}
+                  // onDelete={() => {}}
                   />
                 ))
               )}

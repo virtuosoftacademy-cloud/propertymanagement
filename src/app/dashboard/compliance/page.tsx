@@ -53,15 +53,12 @@ interface ComplianceReport {
     lastName?: string;
     email?: string;
   } | null;
-  // Loosened from `ComplianceCategory` because legacy/corrupt records may have
-  // null, undefined, or unexpected string values that would otherwise crash
-  // the runtime helpers below.
-  category: ComplianceCategory | string | null;
+  category: ComplianceCategory | null;
   issueDate: string;
   expiryDate: string;
   estimatedCost?: number;
   status: ComplianceStatus;
-  documents?: Array<{ url: string; name?: string }>;
+  images?: Array<{ url: string; name?: string }>;
   notes?: string;
   daysUntilExpiry?: number | null;
   isExpired?: boolean;
@@ -171,8 +168,8 @@ export default function CompliancePage() {
       if (!res.ok || !json.success) {
         throw new Error(
           json.error ||
-            json.message ||
-            `Request failed with status ${res.status}`
+          json.message ||
+          `Request failed with status ${res.status}`
         );
       }
 
@@ -252,8 +249,8 @@ export default function CompliancePage() {
    * Handles null/undefined/non-string values that would crash `.split()`.
    */
 
-    // Look up label by exact match first
-    
+  // Look up label by exact match first
+
 
   const getExpiryStyle = (days?: number | null) => {
     if (days == null) return "";
@@ -287,11 +284,11 @@ export default function CompliancePage() {
   // ────────────────────────────────────────────────
   const columns: DataTableColumn<ComplianceReport>[] = [
     {
-      id: "type",
+      id: "category",
       header: "Type",
       cell: (r) => (
         <div className="font-medium capitalize">
-          {r.category}
+          {r.category?.replace("-", " ")}
         </div>
       ),
     },
@@ -341,14 +338,14 @@ export default function CompliancePage() {
     },
     {
       id: "cost",
-      header: "Est. Cost",
+      header: "Act. Cost",
       cell: (r) =>
         r.estimatedCost ? `£${r.estimatedCost.toLocaleString()}` : "—",
     },
     {
       id: "docs",
       header: "Docs",
-      cell: (r) => r.documents?.length || 0,
+      cell: (r) => r.images?.length || 0,
     },
     {
       id: "actions",
@@ -633,13 +630,13 @@ export default function CompliancePage() {
               {reports.map((report) => (
                 <Card
                   key={report._id}
-                  className="hover:shadow-md transition-shadow"
+                  className="hover:shadow-md transition-shadow dark:bg-accent/50"
                 >
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-1">
                         <h3 className="font-medium line-clamp-2 capitalize">
-                          {report.category}
+                          {report.category?.replace("-", " ")}
                         </h3>
                         <p className="text-sm text-muted-foreground">
                           {report.propertyId?.name || "—"}
@@ -673,7 +670,7 @@ export default function CompliancePage() {
                       </div>
                       <div>
                         <div className="text-muted-foreground">Docs</div>
-                        {report.documents?.length || 0}
+                        {report.images?.length || 0}
                       </div>
                     </div>
                     <div className="flex justify-end pt-2 border-t">
