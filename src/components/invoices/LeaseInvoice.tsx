@@ -442,7 +442,7 @@ export function LeaseInvoice({
                     Total Rent:
                   </span>
                   <span className="summary-value font-semibold text-primary">
-                    {formatCurrency(lease.terms?.totalAmount || 0)}
+                    {formatCurrency(lease.terms?.totalAmount || lease.terms?.rentAmount || 0)}
                   </span>
                 </div>
                 <div className="summary-item flex justify-between py-3 border-b border-primary/30">
@@ -479,7 +479,7 @@ export function LeaseInvoice({
                   </span>
                   <span className="summary-value font-bold text-primary text-lg">
                     {formatCurrency(
-                      (lease.terms?.totalAmount || 0) +
+                      (lease.terms?.totalAmount || lease.terms?.rentAmount || 0) +
                         (lease.terms?.securityDeposit || 0) +
                         (lease.terms?.petDeposit || 0) +
                         (lease.terms?.lateFee || 0)

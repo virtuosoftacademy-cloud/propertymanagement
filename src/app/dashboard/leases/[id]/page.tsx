@@ -447,7 +447,7 @@ const getDaysRemaining = () => {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
+                  {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
                     <div className="text-center p-3 lg:p-4 rounded-xl bg-linear-to-br from-success/15 to-success/8 border border-success/15">
                       <label className="text-xs font-bold text-success uppercase tracking-wider block mb-2">
                         {t("leases.details.property.bedrooms")}
@@ -483,7 +483,8 @@ const getDaysRemaining = () => {
                         })()}
                       </p>
                     </div>
-                  </div>
+                  </div> */}
+
                 </CardContent>
               </Card>
 
@@ -815,7 +816,7 @@ const getDaysRemaining = () => {
               </Card>
 
               {/* Lease Capabilities */}
-              <Card>
+              {/* <Card>
                 <CardHeader>
                   <CardTitle className="text-sm">
                     {t("leases.details.status.availableActionsTitle")}
@@ -824,7 +825,7 @@ const getDaysRemaining = () => {
                 <CardContent>
                   <LeaseCapabilities lease={lease} />
                 </CardContent>
-              </Card>
+              </Card> */}
             </div>
           </div>
         </TabsContent>
@@ -873,12 +874,12 @@ const getDaysRemaining = () => {
               </div>
 
               {/* Lease Capabilities */}
-              <div>
+              {/* <div>
                 <h4 className="font-medium mb-3">
                   {t("leases.details.status.availableActionsTitle")}
                 </h4>
                 <LeaseCapabilities lease={lease} />
-              </div>
+              </div> */}
             </CardContent>
           </Card>
         </TabsContent>

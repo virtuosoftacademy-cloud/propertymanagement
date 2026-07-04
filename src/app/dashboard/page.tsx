@@ -456,13 +456,13 @@ export default function DashboardPage() {
     );
   }
 
-  if (!dashboardData && isLoading) {
-    return (
-      <ResponsiveLayout>
-        <DashboardSkeleton />
-      </ResponsiveLayout>
-    );
-  }
+  // if (!dashboardData && isLoading) {
+  //   return (
+  //     <ResponsiveLayout>
+  //       <DashboardSkeleton />
+  //     </ResponsiveLayout>
+  //   );
+  // }
 
   if (!dashboardData && error) {
     return (

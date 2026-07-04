@@ -256,14 +256,14 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                 Need help? Here are some options:
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
-                <Button
+                {/* <Button
                   asChild
                   variant="ghost"
                   size="sm"
                   className="text-xs"
                 >
                   <a href="/docs">View Documentation</a>
-                </Button>
+                </Button> */}
                 <Button
                   asChild
                   variant="ghost"
@@ -278,7 +278,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                   size="sm"
                   className="text-xs"
                 >
-                  <a href="mailto:support@propertypro.com">Contact Support</a>
+                  <a href="mailto:support@tenure.co.uk">Contact Support</a>
                 </Button>
               </div>
             </div>

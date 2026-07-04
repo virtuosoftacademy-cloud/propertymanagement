@@ -211,7 +211,7 @@ type RecentlyAddedTenant = {
 };
 
 // Local-only draft storage key (drafts never leave the browser).
-const TENANT_DRAFT_KEY = "propertypro:tenant-draft";
+const TENANT_DRAFT_KEY = "tenure:tenant-draft";
 
 export default function NewTenantPage() {
   const { t } = useLocalizationContext();

@@ -1303,7 +1303,7 @@ export default function SimplifiedLeaseCreation({
                   />
                   <p className="text-xs text-muted-foreground">
                     {rentPricing
-                      ? `${rentPricing.days} ${rentPricing.days ? "day" : "week"
+                      ? `${rentPricing.periods} ${rentPricing.isDay ? "day" : "week"
                       }${rentPricing.periods === 1 ? "" : "s"
                       } × ${formatCurrency(
                         leaseData.rentAmount || 0

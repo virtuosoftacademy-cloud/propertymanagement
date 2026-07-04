@@ -1435,7 +1435,7 @@ export default function PropertiesPage() {
                   <Card key={i} className="overflow-hidden py-0">
                     <CardContent className="p-0">
                       <div className="flex items-center h-20">
-                        <div className="w-32 h-20 bg-gray-200 animate-pulse flex-shrink-0" />
+                        <div className="w-32 h-20 bg-gray-200 animate-pulse shrink-0" />
                         <div className="flex-1 px-4 py-3 space-y-2">
                           <div className="h-5 w-1/3 bg-gray-200 rounded animate-pulse" />
                           <div className="h-4 w-1/2 bg-gray-200 rounded animate-pulse" />

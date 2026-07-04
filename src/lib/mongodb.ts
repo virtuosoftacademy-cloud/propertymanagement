@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/PropertyPro";
+  process.env.MONGODB_URI || "mongodb+srv://admin:1234@cluster0.oc8o8ns.mongodb.net/AppDB";
 
 // Don't throw error in development if MongoDB is not available
 if (!process.env.MONGODB_URI && process.env.NODE_ENV === "production") {
