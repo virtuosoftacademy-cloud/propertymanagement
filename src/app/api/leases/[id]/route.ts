@@ -37,22 +37,37 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.TEN
         return createErrorResponse("Invalid lease ID", 400);
       }
 
+      // The history view links here for records the soft-delete hook hides, so
+      // `deleted=true` opts into a second lookup that names deletedAt to escape
+      // it. Without the flag a deleted lease stays a 404 at its normal URL.
+      const includeDeleted =
+        new URL(request.url).searchParams.get("deleted") === "true";
+
+      const withRelations = (query: any) =>
+        query
+          .populate({
+            path: "propertyId",
+            select:
+              "name address type bedrooms bathrooms squareFootage ownerId managerId",
+            populate: [
+              { path: "ownerId", select: "firstName lastName email" },
+              { path: "managerId", select: "firstName lastName email" },
+            ],
+          })
+          .populate({
+            path: "tenantId",
+            select:
+              "firstName lastName email phone avatar dateOfBirth employmentInfo emergencyContacts creditScore backgroundCheckStatus moveInDate moveOutDate applicationDate",
+          });
+
       // Find the lease
-      const lease = await Lease.findById(id)
-        .populate({
-          path: "propertyId",
-          select:
-            "name address type bedrooms bathrooms squareFootage ownerId managerId",
-          populate: [
-            { path: "ownerId", select: "firstName lastName email" },
-            { path: "managerId", select: "firstName lastName email" },
-          ],
-        })
-        .populate({
-          path: "tenantId",
-          select:
-            "firstName lastName email phone avatar dateOfBirth employmentInfo emergencyContacts creditScore backgroundCheckStatus moveInDate moveOutDate applicationDate",
-        });
+      let lease = await withRelations(Lease.findById(id));
+
+      if (!lease && includeDeleted) {
+        lease = await withRelations(
+          Lease.findOne({ _id: id, deletedAt: { $ne: null } })
+        );
+      }
 
       if (!lease) {
         return createErrorResponse("Lease not found", 404);
@@ -101,21 +116,26 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         return createErrorResponse("Lease not found", 404);
       }
 
-      // Prevent updating active leases
-      if (lease.status === LeaseStatus.ACTIVE) {
-        return createErrorResponse(
-          "Cannot update active lease. Use PATCH for status changes.",
-          400
-        );
-      }
-
       // Validate update data
       const validation = validateSchema(leaseUpdateSchema, body);
       if (!validation.success) {
         return createErrorResponse(validation.errors.join(", "), 400);
       }
 
-      const updateData = validation.data;
+      // Active leases are editable, but status transitions stay with PATCH so
+      // they keep going through the transition rules rather than being set
+      // arbitrarily here.
+      const { status: _ignoredStatus, ...updateData } = validation.data;
+
+      if (
+        _ignoredStatus !== undefined &&
+        _ignoredStatus !== lease.status
+      ) {
+        return createErrorResponse(
+          "Lease status cannot be changed here. Use PATCH for status changes.",
+          400
+        );
+      }
 
       // Validate date range if both dates are provided
       if (updateData.startDate && updateData.endDate) {
@@ -124,26 +144,39 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         }
       }
 
-      // Check for overlapping leases if dates are being updated
+      // Check for overlapping leases if dates are being updated.
+      // Scoped to the unit, not the property: a multi-unit property
+      // legitimately runs concurrent leases, one per unit. Mirrors the Lease
+      // model's pre-save check, including open-ended leases on either side.
       if (updateData.startDate || updateData.endDate) {
         const startDate = updateData.startDate || lease.startDate;
-        const endDate = updateData.endDate || lease.endDate;
+        const endDate = updateData.endDate ?? lease.endDate;
 
-        const overlappingLease = await Lease.findOne({
+        const overlapQuery: Record<string, any> = {
           _id: { $ne: id },
           propertyId: lease.propertyId,
+          unitId: lease.unitId,
           status: { $in: [LeaseStatus.ACTIVE, LeaseStatus.PENDING] },
+          deletedAt: null,
+          // An existing lease is ongoing relative to our start if it ends on
+          // or after it, or is itself open-ended.
           $or: [
-            {
-              startDate: { $lte: endDate },
-              endDate: { $gte: startDate },
-            },
+            { endDate: { $gte: startDate } },
+            { endDate: { $exists: false } },
+            { endDate: null },
           ],
-        });
+        };
+
+        // Only a bounded lease can be capped at the upper end.
+        if (endDate) {
+          overlapQuery.startDate = { $lte: endDate };
+        }
+
+        const overlappingLease = await Lease.findOne(overlapQuery);
 
         if (overlappingLease) {
           return createErrorResponse(
-            "Lease dates overlap with existing lease for this property",
+            "Lease dates overlap with an existing lease for this unit",
             409
           );
         }
@@ -240,8 +273,13 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.T
         return createErrorResponse(error!, 400);
       }
 
-      // Find the lease
-      const lease = await Lease.findById(id);
+      // Find the lease. Restore is the one action that targets a soft-deleted
+      // lease, so it must name `deletedAt` to escape the model's default
+      // filter — findById alone would never see it.
+      const lease =
+        body?.action === "restore"
+          ? await Lease.findOne({ _id: id, deletedAt: { $ne: null } })
+          : await Lease.findById(id);
       if (!lease) {
         return createErrorResponse("Lease not found", 404);
       }
@@ -258,6 +296,43 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.T
 
       // Handle specific patch operations
       const { action, ...data } = body;
+
+      // Closing a lease requires a concrete end date — mirrors the guard in
+      // LeaseStatusChanger. An open-ended lease has no cutoff to prorate the
+      // final invoice against or to report the closure on. Checked here for
+      // all three routes into a closed state, not just the one the UI uses.
+      const closesLease =
+        action === "terminate" ||
+        action === "expire" ||
+        (action === "changeStatus" &&
+          (data.status === LeaseStatus.TERMINATED ||
+            data.status === LeaseStatus.EXPIRED));
+
+      if (closesLease && !lease.endDate) {
+        // The closing request may carry the end date itself, so an open-ended
+        // lease can be closed in one step. It doubles as the departure date —
+        // the cutoff the final invoice is prorated to.
+        if (!data.endDate) {
+          return createErrorResponse(
+            "Add an end date before marking this lease as expired or terminated.",
+            400
+          );
+        }
+
+        const closingDate = new Date(data.endDate);
+        if (isNaN(closingDate.getTime())) {
+          return createErrorResponse("Invalid end date", 400);
+        }
+        if (lease.startDate && closingDate < lease.startDate) {
+          return createErrorResponse(
+            "End date cannot be before the lease start date",
+            400
+          );
+        }
+
+        lease.endDate = closingDate;
+        lease.departureDate = closingDate;
+      }
 
       switch (action) {
         case "activate":
@@ -415,6 +490,13 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.T
               });
             }
           }
+          break;
+
+        case "restore":
+          if (user.role === UserRole.TENANT) {
+            return createErrorResponse("Tenants cannot restore leases", 403);
+          }
+          lease.deletedAt = null;
           break;
 
         case "addDocument":

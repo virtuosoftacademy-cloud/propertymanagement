@@ -195,7 +195,7 @@ export function TenantApplicationForm({
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="+1 (555) 123-4567" {...field} />
+                        <Input placeholder="07700 900123" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -230,7 +230,7 @@ export function TenantApplicationForm({
                 />
                 <FormField
                   control={form.control}
-                  name="ssn"
+                  name="nino"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Social Security Number</FormLabel>

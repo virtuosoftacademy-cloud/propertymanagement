@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { GlobalSearch } from "@/components/ui/global-search";
 import {
   Card,
@@ -189,7 +189,7 @@ function UnitCard({ unit, onViewDetails }: UnitCardProps) {
           <div className="flex items-center text-lg font-semibold text-gray-900 dark:text-gray-100">
             <span>{formatCurrencyLocalized(unit.rentAmount)}</span>
             <span className="text-sm font-normal text-gray-600 dark:text-gray-400 ml-1">
-              {t("properties.available.card.perNight")}
+              {t("properties.available.card.perMonth")}
             </span>
           </div>
 
@@ -265,6 +265,10 @@ export default function AvailablePropertiesPage() {
     hasPrev: false,
   });
 
+  // Remembers which empty result we last warned about — the search term, or a
+  // sentinel when there is no search — so the toast fires once per distinct case.
+  const lastEmptyResultRef = useRef<string | null>(null);
+
   const fetchAvailableUnits = useCallback(async () => {
     try {
       if (!filters.search) {
@@ -278,6 +282,29 @@ export default function AvailablePropertiesPage() {
       });
       setAvailableUnits(response.data);
       setPagination(response.pagination);
+
+      // Warn once per distinct empty result. This refetches on paging, sorting
+      // and filter changes, so the key guards against repeat toasts while the
+      // same fruitless query sits in the filters.
+      const term = (filters.search || "").trim();
+      if (response.pagination.total === 0) {
+        const key = term || "__no-search__";
+        if (lastEmptyResultRef.current !== key) {
+          lastEmptyResultRef.current = key;
+          if (term) {
+            toast.info("No available units found", {
+              description: `No available units match "${term}".`,
+            });
+          } else {
+            toast.info("No available units", {
+              description:
+                "Every unit is currently occupied, under maintenance or unavailable.",
+            });
+          }
+        }
+      } else {
+        lastEmptyResultRef.current = null;
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to fetch available units";
@@ -921,7 +948,7 @@ export default function AvailablePropertiesPage() {
                             {formatCurrencyLocalized(unit.rentAmount)}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {t("properties.available.table.perNight")}
+                            /{t("properties.available.table.perMonth")}
                           </div>
                         </div>
                       </TableCell>

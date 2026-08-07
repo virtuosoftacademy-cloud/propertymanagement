@@ -22,7 +22,7 @@ const features: FeatureCard[] = [
     icon: <TrendingUp className="h-5 w-5" style={{ color: "var(--primary)" }} />,
     title: "Rent That Collects Itself",
     description:
-      "Set it up once and let Nexus handle the rest. Automated billing, payment tracking and reconciliation so your cash flow stays consistent without the follow-up.",
+      "Set it up once and let Tenure handle the rest. Automated billing, payment tracking and reconciliation so your cash flow stays consistent without the follow-up.",
     href: "#",
   },
   {
@@ -57,7 +57,7 @@ export default function LandingExperience() {
         </div>
 
         <p className="text-sm md:text-lg font-medium text-foreground/55 text-center leading-relaxed font-serif mb-12">
-          Every feature in Nexus is designed to remove friction and put you in
+          Every feature in Tenure is designed to remove friction and put you in
           full control of your properties.
         </p>
 

@@ -19,8 +19,7 @@ export default function LandingPricing() {
                 </div>
 
                 <p className="font-serif text-sm md:text-lg text-center text-foreground/60 leading-relaxed mb-12">
-                    This is just a simple text made for this unique and awesome template,
-                    you can replace it with any text.
+                    Choose the plan that fits your portfolio.
                 </p>
 
                 {/* ── 4-col pricing grid ── */}

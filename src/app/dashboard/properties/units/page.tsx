@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { toast } from "sonner";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { GlobalSearch } from "@/components/ui/global-search";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -125,7 +126,7 @@ function UnitCard({ unit, onViewDetails }: UnitCardProps) {
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
+          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
             <Building2 className="h-16 w-16 text-gray-400 dark:text-gray-600" />
           </div>
         )}
@@ -172,7 +173,7 @@ function UnitCard({ unit, onViewDetails }: UnitCardProps) {
           )}
         </div>
         <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-3">
-          <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+          <MapPin className="h-4 w-4 mr-1 shrink-0" />
           <span className="line-clamp-1">
             {unit.address.city}, {unit.address.state}
           </span>
@@ -197,7 +198,7 @@ function UnitCard({ unit, onViewDetails }: UnitCardProps) {
           <div className="flex items-center text-lg font-semibold text-gray-900 dark:text-gray-100">
             <span>{formatCurrencyLocalized(unit.rentAmount)}</span>
             <span className="text-sm font-normal text-gray-600 dark:text-gray-400 ml-1">
-              {t("properties.available.card.perNight")}
+              {t("properties.available.card.perMonth")}
             </span>
           </div>
           <DropdownMenu>
@@ -268,6 +269,10 @@ export default function AllUnitsPage() {
     hasPrev: false,
   });
 
+  // Remembers which empty result we last warned about — the search term, or a
+  // sentinel when there is no search — so the toast fires once per distinct case.
+  const lastEmptyResultRef = useRef<string | null>(null);
+
   const fetchUnits = useCallback(async () => {
     try {
       if (!filters.search) setLoading(true);
@@ -281,6 +286,29 @@ export default function AllUnitsPage() {
           (response.pagination as { totalProperties?: number }).totalProperties ??
           0,
       });
+
+      // Warn once per distinct empty result. This refetches on paging, sorting
+      // and filter changes, so the key guards against repeat toasts while the
+      // same fruitless query sits in the filters.
+      const term = (filters.search || "").trim();
+      if (response.pagination.total === 0) {
+        const key = term || "__no-search__";
+        if (lastEmptyResultRef.current !== key) {
+          lastEmptyResultRef.current = key;
+          if (term) {
+            toast.info("No units found", {
+              description: `No units match "${term}".`,
+            });
+          } else {
+            toast.info("No units", {
+              description:
+                "No units have been added yet, or none match the current filters.",
+            });
+          }
+        }
+      } else {
+        lastEmptyResultRef.current = null;
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to fetch units";
@@ -793,7 +821,7 @@ export default function AllUnitsPage() {
                       {t("properties.available.table.details")}
                     </TableHead>
                     <TableHead className="text-left font-medium capitalize text-gray-700 dark:text-gray-300 py-3 px-4">
-                      {t("properties.available.table.perNight")}
+                      {t("properties.available.table.rent")}
                     </TableHead>
                     <TableHead className="text-left font-medium text-gray-700 dark:text-gray-300 py-3 px-4">
                       Status
@@ -901,7 +929,7 @@ export default function AllUnitsPage() {
                             {formatCurrency(unit.rentAmount)}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            /{t("properties.available.table.perNight")}
+                            /{t("properties.available.table.perMonth")}
                           </div>
                         </div>
                       </TableCell>

@@ -7,6 +7,17 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FormDatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -27,7 +38,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle, Info } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, CalendarPlus } from "lucide-react";
 import { LeaseStatus } from "@/types";
 import { leaseService, LeaseResponse } from "@/lib/services/lease.service";
 import {
@@ -52,6 +63,7 @@ export function LeaseStatusChanger({
   const [selectedStatus, setSelectedStatus] = useState<LeaseStatus | "">("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
 
   const possibleStatuses = getNextPossibleStatuses(lease.status);
 
@@ -88,10 +100,26 @@ export function LeaseStatusChanger({
   };
 
   const handleStatusChange = (newStatus: string) => {
-    if (newStatus && newStatus !== lease.status) {
-      setSelectedStatus(newStatus as LeaseStatus);
-      setShowConfirmDialog(true);
+    if (!newStatus || newStatus === lease.status) return;
+
+    // Closing a lease requires a concrete end date. An open-ended lease shows
+    // its period as "Present", so expiring or terminating it would leave
+    // nothing to bill the final period against or report the closure on.
+    const isClosingStatus =
+      newStatus === LeaseStatus.EXPIRED ||
+      newStatus === LeaseStatus.TERMINATED;
+
+    if (isClosingStatus && !lease.endDate) {
+      toast.error("Add an end date", {
+        description:
+          "This lease has no end date. Use the Add End Date button before marking it as expired or terminated.",
+        duration: 5000,
+      });
+      return;
     }
+
+    setSelectedStatus(newStatus as LeaseStatus);
+    setShowConfirmDialog(true);
   };
 
   const confirmStatusChange = async () => {
@@ -194,6 +222,7 @@ export function LeaseStatusChanger({
             ))}
           </SelectContent>
         </Select>
+
       </div>
 
       {/* Confirmation Dialog */}
@@ -258,6 +287,188 @@ export function LeaseStatusChanger({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+    </>
+  );
+}
+
+// Button + modal for giving an open-ended lease an end date. Rendered next to
+// the status badge in the lease header, and self-contained so it can sit
+// anywhere the badge does.
+interface LeaseEndDateButtonProps {
+  lease: LeaseResponse;
+  onUpdate: () => void;
+  disabled?: boolean;
+}
+
+export function LeaseEndDateButton({
+  lease,
+  onUpdate,
+  disabled = false,
+}: LeaseEndDateButtonProps) {
+  const [showDialog, setShowDialog] = useState(false);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [isSaving, setIsSaving] = useState(false);
+  // Expired is the common case (term ran its course); terminated covers an
+  // early close such as a break clause or eviction.
+  const [closingStatus, setClosingStatus] = useState<LeaseStatus>(
+    LeaseStatus.EXPIRED
+  );
+
+  const leaseStartDate = lease.startDate ? new Date(lease.startDate) : undefined;
+
+  // Nothing to add once the lease already has one.
+  if (lease.endDate) return null;
+
+  const handleSave = async () => {
+    if (!endDate) return;
+
+    if (leaseStartDate && endDate < leaseStartDate) {
+      toast.error("End date cannot be before the lease start date");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      // One request: the API stores the date as both endDate and
+      // departureDate, sets the status, and releases the unit.
+      await leaseService.changeLeaseStatus(lease._id, closingStatus, {
+        endDate: format(endDate, "yyyy-MM-dd"),
+      });
+
+      toast.success(
+        closingStatus === LeaseStatus.TERMINATED
+          ? "Lease terminated"
+          : "Lease expired",
+        {
+          description: `End date set to ${format(
+            endDate,
+            "d MMM yyyy"
+          )} and the lease marked as ${closingStatus}.`,
+          duration: 5000,
+        }
+      );
+
+      setShowDialog(false);
+      setEndDate(undefined);
+      onUpdate();
+    } catch (error) {
+      console.error("Error setting lease end date:", error);
+      toast.error("Failed to expire lease", {
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        duration: 5000,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setEndDate(undefined);
+          setClosingStatus(LeaseStatus.EXPIRED);
+          setShowDialog(true);
+        }}
+        disabled={disabled}
+        className="flex items-center gap-2 cursor-pointer"
+      >
+        <CalendarPlus className="h-4 w-4" />
+        <span className="hidden sm:inline">Add End Date</span>
+        <span className="sm:hidden">End Date</span>
+      </Button>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add an End Date</DialogTitle>
+            <DialogDescription>
+              This lease is open-ended, so its period currently shows as
+              &quot;Present&quot;. Setting an end date closes the tenancy: the
+              date is recorded as the departure date and the unit is released.
+              {leaseStartDate && (
+                <>
+                  {" "}
+                  Lease started{" "}
+                  <span className="font-medium">
+                    {format(leaseStartDate, "d MMM yyyy")}
+                  </span>
+                  . The end date must be on or after this.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>End Date</Label>
+              <FormDatePicker
+                value={endDate}
+                onChange={(d) => setEndDate(d ?? undefined)}
+                placeholder="Select end date"
+                disabled={(date) =>
+                  leaseStartDate ? date < leaseStartDate : false
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="closing-status">Close As</Label>
+              <Select
+                value={closingStatus}
+                onValueChange={(v) => setClosingStatus(v as LeaseStatus)}
+              >
+                <SelectTrigger id="closing-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={LeaseStatus.EXPIRED}>
+                    <div className="flex items-center gap-2">
+                      <span>Expired</span>
+                      <span className="text-muted-foreground text-xs">
+                        term ran its course
+                      </span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={LeaseStatus.TERMINATED}>
+                    <div className="flex items-center gap-2">
+                      <span>Terminated</span>
+                      <span className="text-muted-foreground text-xs">
+                        ended early
+                      </span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDialog(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving || !endDate}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                `Set End Date & ${
+                  closingStatus === LeaseStatus.TERMINATED
+                    ? "Terminate"
+                    : "Expire"
+                }`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

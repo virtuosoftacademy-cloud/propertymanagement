@@ -1,5 +1,4 @@
 /**
- * PropertyPro - R2 Client-Side Utilities
  * Client-side utilities for R2 integration (validation, URL generation, etc.)
  * Server-side upload functionality is in separate server utilities
  */

@@ -38,7 +38,7 @@ import {
   IComplianceDocument,
 } from "@/types";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
-import { ComplianceDetailSkeleton } from "@/components/compliance/compliance-skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 import { ComplianceActions } from "@/components/compliance/compliance-actions";
 import Image from "next/image";
 
@@ -175,23 +175,23 @@ export default function ComplianceReportDetailPage() {
     if (days == null) return null;
     if (days < 0) {
       return (
-        <span className="text-red-600 text-sm">
+        <span className="text-destructive text-sm">
           Expired {Math.abs(days)} day{Math.abs(days) === 1 ? "" : "s"} ago
         </span>
       );
     }
     if (days === 0) {
-      return <span className="text-red-600 text-sm">Expires today</span>;
+      return <span className="text-destructive text-sm">Expires today</span>;
     }
     if (days <= 30) {
       return (
-        <span className="text-orange-600 text-sm">
+        <span className="text-warning text-sm">
           {days} day{days === 1 ? "" : "s"} remaining
         </span>
       );
     }
     return (
-      <span className="text-green-600 text-sm">
+      <span className="text-success text-sm">
         {days} day{days === 1 ? "" : "s"} remaining
       </span>
     );
@@ -226,7 +226,11 @@ export default function ComplianceReportDetailPage() {
   // Render
   // ────────────────────────────────────────────────
   if (loading) {
-    return <ComplianceDetailSkeleton />;
+    return (
+      <div className="flex justify-center items-center py-16">
+        <LoadingSpinner message="" size="lg" />
+      </div>
+    );
   }
 
   if (!report) {
@@ -368,7 +372,7 @@ export default function ComplianceReportDetailPage() {
                   {report?.images.map((image, index) => (
                     <div
                       key={index}
-                      className="aspect-square bg-gray-100 rounded-lg overflow-hidden"
+                      className="aspect-square bg-muted rounded-lg overflow-hidden"
                     >
                       <Image
                         src={image}

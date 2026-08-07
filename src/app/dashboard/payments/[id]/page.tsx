@@ -8,7 +8,7 @@ import { useLocalizationContext } from "@/components/providers/LocalizationProvi
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -228,30 +228,8 @@ export default function PaymentDetailsPage({
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-          <Skeleton className="h-10 w-32" />
-        </div>
-
-        {/* Content Skeleton */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="flex justify-center items-center py-16">
+        <LoadingSpinner message="" size="lg" />
       </div>
     );
   }
@@ -331,7 +309,7 @@ export default function PaymentDetailsPage({
               )}
               <DropdownMenuSeparator />
               {/* <DropdownMenuItem
-                className="text-red-600"
+                className="text-destructive"
                 onClick={() => setShowDeleteDialog(true)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />

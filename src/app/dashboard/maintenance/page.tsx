@@ -33,7 +33,16 @@ import {
   Grid3X3,
   List,
   AlertCircle,
+  Download,
+  FileText,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { downloadCsv, downloadPdf, exportFilename } from "@/lib/utils/export";
 import { useMaintenanceStaff } from "@/hooks/use-maintenance-staff";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { useViewPreferencesStore } from "@/stores/view-preferences.store";
@@ -342,6 +351,93 @@ export default function MaintenancePage() {
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const visibleRequests = filteredRequests.slice(startIndex, endIndex);
+
+  // ─── Export ───────────────────────────────────────────────────────────────
+  // Exports the full filtered/sorted set, not just the current page, so the
+  // download matches the filters on screen rather than the pagination.
+  const exportRows = () =>
+    filteredRequests.map((req) => ({
+      Reference: req._id,
+      Title: req.title ?? "",
+      Category: req.category ?? "",
+      Priority: req.priority ?? "",
+      Status: req.status ?? "",
+      Property: req.property?.name ?? "",
+      Address: [
+        req.property?.address?.street,
+        req.property?.address?.city,
+        req.property?.address?.state,
+        req.property?.address?.zipCode,
+      ]
+        .filter(Boolean)
+        .join(", "),
+      Unit: req.unit?.unitNumber ?? "",
+      Tenant: [req.tenant?.user?.firstName, req.tenant?.user?.lastName]
+        .filter(Boolean)
+        .join(" "),
+      "Tenant Email": req.tenant?.user?.email ?? "",
+      "Tenant Phone": req.tenant?.user?.phone ?? "",
+      "Assigned To": req.assignedTo
+        ? [req.assignedTo.firstName, req.assignedTo.lastName]
+            .filter(Boolean)
+            .join(" ")
+        : "Unassigned",
+      "Estimated Cost": req.estimatedCost != null ? `£${req.estimatedCost}` : "",
+      "Actual Cost": req.actualCost != null ? `£${req.actualCost}` : "",
+      Scheduled: req.scheduledDate
+        ? new Date(req.scheduledDate).toLocaleDateString("en-GB")
+        : "",
+      Completed: req.completedDate
+        ? new Date(req.completedDate).toLocaleDateString("en-GB")
+        : "",
+      Created: req.createdAt
+        ? new Date(req.createdAt).toLocaleString("en-GB")
+        : "",
+    }));
+
+  const handleExportCsv = () => {
+    const count = downloadCsv(
+      exportRows(),
+      exportFilename("maintenance-requests", "csv")
+    );
+    if (count === 0) {
+      toast.error("There is nothing to export.");
+      return;
+    }
+    toast.success(`Exported ${count} request(s) to CSV.`);
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      // A readable subset; the CSV carries the full record.
+      const count = await downloadPdf(
+        exportRows(),
+        [
+          { key: "Title", label: "Title", width: 150 },
+          { key: "Category", label: "Category", width: 80 },
+          { key: "Priority", label: "Priority", width: 60 },
+          { key: "Status", label: "Status", width: 75 },
+          { key: "Property", label: "Property", width: 110 },
+          { key: "Unit", label: "Unit", width: 45 },
+          { key: "Tenant", label: "Tenant", width: 95 },
+          { key: "Assigned To", label: "Assigned To", width: 95 },
+          { key: "Created", label: "Created", width: 65 },
+        ],
+        {
+          title: "Maintenance Requests",
+          filename: exportFilename("maintenance-requests", "pdf"),
+        }
+      );
+      if (count === 0) {
+        toast.error("There is nothing to export.");
+        return;
+      }
+      toast.success(`Exported ${count} request(s) to PDF.`);
+    } catch (error) {
+      console.error("[maintenance] PDF export failed:", error);
+      toast.error("Failed to generate the PDF export.");
+    }
+  };
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -728,6 +824,24 @@ export default function MaintenancePage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={totalItems === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportCsv}>
+                <FileText className="mr-2 h-4 w-4" />
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void handleExportPdf()}>
+                <Download className="mr-2 h-4 w-4" />
+                Export PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Link href="/dashboard/maintenance/new">
             <Button size="sm">
               <Plus className="h-4 w-4" />

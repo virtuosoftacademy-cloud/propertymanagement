@@ -114,10 +114,10 @@ export default function TenantManagementDashboard() {
       firstName: "John",
       lastName: "Smith",
       email: "john.smith@email.com",
-      phone: "+1 (555) 123-4567",
+      phone: "07700 900123",
       emergencyContact: {
         name: "Jane Smith",
-        phone: "+1 (555) 987-6543",
+        phone: "07700 900456",
         relationship: "Spouse",
       },
       unit: {
@@ -164,10 +164,10 @@ export default function TenantManagementDashboard() {
       firstName: "Sarah",
       lastName: "Johnson",
       email: "sarah.johnson@email.com",
-      phone: "+1 (555) 234-5678",
+      phone: "07700 900789",
       emergencyContact: {
         name: "Mike Johnson",
-        phone: "+1 (555) 876-5432",
+        phone: "07700 900321",
         relationship: "Brother",
       },
       unit: {
@@ -338,7 +338,7 @@ export default function TenantManagementDashboard() {
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" placeholder="+1 (555) 123-4567" />
+                    <Input id="phone" placeholder="07700 900123" />
                   </div>
                 </div>
 

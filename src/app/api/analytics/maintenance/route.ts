@@ -51,7 +51,10 @@ export async function GET(request: NextRequest) {
     const userRole = session.user.role as UserRole;
 
     // Only allow ADMIN and MANAGER roles to access analytics
-    if (![UserRole.ADMIN, UserRole.MANAGER, UserRole.ADMIN].includes(userRole)) {
+    if (![UserRole.ADMIN, UserRole.MANAGER].includes(userRole)) {
+      console.warn(
+        `[analytics/maintenance] 403 for role "${userRole}" (user ${session.user.email}) — not in [admin, manager]`
+      );
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -164,9 +167,11 @@ export async function GET(request: NextRequest) {
     // Property breakdown
     const propertyMap = new Map();
     maintenanceRequests.forEach(req => {
-      const propertyName = (typeof req.propertyId === "object" && "name" in req.propertyId)
-        ? (req.propertyId as { name: string }).name
-        : "Unknown Property";
+      // populate() yields null when the referenced property no longer exists.
+      // `typeof null === "object"`, so the null check must come first — the
+      // `in` operator throws a TypeError on a null right-hand operand.
+      const populatedProperty = req.propertyId as { name?: string } | null;
+      const propertyName = populatedProperty?.name || "Unknown Property";
       const cost = req.actualCost || req.estimatedCost || 0;
       const isCompleted = req.status === MaintenanceStatus.COMPLETED;
 
@@ -231,6 +236,9 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
+    // Log before swallowing — a bare 500 with no trace makes this route
+    // impossible to diagnose from the client's generic error toast.
+    console.error("[analytics/maintenance] GET failed:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -13,8 +13,8 @@ import { ReceiptCompanyInfo } from "@/lib/invoice/receipt-renderer";
  */
 export const DEFAULT_COMPANY_INFO: InvoiceCompanyInfo = {
   name: "PropertyPro Management",
-  address: "123 Business Avenue, Suite 100, City, State 12345",
-  phone: "+1 (555) 123-4567",
+  address: "123 Business Avenue, London, Greater London, SW1A 1AA",
+  phone: "+44 20 7946 0958",
   email: "info@propertypro.com",
   website: "www.propertypro.com",
 };

@@ -22,6 +22,7 @@ import {
 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import {
   CheckCircle,
@@ -70,6 +71,12 @@ export default function TenantStatusManager({
   const [selectedStatus, setSelectedStatus] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
+  // The API rejects `active` and `moved_out` without a date, so this component
+  // could never complete either transition until it collected one.
+  const [moveDate, setMoveDate] = useState<Date | undefined>(undefined);
+
+  const requiresMoveDate =
+    selectedStatus === "active" || selectedStatus === "moved_out";
   const [isLoading, setIsLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -115,8 +122,10 @@ export default function TenantStatusManager({
   ];
 
   const getAvailableTransitions = (currentStatus: string) => {
-    const transitions = {
-      application_submitted: ["under_review", "terminated"],
+    // Must mirror the API route and User.changeStatus — anything offered here
+    // that they reject fails on submit, and anything omitted is unreachable.
+    const transitions: Record<string, string[]> = {
+      application_submitted: ["under_review", "approved", "terminated"],
       under_review: ["approved", "terminated"],
       approved: ["active", "terminated"],
       active: ["inactive", "moved_out", "terminated"],
@@ -133,6 +142,15 @@ export default function TenantStatusManager({
       return;
     }
 
+    if (requiresMoveDate && !moveDate) {
+      toast.error(
+        selectedStatus === "active"
+          ? "A move-in date is required to activate a tenancy"
+          : "A move-out date is required to mark a tenant as moved out"
+      );
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/tenants/${tenant._id}/status`, {
@@ -144,13 +162,16 @@ export default function TenantStatusManager({
           newStatus: selectedStatus,
           reason: reason.trim() || t("tenants.statusManager.defaultReason"),
           notes: notes.trim(),
+          moveDate: moveDate
+            ? moveDate.toISOString().split("T")[0]
+            : undefined,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.message || t("tenants.toasts.statusUpdateError")
+          errorData.error || errorData.message || t("tenants.toasts.statusUpdateError")
         );
       }
 
@@ -169,6 +190,7 @@ export default function TenantStatusManager({
       setSelectedStatus("");
       setReason("");
       setNotes("");
+      setMoveDate(undefined);
     } catch (error) {
       toast.error(t("tenants.toasts.statusUpdateError"), {
         description:
@@ -182,7 +204,7 @@ export default function TenantStatusManager({
   };
 
   const getStatusIcon = (status: string) => {
-    const iconMap = {
+    const iconMap: Record<string, typeof Clock> = {
       application_submitted: Clock,
       under_review: Clock,
       approved: CheckCircle,
@@ -195,7 +217,7 @@ export default function TenantStatusManager({
   };
 
   const getStatusColor = (status: string) => {
-    const colorMap = {
+    const colorMap: Record<string, string> = {
       application_submitted: "secondary",
       under_review: "outline",
       approved: "default",
@@ -319,6 +341,27 @@ export default function TenantStatusManager({
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
+                        {requiresMoveDate && (
+                          <div>
+                            <Label htmlFor="moveDate">
+                              {selectedStatus === "active"
+                                ? "Move-in date"
+                                : "Move-out date"}
+                            </Label>
+                            <div className="mt-1">
+                              <DatePicker
+                                date={moveDate}
+                                onSelect={setMoveDate}
+                                placeholder={
+                                  selectedStatus === "active"
+                                    ? "Select move-in date"
+                                    : "Select move-out date"
+                                }
+                                disabled={(date) => date > new Date()}
+                              />
+                            </div>
+                          </div>
+                        )}
                         <div>
                           <Label htmlFor="reason">
                             {t("tenants.statusManager.dialog.reasonLabel")}
@@ -405,7 +448,15 @@ export default function TenantStatusManager({
                     <p className="mt-1">
                       {t("tenants.statusManager.history.changedBy", {
                         values: {
-                          name: `${entry.changedBy.firstName} ${entry.changedBy.lastName}`,
+                          // changedBy is a User ref — if it arrives
+                          // unpopulated this would print "undefined undefined".
+                          name:
+                            [
+                              entry.changedBy?.firstName,
+                              entry.changedBy?.lastName,
+                            ]
+                              .filter(Boolean)
+                              .join(" ") || "Unknown user",
                         },
                       })}
                       

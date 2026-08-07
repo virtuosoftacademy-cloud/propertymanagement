@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -139,6 +139,7 @@ interface Invoice {
 
 export default function InvoiceDetailsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session } = useSession();
   const {
@@ -177,7 +178,12 @@ export default function InvoiceDetailsPage() {
   const fetchInvoiceDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/invoices/${invoiceId}`);
+      // Arriving from the history view, where the invoice is soft-deleted.
+      const response = await fetch(
+        `/api/invoices/${invoiceId}${
+          searchParams.get("deleted") === "true" ? "?deleted=true" : ""
+        }`
+      );
       const data = await response.json();
 
       if (data.success && data.data) {
@@ -379,19 +385,8 @@ export default function InvoiceDetailsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-        </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
-        </div>
-        <Skeleton className="h-96" />
+      <div className="flex justify-center items-center h-[90vh]">
+        <LoadingSpinner message="" size="lg" />
       </div>
     );
   }

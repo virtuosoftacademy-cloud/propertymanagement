@@ -4,7 +4,7 @@
 
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Testimonial } from "@/app/_constant";
+import { Testimonial } from "../_constant";
 
 interface TestimonialCardProps {
   testimonial: Testimonial;

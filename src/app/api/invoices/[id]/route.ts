@@ -35,14 +35,29 @@ export async function GET(
       return createErrorResponse("Invalid invoice ID", 400);
     }
 
-    const invoice = await Invoice.findById(id)
-      .populate("tenantId", "firstName lastName email phone")
-      .populate("propertyId", "name address")
-      .populate("leaseId", "startDate endDate terms")
-      .populate({
-        path: "paymentIds",
-        select: "amount paidDate paymentMethod status",
-      });
+    // The history view links here for records the soft-delete hook hides, so
+    // `deleted=true` opts into a second lookup that names deletedAt to escape
+    // it. Without the flag a deleted invoice stays a 404 at its normal URL.
+    const includeDeleted =
+      new URL(request.url).searchParams.get("deleted") === "true";
+
+    const withRelations = (query: any) =>
+      query
+        .populate("tenantId", "firstName lastName email phone")
+        .populate("propertyId", "name address")
+        .populate("leaseId", "startDate endDate terms")
+        .populate({
+          path: "paymentIds",
+          select: "amount paidDate paymentMethod status",
+        });
+
+    let invoice = await withRelations(Invoice.findById(id));
+
+    if (!invoice && includeDeleted) {
+      invoice = await withRelations(
+        Invoice.findOne({ _id: id, deletedAt: { $ne: null } })
+      );
+    }
 
     if (!invoice) {
       return createErrorResponse("Invoice not found", 404);
@@ -242,14 +257,36 @@ export async function PATCH(
       return createErrorResponse("Invalid invoice ID", 400);
     }
 
+    // Handle specific operations
+    const { operation, ...data } = body;
+
+    // Restore is the one operation whose target is invisible to findById: the
+    // model's soft-delete hook hides it. Name deletedAt to opt out of the hook,
+    // and require it to actually be set so this cannot touch a live invoice.
+    if (operation === "restore") {
+      const deletedInvoice = await Invoice.findOne({
+        _id: id,
+        deletedAt: { $ne: null },
+      });
+
+      if (!deletedInvoice) {
+        return createErrorResponse("Deleted invoice not found", 404);
+      }
+
+      deletedInvoice.deletedAt = null;
+      await deletedInvoice.save();
+
+      return createSuccessResponse(
+        deletedInvoice,
+        "Invoice restored successfully"
+      );
+    }
+
     // Find existing invoice
     const existingInvoice = await Invoice.findById(id);
     if (!existingInvoice) {
       return createErrorResponse("Invoice not found", 404);
     }
-
-    // Handle specific operations
-    const { operation, ...data } = body;
 
     let result;
 

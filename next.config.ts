@@ -6,10 +6,8 @@ const r2PublicUrl =
 const r2Hostname = r2PublicUrl ? new URL(r2PublicUrl).hostname : null;
 
 const nextConfig: NextConfig = {
-  output:"standalone",
+  // output:"standalone",
   typescript: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has TypeScript errors.
     ignoreBuildErrors: true,
   },
   images: {

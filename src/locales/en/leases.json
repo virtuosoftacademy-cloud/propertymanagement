@@ -72,6 +72,7 @@
   "leases.table.totalAmount": "Rent Amount",
   "leases.table.startDate": "Start Date",
   "leases.table.endDate": "End Date",
+  "leases.table.leasePeriodPresent":"Present",
   "leases.table.daysRemaining": "Days Remaining",
   "leases.table.actions": "Actions",
 
@@ -170,9 +171,11 @@
 
   "leases.details.summary.title": "Lease Summary",
   "leases.details.summary.leasePeriod": "Lease Period",
+  "leases.details.summary.leasePeriodPresent": "Present",
   "leases.details.summary.duration": "Duration",
   "leases.details.summary.daysRemaining": "Days Remaining",
   "leases.details.summary.signedDate": "Signed Date",
+
 
   "leases.details.financial.title": "Financial Terms",
   "leases.details.financial.rent": "Rent Amount",
@@ -546,6 +549,7 @@
   "leases.new.form.validation.rentPositive": "Rent must be greater than 0",
   "leases.new.form.validation.securityDepositNonNegative": "Security deposit cannot be negative",
   "leases.new.form.validation.lateFeeNonNegative": "Late fee amount cannot be negative",
+  "leases.new.form.validation.lateFeePercentageMax": "A percentage late fee cannot be more than 100%",
   "leases.new.form.validation.gracePeriodNonNegative": "Grace period cannot be negative",
   "leases.new.form.validation.endDateAfterStart": "End date must be after start date",
 

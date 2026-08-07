@@ -231,9 +231,16 @@ export default function TenantStatusDialog({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
+        // createErrorResponse puts the reason in `error`; `message` is only
+        // set when a caller passes one. Reading `message` alone discarded
+        // every explanation the API gave — invalid transitions, missing move
+        // dates, permission failures — leaving a bare "failed to update".
         throw new Error(
-          errorData.message || t("tenants.statusDialog.toasts.updateFailed")
+          errorData.error ||
+            errorData.message ||
+            `${response.status} ${response.statusText}` ||
+            t("tenants.statusDialog.toasts.updateFailed")
         );
       }
 
@@ -299,6 +306,25 @@ export default function TenantStatusDialog({
             </div>
           </div>
 
+          {/* `terminated` is a terminal state with no onward transitions, so
+              the dropdown would otherwise render empty with no explanation —
+              which reads as a broken dialog rather than a deliberate rule. */}
+          {availableOptions.length === 0 ? (
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-warning/20 bg-warning/10">
+              <AlertTriangle className="h-4 w-4 mt-0.5 text-warning shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  No further status changes available
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  This tenant is {currentStatusInfo.label.toLowerCase()}, which
+                  is a final state. To re-house them, create a new tenancy
+                  instead.
+                </p>
+              </div>
+            </div>
+          ) : (
+          <>
           <div className="space-y-2">
             <Label htmlFor="status" className="text-sm font-medium">
               {t("tenants.statusDialog.newStatus")}
@@ -407,6 +433,8 @@ export default function TenantStatusDialog({
               </div>
             </div>
           )}
+          </>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
@@ -416,8 +444,11 @@ export default function TenantStatusDialog({
             disabled={isLoading}
             className="h-11"
           >
-            {t("tenants.statusDialog.cancel")}
+            {availableOptions.length === 0
+              ? "Close"
+              : t("tenants.statusDialog.cancel")}
           </Button>
+          {availableOptions.length > 0 && (
           <Button
             onClick={handleStatusChange}
             disabled={isLoading || !selectedStatus || !reason.trim()}
@@ -429,6 +460,7 @@ export default function TenantStatusDialog({
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t("tenants.statusDialog.updateStatus")}
           </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

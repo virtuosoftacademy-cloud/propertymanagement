@@ -143,7 +143,7 @@ export const GET = withRoleAndDB([
         user.role === UserRole.ADMIN ||
         user.role === UserRole.MANAGER ||
         (user.role === UserRole.TENANT &&
-          lease.tenantId.userId.toString() === user.id);
+          lease.tenantId.toString() === user.id);
 
       if (!canView) {
         return createErrorResponse("Access denied", 403);

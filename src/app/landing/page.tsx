@@ -17,9 +17,7 @@ const LandingPage = () => {
             <LandingDashboard />
             <TestimonialsSection />
             <LandingPricing />
-            <div className="mx-auto max-w-350 px-6 md:px-0">
-                <CtaForm />
-            </div>
+            <CtaForm />
             <CtaSplitSection />
         </div>
     );

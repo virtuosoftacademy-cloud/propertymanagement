@@ -16,6 +16,8 @@ export interface LeaseQueryParams {
   endDate?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  /** History view: return only soft-deleted leases. */
+  deleted?: boolean;
 }
 
 export interface LeaseFormData {
@@ -45,6 +47,8 @@ export interface LeaseFormData {
 
 export interface LeaseResponse {
   _id: string;
+  /** Set when the lease has been soft-deleted; surfaced in the history view. */
+  deletedAt?: string | null;
   propertyId: {
     _id: string;
     name: string;
@@ -196,18 +200,31 @@ class LeaseService {
       credentials: "include",
     });
 
-    console.log(
-      "response from getLeases => params: response => : ",
-      params,
-      response
-    );
+    // console.log(
+    //   "response from getLeases => params: response => : ",
+    //   params,
+    //   response
+    // );
 
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || error.message || "Failed to fetch leases");
     }
 
-    return response.json();
+    const result = await response.json();
+
+    // The API builds pagination with createPaginationInfo, which names the page
+    // count `totalPages`, while PaginatedLeasesResponse declares `pages`. The
+    // type was simply wrong: consumers reading `pages` got undefined, so any
+    // page beyond the first was unreachable. Normalise so both names carry the
+    // same value and the declared type is honest.
+    const pagination = result?.pagination ?? {};
+    const totalPages = pagination.totalPages ?? pagination.pages ?? 0;
+
+    return {
+      ...result,
+      pagination: { ...pagination, pages: totalPages, totalPages },
+    };
   }
 
   /**
@@ -252,8 +269,19 @@ class LeaseService {
   /**
    * Get a specific lease by ID
    */
-  async getLeaseById(id: string): Promise<LeaseResponse> {
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+  /**
+   * @param includeDeleted opt into soft-deleted records — the history view
+   * needs this, since the model's hook hides them from the normal lookup.
+   */
+  async getLeaseById(
+    id: string,
+    includeDeleted = false
+  ): Promise<LeaseResponse> {
+    const url = includeDeleted
+      ? `${this.baseUrl}/${id}?deleted=true`
+      : `${this.baseUrl}/${id}`;
+
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -444,6 +472,30 @@ class LeaseService {
       const error = await response.json();
       throw new Error(
         error.error || error.message || "Failed to change lease status"
+      );
+    }
+
+    const result = await response.json();
+    return result.data;
+  }
+
+  /**
+   * Restore a soft-deleted lease, returning it to the active list.
+   */
+  async restoreLease(id: string): Promise<LeaseResponse> {
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ action: "restore" }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.error || error.message || "Failed to restore lease"
       );
     }
 

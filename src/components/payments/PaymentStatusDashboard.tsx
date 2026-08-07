@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -287,21 +288,13 @@ export function PaymentStatusDashboard({
     }
   };
 
-  if (loading) {
+  // Spinner on the initial load only: refreshes reuse the same `loading` flag,
+  // and swapping a populated panel for a spinner mid-refresh would flicker.
+  if (loading && payments.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-            <div className="grid grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-20 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center py-12">
+        <LoadingSpinner message="" size="lg" />
+      </div>
     );
   }
 

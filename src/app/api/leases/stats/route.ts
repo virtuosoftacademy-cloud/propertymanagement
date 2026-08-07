@@ -22,8 +22,11 @@ export const GET = withRoleAndDB([
   UserRole.TENANT,
 ])(async (user, request: NextRequest) => {
   try {
-    // Build base query based on user role
-    let baseQuery: any = {};
+    // Build base query based on user role.
+    // `deletedAt` must be set explicitly: these are countDocuments calls, which
+    // do not match the model's pre(/^find/) soft-delete hook, so without it the
+    // stat cards counted deleted leases the list itself never shows.
+    let baseQuery: any = { deletedAt: null };
 
     // Role-based filtering for single company architecture
     if (user.role === UserRole.TENANT) {

@@ -134,18 +134,31 @@ export default function PropertyStats({
       (p) => p.type === PropertyType.COMMERCIAL
     ).length;
 
-    // Financial calculations
-    const totalRentValue = properties.reduce((sum, p) => sum + p.units.filter((r)=>r.rentAmount), 0);
-    const averageRent = Math.round(totalRentValue / properties.length);
+    // Financial calculations. Rent and square footage live on units — they are
+    // deprecated at property level — so sum across each property's units.
+    const totalRentValue = properties.reduce(
+      (sum, p) =>
+        sum +
+        (p.units || []).reduce((unitSum, u) => unitSum + (u.rentAmount || 0), 0),
+      0
+    );
+    const averageRent = properties.length
+      ? Math.round(totalRentValue / properties.length)
+      : 0;
 
     // Square footage
     const totalSquareFootage = properties.reduce(
-      (sum, p) => sum + p.squareFootage,
+      (sum, p) =>
+        sum +
+        (p.units || []).reduce(
+          (unitSum, u) => unitSum + (u.squareFootage || 0),
+          0
+        ),
       0
     );
-    const averageSquareFootage = Math.round(
-      totalSquareFootage / properties.length
-    );
+    const averageSquareFootage = properties.length
+      ? Math.round(totalSquareFootage / properties.length)
+      : 0;
 
     // Monthly additions
     const thisMonthAdded = properties.filter(

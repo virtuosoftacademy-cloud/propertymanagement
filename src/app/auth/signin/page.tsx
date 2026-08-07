@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import {
   Card,
   CardContent,
@@ -15,13 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Loader2,
-  Building2,
   Mail,
   Lock,
   AlertCircle,
   Eye,        // 👁 added
   EyeOff,     // 👁‍🗨 added
 } from "lucide-react";
+import { redirect, useRouter } from "next/navigation";
 
 interface Branding {
   logoLight: string;
@@ -42,19 +42,25 @@ const DEFAULT_BRANDING: Branding = {
 };
 
 export default function SignInPage() {
-  const [email, setEmail]           = useState("");
-  const [password, setPassword]     = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);   // ← new
-  const [isLoading, setIsLoading]   = useState(false);
-  const [error, setError]           = useState("");
-  const [branding, setBranding]     = useState<Branding>(DEFAULT_BRANDING);
-  const [logoError, setLogoError]   = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [branding, setBranding] = useState<Branding>(DEFAULT_BRANDING);
+  const [logoError, setLogoError] = useState(false);
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  
+  if (session?.user) { 
+    redirect("/landing")
+  }
 
   useEffect(() => {
     const fetchBranding = async () => {
       try {
         const response = await fetch("/api/branding/public");
-        const result   = await response.json();
+        const result = await response.json();
         if (result.success && result.data) setBranding(result.data);
       } catch (error) {
         console.error("Failed to fetch branding:", error);
@@ -162,7 +168,7 @@ export default function SignInPage() {
                   >
                     {showPassword
                       ? <EyeOff className="h-4 w-4" />
-                      : <Eye    className="h-4 w-4" />
+                      : <Eye className="h-4 w-4" />
                     }
                   </button>
                 </div>

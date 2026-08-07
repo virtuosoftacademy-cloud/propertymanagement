@@ -4,7 +4,7 @@ import { showSimpleError, showSimpleWarning } from "@/lib/toast-notifications";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 import { ArrowLeft, FileText } from "lucide-react";
 import SimplifiedLeaseCreation from "@/components/lease/SimplifiedLeaseCreation";
 import { leaseService, LeaseResponse } from "@/lib/services/lease.service";
@@ -46,15 +46,21 @@ export default function EditLeasePage({ params }: EditLeasePageProps) {
       const leaseData = await leaseService.getLeaseById(leaseId);
       setLease(leaseData);
 
-      // Check if lease can be edited - allow editing of draft and pending leases
-      if (
-        leaseData.status === LeaseStatus.ACTIVE ||
+      // All statuses are editable here. Status itself is changed via the
+      // status actions (PATCH), not this form — so warn rather than block,
+      // since edits to a live tenancy affect rent and invoicing.
+      if (leaseData.status === LeaseStatus.ACTIVE) {
+        showSimpleWarning(
+          "Editing a live tenancy",
+          "Changes to rent, dates or payment settings affect future invoicing. To change the lease status, use the status actions instead."
+        );
+      } else if (
         leaseData.status === LeaseStatus.TERMINATED ||
         leaseData.status === LeaseStatus.EXPIRED
       ) {
         showSimpleWarning(
-          "Limited Editing",
-          "This lease has limited editing capabilities due to its current status."
+          "Editing a closed lease",
+          "This lease is no longer active. Edits are recorded but will not resume billing."
         );
       }
     } catch (error) {
@@ -67,15 +73,8 @@ export default function EditLeasePage({ params }: EditLeasePageProps) {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-20" />
-          <div>
-            <Skeleton className="h-8 w-64 mb-2" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-        </div>
-        <Skeleton className="h-96" />
+      <div className="flex justify-center items-center h-[90vh]">
+        <LoadingSpinner message="" size="lg" />
       </div>
     );
   }

@@ -65,7 +65,7 @@ const leaseFormSchema = z
     unitId: z.string().min(1, "Unit is required"),
     tenantId: z.string().min(1, "Tenant is required"),
     startDate: z.string().min(1, "Start date is required"),
-    endDate: z.string().min(1, "End date is required"),
+    endDate: z.string().optional(),
     status: z
       .enum(["draft", "pending", "active", "expired", "terminated"])
       .optional(),
@@ -89,6 +89,16 @@ const leaseFormSchema = z
               compoundDaily: z.boolean().default(false),
               notificationDays: z.array(z.number()).default([3, 7, 14]),
             })
+            // A percentage of rent above 100 charges more than the rent itself.
+            // The cap depends on feeType, so it cannot live on the field.
+            .refine(
+              (config) =>
+                config.feeType !== "percentage" || config.feeAmount <= 100,
+              {
+                message: "A percentage late fee cannot be more than 100%",
+                path: ["feeAmount"],
+              }
+            )
             .default({}),
           acceptedPaymentMethods: z
             .array(z.nativeEnum(PaymentMethod))
@@ -110,13 +120,31 @@ const leaseFormSchema = z
       .optional(),
     notes: z.string().optional(),
   })
-  .refine((data) => new Date(data.endDate) > new Date(data.startDate), {
-    message: "End date must be after start date",
-    path: ["endDate"],
-  })
+  // endDate is optional — an open-ended lease simply has none. This used to
+  // read `new Date(data.endDate) > ...` unconditionally, and with endDate
+  // absent that is `new Date(undefined)` → Invalid Date, whose every
+  // comparison is false, so the rule failed for exactly the leases it was
+  // never meant to apply to. Only compare when a value is actually present.
   .refine(
     (data) => {
+      if (!data.endDate) return true;
+      const end = new Date(data.endDate);
+      const start = new Date(data.startDate);
+      if (Number.isNaN(end.getTime()) || Number.isNaN(start.getTime())) {
+        return true; // malformed input is the date field's own problem
+      }
+      return end > start;
+    },
+    {
+      message: "End date must be after start date",
+      path: ["endDate"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (!data.startDate) return true;
       const startDate = new Date(data.startDate);
+      if (Number.isNaN(startDate.getTime())) return true;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       return startDate >= today;
@@ -1201,7 +1229,14 @@ export function LeaseForm({
                       <FormItem>
                         <FormLabel>Fee Type</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            // Switching to a percentage can invalidate an
+                            // amount the user never touched, so re-check it.
+                            form.trigger(
+                              "terms.paymentConfig.lateFeeConfig.feeAmount"
+                            );
+                          }}
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -1238,7 +1273,22 @@ export function LeaseForm({
                             type="number"
                             step="0.01"
                             min="0"
-                            placeholder="0.00"
+                            // Capped at 100 for a percentage of rent; a fixed
+                            // amount has no ceiling here.
+                            max={
+                              form.watch(
+                                "terms.paymentConfig.lateFeeConfig.feeType"
+                              ) === "percentage"
+                                ? 100
+                                : undefined
+                            }
+                            placeholder={
+                              form.watch(
+                                "terms.paymentConfig.lateFeeConfig.feeType"
+                              ) === "percentage"
+                                ? "10"
+                                : "0.00"
+                            }
                             {...field}
                             onChange={(e) =>
                               field.onChange(parseFloat(e.target.value) || 0)
@@ -1249,8 +1299,8 @@ export function LeaseForm({
                           {form.watch(
                             "terms.paymentConfig.lateFeeConfig.feeType"
                           ) === "percentage"
-                            ? "Percentage of rent amount"
-                            : "Fixed dollar amount"}
+                            ? "Percentage of rent amount (max 100%)"
+                            : "Fixed amount in pounds"}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

@@ -31,17 +31,25 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "dueDate";
     const sortOrder = searchParams.get("sortOrder") || "desc";
     const search = (searchParams.get("search") || "").trim();
+    // History view: `deleted=true` returns only soft-deleted invoices.
+    const deleted = searchParams.get("deleted") === "true";
 
     // Build filter query
     const filter: any = {};
+
+    // Naming deletedAt explicitly also opts out of the model's pre(/^find/)
+    // soft-delete hook, which would otherwise strip these rows back out.
+    filter.deletedAt = deleted ? { $ne: null } : null;
 
     if (tenantId) filter.tenantId = new Types.ObjectId(tenantId);
     if (propertyId) filter.propertyId = new Types.ObjectId(propertyId);
     if (leaseId) filter.leaseId = new Types.ObjectId(leaseId);
     if (status) {
       filter.status = status;
-    } else {
-      // Exclude fully paid invoices by default so only actionable items appear
+    } else if (!deleted) {
+      // Exclude fully paid invoices by default so only actionable items appear.
+      // The history view must not apply this: a deleted invoice is usually
+      // cancelled or settled, and would be filtered straight back out.
       filter.balanceRemaining = { $gt: 0 };
     }
 
@@ -53,8 +61,10 @@ export async function GET(request: NextRequest) {
     let total = 0;
 
     if (search) {
+      // `filter` already carries the correct deletedAt condition for the view
+      // being requested; the aggregation pipeline bypasses the model hook, so
+      // it is the only thing keeping deleted rows out of the normal list.
       const matchStage: any = { ...filter };
-      matchStage.$or = [{ deletedAt: null }, { deletedAt: { $exists: false } }];
 
       const pipeline: any[] = [
         { $match: matchStage },

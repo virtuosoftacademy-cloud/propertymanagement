@@ -1,24 +1,26 @@
 import React from 'react'
 import Navbar from './_components/Navbar';
 import Footer from './_components/Footer';
-
+import ReactLenis from 'lenis/react'
 
 export const metadata = {
-    title: "Nexus | Property Management",
+    title: "Tenure | Property Management",
     description: "Developed and Designed By Virtuosoft Limited",
 };
 
-function LandingLayout({
-    children,
-}: Readonly<{
+interface LandingLayoutProps {
     children: React.ReactNode;
-}>) {
+}
+
+function LandingLayout({ children }: Readonly<LandingLayoutProps>) {
     return (
-        <>
-            <Navbar />
-            {children}
-            <Footer />
-        </>
+        <div>
+            <ReactLenis root>
+                <Navbar />
+                {children}
+                <Footer />
+            </ReactLenis>
+        </div>
     )
 }
 

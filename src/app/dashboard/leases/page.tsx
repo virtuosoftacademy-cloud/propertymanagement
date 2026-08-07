@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { GlobalSearch } from "@/components/ui/global-search";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -17,7 +17,11 @@ import {
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { useViewPreferencesStore } from "@/stores/view-preferences.store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { showSimpleError, showSimpleSuccess } from "@/lib/toast-notifications";
+import {
+  showSimpleError,
+  showSimpleSuccess,
+  showSimpleInfo,
+} from "@/lib/toast-notifications";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import {
   DropdownMenu,
@@ -53,6 +57,7 @@ import {
   Clock,
   XCircle,
   FileX,
+  History,
 } from "lucide-react";
 import {
   AnalyticsCard,
@@ -74,11 +79,30 @@ import { DeleteConfirmationDialog } from "@/components/ui/confirmation-dialog";
 export default function LeasesPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { t, formatCurrency, currentCurrency } = useLocalizationContext();
+  const { t, formatCurrency, currentCurrency, formatDate } =
+    useLocalizationContext();
   const [leases, setLeases] = useState<LeaseResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Remembers the term we last warned about, so paging or re-fetching the
+  // same fruitless search doesn't stack up duplicate toasts.
+  const lastEmptySearchRef = useRef<string | null>(null);
+
+  const notifyIfNoSearchResults = (search: string | undefined, total: number) => {
+    const term = (search || "").trim();
+
+    if (!term || total > 0) {
+      lastEmptySearchRef.current = null;
+      return;
+    }
+
+    if (lastEmptySearchRef.current === term) return;
+    lastEmptySearchRef.current = term;
+
+    showSimpleInfo("No leases found", `No leases match "${term}".`);
+  };
   // Track if this is the initial load (for showing skeleton loaders only on first load)
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [pagination, setPagination] = useState({
@@ -130,7 +154,7 @@ export default function LeasesPage() {
       if (showFullLoading) {
         setLoading(true);
       }
-      console.log("🔍 fetchLeases called with filters:", currentFilters);
+      // console.log("🔍 fetchLeases called with filters:", currentFilters);
 
       // TENANT view: fetch from tenant dashboard, then apply filters/sort/pagination client-side
       if (session?.user?.role === UserRole.TENANT) {
@@ -149,9 +173,9 @@ export default function LeasesPage() {
               lease.status === currentFilters.status ||
               (currentFilters.status === LeaseStatus.PENDING &&
                 lease.status === LeaseStatus.PENDING_SIGNATURE);
-            console.log(
-              `Lease ${lease._id}: status=${lease.status}, currentFilters.status=${currentFilters.status}, matchesStatus=${matchesStatus}`
-            );
+            // console.log(
+            //   `Lease ${lease._id}: status=${lease.status}, currentFilters.status=${currentFilters.status}, matchesStatus=${matchesStatus}`
+            // );
             if (!search) return matchesStatus;
 
             const haystack = [
@@ -218,6 +242,7 @@ export default function LeasesPage() {
           const paginated = sorted.slice(start, start + limit);
 
           setLeases(paginated);
+          notifyIfNoSearchResults(currentFilters.search, total);
           setPagination({
             page,
             limit,
@@ -242,28 +267,28 @@ export default function LeasesPage() {
           limit: 1000,
         } as LeaseQueryParams;
 
-        console.log("📡 Fetching all leases for admin/manager");
+        // console.log("📡 Fetching all leases for admin/manager");
         const response: PaginatedLeasesResponse = await leaseService.getLeases(
           baseParams
         );
-        console.log("📥 Received all leases:", response.data.length);
+        // console.log("📥 Received all leases:", response.data.length);
 
         let allLeases = response.data;
 
         // Apply status filter client-side
         if (currentFilters.status) {
-          console.log("🔍 Filtering by status:", currentFilters.status);
+          // console.log("🔍 Filtering by status:", currentFilters.status);
           allLeases = allLeases.filter((lease) => {
             const matchesStatus =
               lease.status === currentFilters.status ||
               (currentFilters.status === LeaseStatus.PENDING &&
                 lease.status === LeaseStatus.PENDING_SIGNATURE);
-            console.log(
-              `Lease ${lease._id}: status=${lease.status}, currentFilters.status=${currentFilters.status}, match=${matchesStatus}`
-            );
+            // console.log(
+            //   `Lease ${lease._id}: status=${lease.status}, currentFilters.status=${currentFilters.status}, match=${matchesStatus}`
+            // );
             return matchesStatus;
           });
-          console.log("✅ Filtered leases count:", allLeases.length);
+          // console.log("✅ Filtered leases count:", allLeases.length);
         }
 
         // Sort
@@ -310,6 +335,7 @@ export default function LeasesPage() {
         const paginated = sorted.slice(start, start + limit);
 
         setLeases(paginated);
+        notifyIfNoSearchResults(currentFilters.search, total);
         setPagination({
           page,
           limit,
@@ -383,9 +409,9 @@ export default function LeasesPage() {
   }, []);
 
   const handleStatusFilter = (status: string) => {
-    console.log("🎯 handleStatusFilter called with:", status);
+    // console.log("🎯 handleStatusFilter called with:", status);
     const newStatus = status === "all" ? undefined : (status as LeaseStatus);
-    console.log("🎯 Setting filters.status to:", newStatus);
+    // console.log("🎯 Setting filters.status to:", newStatus);
     setFilters((prev) => ({
       ...prev,
       status: newStatus,
@@ -543,7 +569,7 @@ export default function LeasesPage() {
           <div>
             <div className="font-medium">{formatCurrency(displayAmount)}</div>
             <div className="text-sm text-muted-foreground">
-              per {lease.rentPeriod || "N/A"}
+              {lease.rentPeriod || "N/A"}
             </div>
           </div>
         );
@@ -565,7 +591,10 @@ export default function LeasesPage() {
       visibility: "lg",
       cell: (lease) => (
         <div className="text-sm">
-          {new Date(lease.endDate).toLocaleDateString()}
+          {lease.endDate ?
+            new Date(lease.endDate).toLocaleDateString() :
+            t("leases.table.leasePeriodPresent")
+          }
         </div>
       ),
     },
@@ -748,12 +777,29 @@ export default function LeasesPage() {
           <h1 className="text-3xl font-bold tracking-tight">
             {t("leases.header.title")}
           </h1>
-          <p className="text-muted-foreground">{t("leases.header.subtitle")}</p>
+          <p className="text-muted-foreground">
+            {t("leases.header.subtitle")}
+          </p>
         </div>
-        <Button size="sm" onClick={() => router.push("/dashboard/leases/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("leases.actions.createLease")}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Soft-deleted leases live on their own page rather than as a mode
+              of this one — one implementation, one place to maintain. */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/dashboard/leases/history")}
+          >
+            <History className="mr-2 h-4 w-4" />
+            History
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => router.push("/dashboard/leases/new")}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {t("leases.actions.createLease")}
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

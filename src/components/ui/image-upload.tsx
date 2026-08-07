@@ -26,7 +26,7 @@ export interface UploadedImage {
   width?: number;
   height?: number;
   format?: string;
-  bytes?: number;
+  bytes?: number; 
 }
 
 interface ImageUploadProps {

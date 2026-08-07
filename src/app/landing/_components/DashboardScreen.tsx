@@ -19,7 +19,7 @@ export default function LandingDashboard() {
                     <div className="absolute left-0 top-1/2 -translate-x-1/5 -translate-y-28 z-10 hidden md:flex flex-col gap-3">
                         <Image
                             src="/assets/dashboardsection.png"
-                            alt="Nexus Dashboard"
+                            alt="Tenure Dashboard"
                             width={20}
                             height={20}
                             className="w-full h-full object-cover object-top"
@@ -60,7 +60,7 @@ export default function LandingDashboard() {
                         {/* <div className="bg-white rounded-t-lg overflow-hidden" style={{ height: "420px" }}> */}
                         <Image
                             src="/assets/dashboard.png"
-                            alt="Nexus Dashboard"
+                            alt="Tenure Dashboard"
                             width={1120}
                             height={1120}
                             className="w-[85rem] h-full"

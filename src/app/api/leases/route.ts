@@ -1,19 +1,25 @@
 /**
- * PropertyPro - Leases API Routes (Full Version)
- * CRUD operations for lease management with monthly + nightly rent support
+ * PropertyPro - Leases API Routes
+ * CRUD operations for lease management.
  *
  * Routes:
  *   GET    /api/leases           → List leases (paginated, filtered)
- *   POST   /api/leases           → Create new lease (monthly or nightly)
+ *   POST   /api/leases           → Create new lease
  *   PUT    /api/leases           → Bulk update leases (admin only)
  *   DELETE /api/leases?ids=...   → Bulk soft-delete leases (admin only)
  *
- * Nightly support notes:
- *   - `terms.rentBasis` is "monthly" | "nightly".
- *   - Monthly leases use `terms.rentAmount`; nightly leases use `terms.nightlyRate`
- *     plus `terms.billingCycle` ("daily" | "weekly" | "monthly").
- *   - Overlap exclusion and the permanent "occupied" unit flip apply to MONTHLY
- *     leases only — nightly units turn over and are managed as short stays.
+ * Rent period notes:
+ *   - `rentPeriod` is "month" | "week" | "day" (see leaseSchema).
+ *   - `startDate` is always required; `endDate` is optional for every period,
+ *     but required by leaseSchema's superRefine when rentPeriod is "week" or
+ *     "day" (bounded tenancies). Month leases may be open-ended (endDate
+ *     null).
+ *   - Overlap checks and the unit's "occupied" flag apply the same way
+ *     regardless of rentPeriod: an open-ended (Month) lease is treated as
+ *     extending indefinitely for overlap purposes.
+ *   - Unit occupancy (`units.$.status`, `currentTenantId`, `currentLeaseId`)
+ *     is maintained by the Lease model's own `post("save")` hook — this
+ *     route does not duplicate that update.
  */
 
 import { NextRequest } from "next/server";
@@ -29,7 +35,7 @@ import {
   parseRequestBody,
 } from "@/lib/api-utils";
 import {
-  leaseSchema, // NOTE: must include the rentBasis discriminated union (see comment in POST)
+  leaseSchema,
   paginationSchema,
   validateSchema,
 } from "@/lib/validations";
@@ -54,7 +60,9 @@ export const GET = withRoleAndDB([
     const propertyId = searchParams.get("propertyId") || undefined;
     const tenantId   = searchParams.get("tenantId") || undefined;
     const expiring   = searchParams.get("expiring") || undefined;
-    const rentBasis  = searchParams.get("rentBasis") || undefined; // optional: monthly / nightly
+    const rentPeriod = searchParams.get("rentPeriod") || undefined; // month / week / day
+    // History view: `deleted=true` returns only soft-deleted leases.
+    const deleted    = searchParams.get("deleted") === "true";
 
     const validation = validateSchema(paginationSchema, paginationParams);
     if (!validation.success) {
@@ -63,8 +71,11 @@ export const GET = withRoleAndDB([
 
     const filters = validation.data;
 
-    // Base query
-    const query: any = { deletedAt: null };
+    // Base query. Naming deletedAt explicitly also opts out of the model's
+    // default soft-delete filter, which is what makes the history view possible.
+    const query: any = deleted
+      ? { deletedAt: { $ne: null } }
+      : { deletedAt: null };
 
     // Tenant restriction
     if (user.role === UserRole.TENANT) {
@@ -75,9 +86,10 @@ export const GET = withRoleAndDB([
     if (status)     query.status = status;
     if (propertyId) query.propertyId = propertyId;
     if (tenantId)   query.tenantId = tenantId;
-    if (rentBasis)  query["terms.rentBasis"] = rentBasis;
+    if (rentPeriod) query.rentPeriod = rentPeriod;
 
-    // Expiring soon filter
+    // Expiring soon filter — only ever matches bounded leases (endDate set);
+    // open-ended Month leases have no endDate and are correctly excluded.
     if (expiring) {
       const days = parseInt(expiring) || 30;
       const futureDate = new Date();
@@ -133,7 +145,7 @@ export const GET = withRoleAndDB([
           lease.notes || "",
           unit.unitNumber || "",
           unit.unitType || "",
-          lease.terms?.rentBasis || "",
+          lease.rentPeriod || "",
         ];
 
         return searchable.some((val) => searchRegex!.test(val));
@@ -155,15 +167,17 @@ export const GET = withRoleAndDB([
         return lease;
       });
 
-    const finalPagination = {
-      ...result.pagination,
-      total: processedLeases.length,
-    };
-
+    // `result.pagination.total` is the countDocuments total across every page.
+    // It used to be overwritten with processedLeases.length — the row count of
+    // the current page only — which capped the reported total at the page size
+    // and contradicted totalPages (page 1 of 15 records reported "12 total"
+    // while still claiming 2 pages). The post-processing above can drop orphan
+    // rows from a page, but that is a data-integrity problem to fix at the
+    // source, not a reason to misreport the total.
     return createSuccessResponse(
       processedLeases,
       "Leases retrieved successfully",
-      finalPagination
+      result.pagination
     );
   } catch (error) {
     return handleApiError(error);
@@ -172,7 +186,7 @@ export const GET = withRoleAndDB([
 
 // ============================================================================
 // POST /api/leases
-// Create new lease (monthly or nightly)
+// Create new lease
 // ============================================================================
 
 export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
@@ -183,9 +197,9 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         return createErrorResponse(error || "Invalid request body", 400);
       }
 
-      // leaseSchema should be a discriminated union on terms.rentBasis so that
-      // monthly requires rentAmount and nightly requires nightlyRate + billingCycle.
-      // The guards below stay as a defensive backstop in case the schema lags behind.
+      // leaseSchema already enforces: rentAmount required/positive, endDate
+      // required (and after startDate) for Week/Day, endDate optional for
+      // Month. No need to re-derive any of that here.
       const validation = validateSchema(leaseSchema, body);
       if (!validation.success) {
         return createErrorResponse(validation.errors.join(", "), 400);
@@ -211,68 +225,36 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         return createErrorResponse("Tenant must be approved or active", 400);
       }
 
-      // ─── Rent basis validation & normalization ──────────────────────────
-      const terms = (leaseData.terms ?? {}) as any;
-      const isNightly = terms.rentBasis === "nightly";
-
-      if (isNightly) {
-        if (!terms.nightlyRate || terms.nightlyRate <= 0) {
-          return createErrorResponse(
-            "Nightly rate must be greater than zero when rentBasis = nightly",
-            400
-          );
-        }
-        if (!["daily", "weekly", "monthly"].includes(terms.billingCycle)) {
-          terms.billingCycle = "monthly"; // normalize/fallback
-        }
-        terms.rentAmount = 0; // unused for nightly — overwrite the form's null
-      } else {
-        if (!terms.rentAmount || terms.rentAmount <= 0) {
-          return createErrorResponse(
-            "Monthly rent amount must be greater than zero when rentBasis = monthly",
-            400
-          );
-        }
-        terms.rentBasis = "monthly";
-        terms.nightlyRate = 0; // unused for monthly — overwrite the form's null
-        terms.billingCycle = "monthly";
-      }
-
       // ─── Unit availability ──────────────────────────────────────────────
-      // Monthly leases require an exclusively available unit. Nightly units turn
-      // over between stays, so we don't require "available" for them here — the
-      // booking-overlap logic below manages conflicts instead.
-      if (!isNightly && unit.status !== "available") {
+      if (unit.status !== "available") {
         return createErrorResponse("Unit is not available for leasing", 400);
       }
 
-      // ─── Overlap prevention (monthly only) ──────────────────────────────
-      // A monthly unit holds one tenant at a time. A nightly unit is short-stay
-      // and may have many sequential bookings, so we skip hard overlap exclusion
-      // for nightly leases.
-      if (!isNightly) {
-        const overlapping = await Lease.findOne({
-          propertyId: leaseData.propertyId,
-          unitId: leaseData.unitId,
-          status: { $in: [LeaseStatus.ACTIVE, LeaseStatus.PENDING, LeaseStatus.DRAFT] },
-          $or: [
-            {
-              startDate: { $lte: leaseData.endDate },
-              endDate: { $gte: leaseData.startDate },
-            },
-          ],
-          deletedAt: null,
-        });
+      const overlapQuery: any = {
+        propertyId: leaseData.propertyId,
+        unitId: leaseData.unitId,
+        status: { $in: [LeaseStatus.ACTIVE, LeaseStatus.PENDING, LeaseStatus.DRAFT] },
+        deletedAt: null,
+        $or: [
+          { endDate: { $gte: leaseData.startDate } },
+          { endDate: { $exists: false } },
+          { endDate: null },
+        ],
+      };
+      if (leaseData.endDate) {
+        overlapQuery.startDate = { $lte: leaseData.endDate };
+      }
 
-        if (overlapping) {
-          return createErrorResponse(
-            "Lease dates overlap with an existing lease on this unit",
-            409
-          );
-        }
+      const overlapping = await Lease.findOne(overlapQuery);
+      if (overlapping) {
+        return createErrorResponse(
+          "Lease dates overlap with an existing lease on this unit",
+          409
+        );
       }
 
       // ─── Create lease document ──────────────────────────────────────────
+      const terms = (leaseData.terms ?? {}) as any;
       const lease = new Lease({
         ...leaseData,
         terms: {
@@ -294,23 +276,9 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         status: leaseData.status || LeaseStatus.DRAFT,
       });
 
+      // Unit occupancy (status/currentTenantId/currentLeaseId) is set by the
+      // Lease model's post("save") hook — no manual Property update needed.
       await lease.save();
-
-      // ─── Activate unit if lease is active (monthly only) ────────────────
-      // Nightly stays do not permanently occupy the unit, so we leave its
-      // status untouched and let the booking calendar reflect availability.
-      if (lease.status === LeaseStatus.ACTIVE && !isNightly) {
-        await Property.updateOne(
-          { _id: lease.propertyId, "units._id": lease.unitId },
-          {
-            $set: {
-              "units.$.status": "occupied",
-              "units.$.currentTenantId": lease.tenantId,
-              "units.$.currentLeaseId": lease._id,
-            },
-          }
-        );
-      }
 
       // ─── Populate response data ─────────────────────────────────────────
       await lease.populate([
@@ -332,9 +300,6 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       }
 
       // ─── Auto-generate invoices (non-blocking) ──────────────────────────
-      // Monthly: advance-month invoices off a fixed rentAmount.
-      // Nightly: nights × nightlyRate, scheduled by billingCycle. The invoice
-      // service must branch on rentBasis (see auto-invoice-generation.service).
       let invoiceGeneration = null;
 
       if (
@@ -348,16 +313,10 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
               {
                 generateOnLeaseCreation: true,
                 generateSecurityDeposit: lease.terms.securityDeposit > 0,
-                // Monthly-only knob; ignored by the nightly path.
-                advanceMonths: isNightly
-                  ? 0
-                  : lease.terms.paymentConfig?.advancePaymentMonths || 0,
-                // Nightly scheduling hints for the service.
-                rentBasis: lease.terms.rentBasis,
-                billingCycle: lease.terms.billingCycle,
+                advanceMonths: lease.terms.paymentConfig?.advancePaymentMonths || 0,
                 autoIssue: true,
                 autoEmail: lease.terms.paymentConfig?.autoEmailInvoices || false,
-              } as any
+              }
             );
         } catch (err) {
           console.error("[Lease Creation] Invoice generation failed (non-blocking)", err);

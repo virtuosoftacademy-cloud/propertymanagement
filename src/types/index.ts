@@ -215,7 +215,7 @@ export enum PropertyType {
 export enum PropertyStatus {
   AVAILABLE = "available",
   OCCUPIED = "occupied",
-  // MAINTENANCE = "maintenance",
+  MAINTENANCE = "maintenance",
   UNAVAILABLE = "unavailable",
 }
 
@@ -593,7 +593,24 @@ export interface ILease extends Document {
   signedBy: Types.ObjectId;
   rentPeriod: LeaseRentPeriod;
   startDate?: Date;
+  /**
+   * Open-ended leases have no endDate until closure, at which point it mirrors
+   * `departureDate`. Never set it speculatively — Phase 2 recurring billing
+   * treats a lease with no endDate as still running.
+   */
   endDate?: Date;
+  /**
+   * The tenant's actual departure — source of truth for the final billing
+   * cutoff. May be backdated relative to when the admin closed the lease.
+   */
+  departureDate?: Date;
+  /**
+   * Day-of-month (1–31) that defines billing cycle boundaries, derived from
+   * `startDate`. Stored rather than recomputed so that cycles stay stable if
+   * `startDate` is ever corrected. Months shorter than this value clamp to
+   * their last day when cycles are computed.
+   */
+  billingAnchorDay?: number;
   status: LeaseStatus;
   // Aggregate payment status derived from linked payments
   paymentStatus?: "current" | "pending" | "overdue";
@@ -609,7 +626,8 @@ export interface ILease extends Document {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
-  deletedAt?: Date;
+  /** null when active; set on soft delete. restore() writes null back. */
+  deletedAt?: Date | null;
 
   // Virtual property for populated unit information from unified model
   unit?: IEmbeddedUnit;
@@ -659,6 +677,20 @@ export interface IInvoice extends Document {
   dueDate: Date;
   status: InvoiceStatus;
 
+  // Billing Period
+  /**
+   * The billing cycle this invoice covers. Distinct from issueDate/dueDate,
+   * which are about when money is asked for rather than what is being billed.
+   * Together with `leaseId` these form the natural key for the recurring job's
+   * "already generated this cycle?" check.
+   */
+  periodStart?: Date;
+  periodEnd?: Date;
+  /** Partial-period invoice — amount is prorated rather than a full cycle. */
+  isProrated?: boolean;
+  /** The lease-closing invoice, prorated to the tenant's departure date. */
+  isFinal?: boolean;
+
   // Financial Information
   subtotal: number;
   taxAmount?: number;
@@ -698,7 +730,10 @@ export interface IInvoice extends Document {
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
-  deletedAt?: Date;
+  // Nullable, not just optional: the schema defaults it to null and the
+  // soft-delete hook matches on null, so restoring writes null rather than
+  // dropping the field. Mirrors ILease.deletedAt.
+  deletedAt?: Date | null;
 }
 
 // ============================================================================
@@ -907,7 +942,7 @@ export enum ComplianceCategory {
   ELECTRICAL = "electrical-safety",
   STRUCTURAL = "structural-safety",
   ELEVATOR = "elevator-/-lift-certificate",
-  PEST_CONTROL = "pest-control-certificatepest-control-certificate",
+  PEST_CONTROL = "pest-control-certificate",
   HEALTH_HYGIENE = "health-hygiene",
   HMO = "hmo-license",
 }

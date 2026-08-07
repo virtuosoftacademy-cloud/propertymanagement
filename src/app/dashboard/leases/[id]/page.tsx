@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { showSimpleError, showSimpleSuccess } from "@/lib/toast-notifications";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Card,
@@ -16,7 +16,6 @@ import {
 import { LeaseStatus, UserRole } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +57,7 @@ import { LeaseStatusBadge } from "@/components/leases/LeaseStatusBadge";
 import {
   LeaseStatusChanger,
   LeaseCapabilities,
+  LeaseEndDateButton,
 } from "@/components/leases/LeaseStatusChanger";
 import { LeaseInvoiceModal } from "@/components/invoices";
 import { LeaseDocuments } from "@/components/leases/LeaseDocuments";
@@ -66,6 +66,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentStatusDashboard } from "@/components/payments/PaymentStatusDashboard";
 import { PaymentManagementSystem } from "@/components/payments/PaymentManagementSystem";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 
 interface LeaseDetailsPageProps {
   params: Promise<{
@@ -75,6 +76,7 @@ interface LeaseDetailsPageProps {
 
 export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const { t, formatCurrency, formatDate, formatNumber } =
     useLocalizationContext();
@@ -88,11 +90,22 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
 
   // Check if user is a tenant
   const isTenant = session?.user?.role === UserRole.TENANT;
+  // Active leases hide the manual invoice entry points (Quick Invoice and the
+  // Full Invoice Page action).
+  const isActiveLease = lease?.status === LeaseStatus.ACTIVE;
+  // Edit is manager-only; Full Invoice Page is hidden on active leases. If
+  // neither applies there is nothing left to show, so drop the menu entirely
+  // rather than render an empty one.
+  const hasDropdownActions = !isTenant || !isActiveLease;
 
   const fetchLease = useCallback(async () => {
     try {
       setLoading(true);
-      const leaseData = await leaseService.getLeaseById(resolvedParams.id);
+      // Arriving from the history view, where the lease is soft-deleted.
+      const leaseData = await leaseService.getLeaseById(
+        resolvedParams.id,
+        searchParams.get("deleted") === "true"
+      );
       setLease(leaseData);
     } catch (error) {
       showSimpleError("Load Error", t("leases.details.toasts.fetchError"));
@@ -100,7 +113,7 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [resolvedParams.id, router, t]);
+  }, [resolvedParams.id, router, t, searchParams]);
 
   useEffect(() => {
     fetchLease();
@@ -121,23 +134,23 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
   //   }
   // };
 
-const getDaysRemaining = () => {
-  // Open-ended leases (e.g. monthly) have no end date — nothing to count down.
-  if (!lease?.endDate) return null;
+  const getDaysRemaining = () => {
+    // Open-ended leases (e.g. monthly) have no end date — nothing to count down.
+    if (!lease?.endDate) return null;
 
-  const endDate = new Date(lease.endDate);
-  if (isNaN(endDate.getTime())) return null;
+    const endDate = new Date(lease.endDate);
+    if (isNaN(endDate.getTime())) return null;
 
-  // Count whole days from the start of today so the result doesn't shift with
-  // the current time of day (which caused the off-by-one).
-  const today = new Date(lease.startDate || new Date());
-  today.setHours(0, 0, 0, 0);
-  endDate.setHours(0, 0, 0, 0);
+    // Count whole days from the start of today so the result doesn't shift with
+    // the current time of day (which caused the off-by-one).
+    const today = new Date(lease.startDate || new Date());
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
 
-  return Math.round(
-    (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-  );
-};
+    return Math.round(
+      (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+  };
 
   const getTotalDays = () => {
     if (!lease?.startDate || !lease?.endDate) return 0;
@@ -149,24 +162,8 @@ const getDaysRemaining = () => {
 
   if (loading) {
     return (
-      <div className="space-y-8 animate-fade-in-up">
-        <div className="flex items-center gap-6">
-          <Skeleton className="h-12 w-24 rounded-xl" />
-          <div className="space-y-3">
-            <Skeleton className="h-10 w-80 rounded-lg" />
-            <Skeleton className="h-5 w-64 rounded-md" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            <Skeleton className="h-80 rounded-xl" />
-            <Skeleton className="h-64 rounded-xl" />
-          </div>
-          <div className="space-y-8">
-            <Skeleton className="h-48 rounded-xl" />
-            <Skeleton className="h-64 rounded-xl" />
-          </div>
-        </div>
+      <div className="flex justify-center items-center h-[90vh]">
+        <LoadingSpinner message="" size="lg" />
       </div>
     );
   }
@@ -196,23 +193,6 @@ const getDaysRemaining = () => {
     );
   }
 
-  const daysRemaining = getDaysRemaining();
-  const totalDays = getTotalDays();
-
-  // Agent-proposed rent figures (HMO properties with an assigned agent only).
-  // These are optional on the lease and only shown when present.
-  const agentRentRate = (lease.terms as any).rentProposedByAgent as
-    | number
-    | undefined;
-  const agentTotal = (lease.terms as any).agentTotalAmount as
-    | number
-    | undefined;
-  const rentDifference = (lease.terms as any).rentTotalDifference as
-    | number
-    | undefined;
-  const hasAgentRent =
-    typeof agentRentRate === "number" && agentRentRate > 0;
-
   return (
     <div className="space-y-8 animate-fade-in-up">
       {/* Header */}
@@ -230,6 +210,9 @@ const getDaysRemaining = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:gap-3">
           <LeaseStatusBadge status={lease.status} />
+          {!isTenant && (
+            <LeaseEndDateButton lease={lease} onUpdate={fetchLease} />
+          )}
           {/* {!isTenant && <LeaseActions lease={lease} onUpdate={fetchLease} />} */}
 
           {/* Payment Management Button */}
@@ -255,10 +238,18 @@ const getDaysRemaining = () => {
             <Button
               variant="outline"
               size="sm"
+              // Scope to the tenant on this lease, not the property: a property
+              // with several units returns every other tenant's invoices too,
+              // which is not what "view invoices" from a lease should mean.
+              // Falls back to the property filter only if the tenant ref is
+              // missing, so the button never navigates to an unfiltered list.
               onClick={() =>
                 router.push(
-                  `/dashboard/leases/invoices?propertyId=${lease.propertyId?._id || ""
-                  }`
+                  lease.tenantId?._id
+                    ? `/dashboard/leases/invoices?propertyId=${lease.propertyId?._id}`
+                    : `/dashboard/leases/invoices?propertyId=${
+                        lease.propertyId?._id || ""
+                      }`
                 )
               }
               className="flex items-center gap-2 cursor-pointer"
@@ -272,7 +263,7 @@ const getDaysRemaining = () => {
               </span>
             </Button>
           )}
-          {!isTenant && (
+          {!isTenant && !isActiveLease && (
             <LeaseInvoiceModal
               lease={lease}
               trigger={
@@ -292,6 +283,7 @@ const getDaysRemaining = () => {
               }
             />
           )}
+          {hasDropdownActions && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild className="cursor-pointer">
               <Button variant="outline" size="sm">
@@ -302,29 +294,34 @@ const getDaysRemaining = () => {
               <DropdownMenuLabel>
                 {t("leases.details.dropdown.actionsLabel")}
               </DropdownMenuLabel>
-              {!isTenant && lease.status === LeaseStatus.DRAFT && (
+              {/* Editable at any status — the edit form warns about live
+                  tenancies, and status changes go through the status actions. */}
+              {!isTenant && (
+                <DropdownMenuItem asChild>
+                  <Link href={`/dashboard/leases/${lease._id}/edit`}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    {t("leases.details.actions.editLease")}
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {!isActiveLease && (
                 <>
+                  {/* Separator only when an item precedes it */}
+                  {!isTenant && <DropdownMenuSeparator />}
                   <DropdownMenuItem asChild>
-                    <Link href={`/dashboard/leases/${lease._id}/edit`}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      {t("leases.details.actions.editLease")}
+                    <Link href={`/dashboard/leases/${lease._id}/invoice`}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      {t("leases.details.actions.fullInvoicePage")}
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuItem asChild>
-                <Link href={`/dashboard/leases/${lease._id}/invoice`}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  {t("leases.details.actions.fullInvoicePage")}
-                </Link>
-              </DropdownMenuItem>
               {!isTenant && (
                 <>
                   {/* DISABLED: Delete functionality temporarily disabled */}
                   {/* <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="text-red-600"
+                    className="text-destructive"
                     onClick={() => setShowDeleteDialog(true)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -334,6 +331,7 @@ const getDaysRemaining = () => {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -649,11 +647,11 @@ const getDaysRemaining = () => {
                     </label>
                     <p className="font-semibold">
                       {formatDate(lease.startDate)} -{" "}
-                      {formatDate(lease.endDate)}
+                      {lease.endDate ? formatDate(lease.endDate) : t("leases.details.summary.leasePeriodPresent")}
                     </p>
                   </div>
 
-                  <div>
+                  {/* <div>
                     <label className="text-sm font-medium text-muted-foreground">
                       {t("leases.details.summary.duration")}
                     </label>
@@ -664,7 +662,7 @@ const getDaysRemaining = () => {
                         })
                         : t("leases.labels.expired")}
                     </p>
-                  </div>
+                  </div> */}
 
                   {/* {lease.status === LeaseStatus.ACTIVE && (
                     <div>
@@ -673,10 +671,10 @@ const getDaysRemaining = () => {
                       </label>
                       <p
                         className={`font-semibold ${daysRemaining < 1
-                          ? "text-red-600"
+                          ? "text-destructive"
                           : daysRemaining < 2
-                            ? "text-orange-600"
-                            : "text-green-600"
+                            ? "text-warning"
+                            : "text-success"
                           }`}
                       >
                         {daysRemaining > 0
@@ -694,7 +692,7 @@ const getDaysRemaining = () => {
                         {t("leases.details.summary.signedDate")}
                       </label>
                       <div className="flex items-center gap-2 mt-1">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <CheckCircle className="h-4 w-4 text-success" />
                         <p>{formatDate(lease.signedDate)}</p>
                       </div>
                     </div>
@@ -714,63 +712,30 @@ const getDaysRemaining = () => {
                 </CardHeader>
                 <CardContent className="space-y-4 lg:space-y-6">
                   <div className="grid grid-cols-1 gap-3 lg:gap-4">
-
-                    {(lease.terms.totalAmount ?? 0) > 0 && (
+                    {/* Total rent takes precedence; fall back to the rent
+                        amount when no total is set. The original code tested
+                        `lease.terms`, which is always truthy, so the fallback
+                        never ran and leases with no total showed no figure. */}
+                    {(lease.terms?.totalAmount ?? 0) > 0 ? (
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
                         <span className="text-success font-semibold text-sm lg:text-base">
-                          {hasAgentRent
-                            ? "Total amount (landlord)"
-                            : t("leases.details.financial.totalAmount")}
+                          {t("leases.details.financial.rentAmount")}
                         </span>
                         <span className="font-bold text-lg lg:text-xl text-success">
                           {formatCurrency(lease.terms.totalAmount)}
                         </span>
                       </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
+                        <span className="text-success font-semibold text-sm lg:text-base">
+                          {t("leases.details.financial.rentAmount")}
+                        </span>
+                        <span className="font-bold text-lg lg:text-xl text-success">
+                          {formatCurrency(lease.terms?.rentAmount ?? 0)}
+                        </span>
+                      </div>
                     )}
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-success/15 to-success/8 border border-success/15">
-                      <span className="text-success font-semibold text-sm lg:text-base">
-                        {hasAgentRent
-                          ? "Rent proposed by landlord"
-                          : t("leases.details.financial.rentAmount")}
-                      </span>
-                      <span className="font-bold text-lg lg:text-xl text-success">
-                        {formatCurrency(lease.terms.rentAmount)}
-                      </span>
-                    </div>
 
-                    {/* Agent-proposed rent — HMO properties with an assigned agent only */}
-                    {hasAgentRent && (
-                      <>
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-info/15 to-info/8 border border-info/15">
-                          <span className="text-info font-semibold text-sm lg:text-base">
-                            Rent proposed by agent
-                          </span>
-                          <span className="font-bold text-lg lg:text-xl text-info">
-                            {formatCurrency(agentRentRate || 0)}
-                          </span>
-                        </div>
-                        {typeof agentTotal === "number" && (
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-info/15 to-info/8 border border-info/15">
-                            <span className="text-info font-semibold text-sm lg:text-base">
-                              Total amount (agent)
-                            </span>
-                            <span className="font-bold text-base lg:text-lg text-info">
-                              {formatCurrency(agentTotal)}
-                            </span>
-                          </div>
-                        )}
-                        {typeof rentDifference === "number" && (
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-muted/40 border border-border/15">
-                            <span className="text-muted-foreground font-semibold text-sm lg:text-base">
-                              Rent Difference
-                            </span>
-                            <span className="font-bold text-base lg:text-lg">
-                              {formatCurrency(Math.abs(rentDifference))}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    )}
 
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 lg:p-4 rounded-xl bg-linear-to-r from-warning/15 to-warning/8 border border-warning/15">
                       <span className="text-warning font-semibold text-sm lg:text-base">
@@ -901,7 +866,7 @@ const getDaysRemaining = () => {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
               {isDeleting ? "Deleting..." : "Delete Lease"}
             </AlertDialogAction>

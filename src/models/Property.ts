@@ -267,7 +267,7 @@ const PropertySchema = new Schema<IProperty>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: function (doc, ret) {
+      transform: function (doc, ret: Record<string, any>) {
         delete ret.__v;
         return ret;
       },
@@ -377,7 +377,9 @@ PropertySchema.methods.calculatePropertyStatus = function (): PropertyStatus {
   const hasUnits = Array.isArray(this.units) && this.units.length > 0;
   if (!hasUnits) return this.status;
 
-  const unitStatuses = this.units
+  // Annotated because `this.units` is untyped inside a schema method, which
+  // otherwise leaves the counts below inferring `any`.
+  const unitStatuses: PropertyStatus[] = this.units
     .map((unit: any) => unit?.status)
     .filter((status: any): status is PropertyStatus =>
       Object.values(PropertyStatus).includes(status)
@@ -414,7 +416,7 @@ PropertySchema.methods.updatePropertyStatusFromUnits = async function () {
 };
 
 // Query middleware to exclude soft deleted documents by default
-PropertySchema.pre(/^find/, function () {
+PropertySchema.pre(/^find/, function (this: mongoose.Query<any, any>) {
   const query = this.getQuery();
   if (!query.hasOwnProperty("deletedAt")) {
     // @ts-ignore
@@ -423,6 +425,14 @@ PropertySchema.pre(/^find/, function () {
 });
 
 // Pre-save middleware
+/**
+ * `_oldStatus` is stashed on the document by pre("save") and read back in
+ * post("save") to detect a status transition. It is deliberately not a schema
+ * field — it only needs to survive between the two hooks — so it needs a type
+ * of its own to be addressable.
+ */
+type PropertyStatusStash = { _oldStatus?: PropertyStatus };
+
 PropertySchema.pre("save", async function (next) {
   // Strip deprecated fields that should only exist at unit level
   const deprecatedFields = ["bedrooms", "bathrooms", "squareFootage", "rentAmount", "securityDeposit"];
@@ -456,7 +466,8 @@ PropertySchema.pre("save", async function (next) {
   }
 
   if (this.isModified("status") && !this.isNew) {
-    this._oldStatus = this.getChanges().$set?.status || this.status;
+    (this as unknown as PropertyStatusStash)._oldStatus =
+      this.getChanges().$set?.status || this.status;
   }
 
   // Validate owner
@@ -499,7 +510,8 @@ PropertySchema.post("save", async function (doc) {
         }
       }
     }
-    if (doc._oldStatus) delete doc._oldStatus;
+    const stash = doc as unknown as PropertyStatusStash;
+    if (stash._oldStatus) delete stash._oldStatus;
   } catch {
     // Don't throw — avoid breaking the save operation
   }

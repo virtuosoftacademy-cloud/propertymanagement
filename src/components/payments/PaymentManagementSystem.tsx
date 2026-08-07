@@ -253,22 +253,12 @@ export function PaymentManagementSystem({
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-            <div className="space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  // No spinner here. This renders directly beneath PaymentStatusDashboard,
+  // which fetches the same endpoint and already shows one — two stacked
+  // spinners for a single load read as a glitch. Stays absent until it has
+  // data, and keeps existing rows visible through refetches.
+  if (loading && payments.length === 0) {
+    return null;
   }
 
   return (

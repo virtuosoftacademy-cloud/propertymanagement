@@ -44,7 +44,9 @@ import { ComplianceCategory, ComplianceCategoryLabels } from "@/types";
 // ────────────────────────────────────────────────
 const complianceReportSchema = z.object({
   propertyId: z.string().min(1, "Property is required"),
-  category: z.string().min(1, "Category is required"),
+  category: z.nativeEnum(ComplianceCategory, {
+    errorMap: () => ({ message: "Category is required" }),
+  }),
   issueDate: z.string().min(1, "Issue date is required"),
   expiryDate: z.string().min(1, "Expiry date is required"),
   notes: z.string().max(1000, "Notes too long").optional(),
@@ -80,19 +82,12 @@ interface ComplianceReportFormProps {
   }>;
 }
 
-interface Compliance {
-  key: string;
-  value: string;
-}
-const complianceCategory: Compliance[] = [
-  { key: "fire-safety", value: "Fire Safety Certificate" },
-  { key: "electrical-safety", value: "Electrical Safety" },
-  { key: "structural-safety", value: "Structural Safety" },
-  { key: "elevator-/-lift-certificate", value: "Elevator / Lift Certificate" },
-  { key: "pest-control-certificate", value: "Pest Control Certificate" },
-  { key: "health-hygiene", value: "Health & Hygiene Compliance" },
-  { key: "hmo-license", value: "HMO License" },
-]
+// Derived from the shared enum so the dropdown can never drift out of sync
+// with what the API's `z.nativeEnum(ComplianceCategory)` will accept.
+const complianceCategory = Object.values(ComplianceCategory).map((key) => ({
+  key,
+  value: ComplianceCategoryLabels[key],
+}));
 
 export default function ComplianceReportForm({
   mode = "create",
@@ -114,7 +109,7 @@ export default function ComplianceReportForm({
     resolver: zodResolver(complianceReportSchema),
     defaultValues: {
       propertyId: initialData?.propertyId || "",
-      category: initialData?.category || "",
+      category: initialData?.category,
       issueDate: initialData?.issueDate || "",
       expiryDate: initialData?.expiryDate || "",
       notes: initialData?.notes || "",
@@ -132,7 +127,7 @@ export default function ComplianceReportForm({
     if (!initialData?._id) return;
     form.reset({
       propertyId: initialData.propertyId || "",
-      category: initialData.category || "",
+      category: initialData.category,
       issueDate: initialData.issueDate || "",
       expiryDate: initialData.expiryDate || "",
       notes: initialData.notes || "",

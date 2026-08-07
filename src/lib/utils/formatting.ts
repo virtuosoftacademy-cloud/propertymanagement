@@ -178,18 +178,27 @@ export function formatPhoneNumber(
   // Remove all non-digit characters
   const cleaned = phoneNumber.replace(/\D/g, "");
 
-  // Default to US format
-  if (!countryCode || countryCode === "US") {
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-        6
-      )}`;
+  // Default to UK format
+  if (!countryCode || countryCode === "GB") {
+    // International: +44 7700 900123 / +44 20 7946 0958
+    if (cleaned.length === 12 && cleaned.startsWith("44")) {
+      const local = cleaned.slice(2);
+      return `+44 ${local.slice(0, 4)} ${local.slice(4)}`;
     }
-    if (cleaned.length === 11 && cleaned[0] === "1") {
-      return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(
-        4,
-        7
-      )}-${cleaned.slice(7)}`;
+    if (cleaned.length === 11 && cleaned.startsWith("44")) {
+      const local = cleaned.slice(2);
+      return `+44 ${local.slice(0, 2)} ${local.slice(2, 6)} ${local.slice(6)}`;
+    }
+    // Local mobile: 07700 900123
+    if (cleaned.length === 11 && cleaned.startsWith("07")) {
+      return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
+    }
+    // Local landline: 020 7946 0958 / 01632 960123
+    if (cleaned.length === 11 && cleaned.startsWith("0")) {
+      return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 7)} ${cleaned.slice(7)}`;
+    }
+    if (cleaned.length === 10 && cleaned.startsWith("0")) {
+      return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
     }
   }
 

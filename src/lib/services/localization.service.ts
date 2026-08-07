@@ -867,28 +867,25 @@ export class LocalizationService {
   private translations: Record<string, Record<string, string>> = translations;
 
   private constructor() {
-    // Initialize with browser locale if available
+    // Deliberately does NOT infer from navigator.language. This is a UK
+    // product — HMO licensing, HMRC, rent in GBP — and deriving the locale
+    // from the browser meant anyone on en-US saw the entire app in dollars
+    // with MM/DD/YYYY dates. The en-GB / GBP defaults above stand unless the
+    // user has explicitly chosen otherwise.
     if (typeof window !== "undefined") {
-      this.currentLocale = navigator.language || "en-GB";
-      if (!LOCALES[this.currentLocale]) {
-        // Fallback to language code only
-        const langCode = this.currentLocale.split("-")[0];
-        const fallbackLocale = Object.keys(LOCALES).find((locale) =>
-          locale.startsWith(langCode)
-        );
-        this.currentLocale = fallbackLocale || "en-GB";
-      }
-      const savedCurrency = (() => {
-        try {
-          return localStorage.getItem("PropertyPro-currency") || undefined;
-        } catch {
-          return undefined;
+      try {
+        const savedLocale = localStorage.getItem("PropertyPro-locale");
+        if (savedLocale && LOCALES[savedLocale]) {
+          this.currentLocale = savedLocale;
         }
-      })();
-      if (savedCurrency && CURRENCIES[savedCurrency]) {
-        this.currentCurrency = savedCurrency;
-      } else {
-        this.currentCurrency = LOCALES[this.currentLocale]?.currency || "GBP";
+
+        const savedCurrency = localStorage.getItem("PropertyPro-currency");
+        if (savedCurrency && CURRENCIES[savedCurrency]) {
+          this.currentCurrency = savedCurrency;
+        }
+      } catch {
+        // localStorage unavailable (private mode, blocked cookies) — the
+        // en-GB / GBP defaults are the right fallback.
       }
     }
   }
@@ -1013,7 +1010,11 @@ export class LocalizationService {
       options || {};
     const dateObj = typeof date === "string" ? new Date(date) : date;
 
-    const formatOptions: Intl.DateTimeFormatOptions = {
+    // A lookup of format name -> options, not a single options object.
+    const formatOptions: Record<
+      "short" | "medium" | "long" | "full",
+      Intl.DateTimeFormatOptions
+    > = {
       short: { year: "numeric", month: "numeric", day: "numeric" },
       medium: { year: "numeric", month: "short", day: "numeric" },
       long: { year: "numeric", month: "long", day: "numeric" },

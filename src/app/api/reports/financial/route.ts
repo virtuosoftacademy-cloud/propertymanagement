@@ -471,7 +471,9 @@ async function generateRentRollReport(user: any, propertyId?: string) {
 
     // Get active leases with property and tenant information
     const rentRoll = await Lease.aggregate([
-      { $match: { status: "active" } },
+      // aggregate() bypasses the model's soft-delete hook, so deleted leases
+      // must be excluded here or they inflate the rent roll.
+      { $match: { status: "active", deletedAt: null } },
       {
         $lookup: {
           from: "properties",

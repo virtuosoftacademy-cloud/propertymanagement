@@ -68,7 +68,7 @@ import {
 } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
-import { MaintenanceDetailSkeleton } from "@/components/maintenance/maintenance-skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 
 interface MaintenanceRequestDetailProps {
   request: IMaintenanceRequest & {
@@ -529,9 +529,13 @@ export default function MaintenanceRequestDetailPage() {
   //   }
   // };
 
-  // Show loading skeleton while data is being fetched
+  // Show loading spinner while data is being fetched
   if (loading) {
-    return <MaintenanceDetailSkeleton />;
+    return (
+      <div className="flex justify-center items-center py-16">
+        <LoadingSpinner message="" size="lg" />
+      </div>
+    );
   }
 
   // Show not found message if request doesn't exist after loading
@@ -651,7 +655,7 @@ export default function MaintenanceRequestDetailPage() {
                         <DropdownMenuItem
                           onClick={handleCancelRequest}
                           disabled={actionLoading}
-                          className="text-orange-600"
+                          className="text-warning"
                         >
                           <X className="mr-2 h-4 w-4" />
                           {t("maintenance.actions.cancelRequest")}
@@ -660,7 +664,7 @@ export default function MaintenanceRequestDetailPage() {
                     </>
                   )}
                 {/* <DropdownMenuItem
-                  className="text-red-600"
+                  className="text-destructive"
                   onClick={() => setDeleteDialogOpen(true)}
                   disabled={request?.status === MaintenanceStatus.COMPLETED}
                 >
@@ -802,7 +806,7 @@ export default function MaintenanceRequestDetailPage() {
                   {request?.images.map((image, index) => (
                     <div
                       key={index}
-                      className="aspect-square bg-gray-100 rounded-lg overflow-hidden"
+                      className="aspect-square bg-muted rounded-lg overflow-hidden"
                     >
                       <Image
                         src={image}
@@ -840,7 +844,7 @@ export default function MaintenanceRequestDetailPage() {
                   <div className="mt-2">
                     <Badge
                       variant="outline"
-                      className="text-blue-600 border-blue-200"
+                      className="text-info border-info/20"
                     >
                       {t("maintenance.details.labels.unit")}{" "}
                       {request.unit.unitNumber} - {request.unit.unitType}

@@ -7,9 +7,8 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useParams, useRouter } from "next/navigation";
-import { UserRole } from "@/types";
+import { UserRole, ComplianceCategory } from "@/types";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
-import { ComplianceFormSkeleton } from "@/components/compliance/compliance-skeleton"; // ← your new skeleton
 import ComplianceReportForm from "@/components/forms/compliance-report-form";
 
 interface Property {
@@ -25,12 +24,14 @@ interface Property {
 }
 
 interface ComplianceReportData {
+  _id: string;
   propertyId: string;
-  category: string;
+  category?: ComplianceCategory;
   issueDate: string;
   expiryDate: string;
   notes?: string;
   estimatedCost?: number;
+  images: string[];
 }
 
 export default function EditComplianceReportPage() {
@@ -39,8 +40,7 @@ export default function EditComplianceReportPage() {
   const { data: session } = useSession();
   const { t } = useLocalizationContext();
   const reportId = Array.isArray(params.id) ? params.id[0] : params.id
-  const [loading, setLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [initialData, setInitialData] = useState<ComplianceReportData | null>(null);
 
@@ -54,10 +54,19 @@ export default function EditComplianceReportPage() {
 
   const fetchData = async () => {
     try {
-      setDataLoading(true);
+      // Fetch both in parallel. The form's property <Select> and <ImageUpload>
+      // read their data on mount only, so the report and the property list must
+      // land in the same commit — otherwise those two fields render blank.
+      const [reportRes, propertiesRes] = await Promise.all([
+        fetch(`/api/compliance/${params.id}`),
+        // Tenants can't edit, so skip the property list for them
+        isTenant ? null : fetch("/api/properties?limit=100"),
+      ]);
 
-      // Fetch compliance report first
-      const reportRes = await fetch(`/api/compliance/${params.id}`);
+      if (reportRes.status === 404) {
+        setNotFound(true);
+        return;
+      }
 
       if (!reportRes.ok) {
         throw new Error("Failed to fetch compliance report");
@@ -65,11 +74,22 @@ export default function EditComplianceReportPage() {
 
       const reportData = await reportRes.json();
       const report = reportData.data;
-      // console.log(report.propertyId?._id)
-      // Set initial form data
+
+      if (propertiesRes) {
+        const json = await propertiesRes.json();
+        if (json.success && Array.isArray(json.data)) {
+          setProperties(json.data);
+        } else {
+          throw new Error(json.error || "Failed to load properties");
+        }
+      }
+
+      // Set initial form data. Field names must match the API/model exactly —
+      // the form seeds its inputs straight from these keys.
       setInitialData({
+        _id: report._id,
         propertyId: report.propertyId?._id || report.propertyId || "",
-        category: report.complianceType || "",
+        category: (report.category as ComplianceCategory) || undefined,
         issueDate: report.issueDate
           ? new Date(report.issueDate).toISOString().slice(0, 10)
           : "",
@@ -77,70 +97,16 @@ export default function EditComplianceReportPage() {
           ? new Date(report.expiryDate).toISOString().slice(0, 10)
           : "",
         notes: report.notes || "",
-        estimatedCost: report.estimatedCost || undefined,
+        estimatedCost: report.estimatedCost ?? undefined,
+        images: report.images || [],
       });
-
-      // Only fetch properties for admin/manager roles (tenants usually can't edit)
-      if (!isTenant) {
-        const propertiesRes = await fetch("/api/properties?limit=100");
-
-        if (propertiesRes.ok) {
-          const res = await fetch("/api/properties?limit=100");
-          const json = await res.json();
-          if (json.success && Array.isArray(json.data)) {
-            setProperties(json.data);
-          } else {
-            throw new Error(json.error || "Failed to load properties");
-          }
-        }
-      }
     } catch (error: any) {
       toast.error(error?.message || t("compliance.edit.toasts.loadError"));
       router.push("/dashboard/compliance");
-    } finally {
-      setDataLoading(false);
     }
   };
 
-  const handleSubmit = async (data: any) => {
-    try {
-      setLoading(true);
-
-      const response = await fetch(`/api/compliance/${params.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          propertyId: data.propertyId,
-          complianceType: data.complianceType,
-          issueDate: data.issueDate,
-          expiryDate: data.expiryDate,
-          notes: data.notes || undefined,
-          estimatedCost: data.estimatedCost || undefined,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || t("compliance.edit.toasts.updateError"));
-      }
-
-      toast.success(t("compliance.edit.toasts.updateSuccess"));
-      router.push(`/dashboard/compliance/${params.id}`);
-    } catch (error: any) {
-      toast.error(error?.message || t("compliance.edit.toasts.updateError"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (dataLoading) {
-    return <ComplianceFormSkeleton />;
-  }
-
-  if (!initialData) {
+  if (notFound) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <h2 className="text-xl font-semibold">
@@ -179,14 +145,17 @@ export default function EditComplianceReportPage() {
         </Link>
       </div>
 
-      {/* Form */}
-      <ComplianceReportForm
-        mode="edit"
-        onSubmit={handleSubmit}
-        initialData={initialData}
-        properties={properties}
-        reportId={reportId}
-      />
+      {/* Form — mounted only once the report and properties are both in hand,
+          since its property <Select> and <ImageUpload> seed themselves on mount */}
+      {initialData && (
+        <ComplianceReportForm
+          mode="edit"
+          initialData={initialData}
+          properties={properties}
+          reportId={reportId}
+          onCancel={() => router.push("/dashboard/compliance")}
+        />
+      )}
     </div>
   );
 }

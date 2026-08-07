@@ -586,7 +586,7 @@ export function PaymentNotifications({
                         }))
                       }
                       className="mt-2"
-                      placeholder="+1 (555) 123-4567"
+                      placeholder="07700 900123"
                     />
                   </div>
                 </div>

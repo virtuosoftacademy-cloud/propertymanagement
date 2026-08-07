@@ -3,50 +3,39 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ChevronUp, Menu, X } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { useDisplaySettingsSync } from "@/hooks/useDisplaySettingsSync";
 import { useTheme } from "next-themes";
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const consultingServicesItems = [
-  {
-    title: "Payroll",
-    href: "#",
-    subPages: [
-      { label: "Payroll Bureau Service", href: "#" },
-      { label: "Compliance Service", href: "#" },
-    ],
-  },
-  {
-    title: "Finance Function",
-    href: "#",
-    subPages: [
-      { label: "Business Accounting", href: "#" },
-      { label: "Financial Consultancy", href: "#" },
-      { label: "Individual Accounting", href: "#" },
-    ],
-  },
-  { title: "Fractional CFO", href: "#", subPages: [] },
-  { title: "Digital Accounting", href: "#", subPages: [] },
-  { title: "Tax", href: "#", subPages: [] },
-  { title: "Property Accounting", href: "#", subPages: [] },
-  { title: "Industries", href: "#", subPages: [] },
-  { title: "View all Payroll Services", href: "#", subPages: [], isViewAll: true },
-];
+import { signOut, useSession } from "next-auth/react";
+import { useUserAvatar } from "@/components/providers/UserAvatarProvider";
+import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import NotificationBell from "@/components/notifications/notification-bell";
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
-  
   const { resolvedTheme } = useTheme();
+  const { data: session, status } = useSession();
+  const { avatarUrl } = useUserAvatar();
+  const { t } = useLocalizationContext();
   const { settings: displaySettings, syncSettings } = useDisplaySettingsSync({
     pollInterval: 30000,
     autoResolveConflicts: true,
   });
+
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const currentLogoUrl = useMemo(() => {
     // Always fall back to the default logos so something always renders.
@@ -68,7 +57,7 @@ export default function Navbar() {
   // Update the favicon in the document head when branding changes.
   useEffect(() => {
     const faviconUrl = displaySettings?.branding?.favicon;
-    if (!faviconUrl || typeof document === "undefined") return;
+    if (!faviconUrl) return;
     try {
       const rels = ["icon", "shortcut icon"] as const;
       rels.forEach((rel) => {
@@ -87,8 +76,6 @@ export default function Navbar() {
 
   // Refresh branding immediately when settings are updated elsewhere.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
     const handleUpdate = () => syncSettings?.();
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "pc-display-settings-updated") syncSettings?.();
@@ -102,40 +89,20 @@ export default function Navbar() {
     };
   }, [syncSettings]);
 
-  const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [openSubMobile, setOpenSubMobile] = useState<number | null>(null);
-  const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
-
-  // Solidify the (otherwise transparent) navbar once the user scrolls off the hero.
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const isTransparentRoute = pathname === "/" || pathname === "/landing";
-  const isSolid = scrolled || !isTransparentRoute;
-  const navBg = isSolid ? "bg-white shadow-sm" : "bg-transparent shadow-none";
-  const textColor = isSolid ? "text-foreground" : "text-accent";
-  const logoSrc = scrolled ? currentIconUrl : currentLogoUrl;
+  const user = session?.user;
 
   return (
     <nav
       id="nav"
       className={cn(
-        "z-50 w-full py-4 md:py-6 border-b border-muted-foreground/40 transition-all duration-300",
-        navBg,
-        textColor
+        "relative z-10 -mb-25 w-full py-4 md:py-6 border-b border-background/20 dark:border-foreground/20 transition-all duration-300 px-6 md:px-12"
       )}
     >
       <div className="flex items-center justify-between pr-6 md:px-0 max-w-360 mx-auto">
         {/* Logo */}
         <Link href="/">
           <Image
-            src={logoSrc}
+            src={currentLogoUrl}
             alt="Logo"
             width={160}
             height={48}
@@ -148,25 +115,99 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop right */}
-        <div className="flex gap-5">
-          <div className="hidden md:flex items-center gap-4">
-            <Button size="lg" className="text-sm rounded-none font-normal p-6" asChild>
-              <Link href="/auth/signin">Log In</Link>
-            </Button>
-          </div>
+        <div>
+          {status === "loading" ? null : session ? (
+            <div className="flex items-center gap-2 lg:gap-4">
+              {/* Notifications */}
+              <div className="hidden sm:flex">
+                <NotificationBell />
+              </div>
+              <div className="sm:hidden">
+                <NotificationBell />
+              </div>
 
-          <div className="hidden md:flex items-center gap-4">
-            <Button variant={"ghost"} size="lg" className="rounded-none text-sm font-normal p-6 text-white border border-white" asChild>
-              <Link href="/auth/signup">Sign Up</Link>
-            </Button>
-          </div>
+              {/* User Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 rounded-full"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={avatarUrl || user?.avatar || ""}
+                        alt={user?.firstName || ""}
+                      />
+                      <AvatarFallback>
+                        {user?.firstName?.[0]}
+                        {user?.lastName?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user?.firstName} {user?.lastName}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground capitalize">
+                        {user?.role?.replace("_", " ")}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <Link href="/dashboard">
+                    <DropdownMenuItem
+                      className="text-foreground"
+                    >
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-red-600"
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>{t("header.menu.logout")}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-4">
+              <Button
+                size="lg"
+                className="rounded-none text-sm font-normal px-12! text-white"
+                asChild
+              >
+                <Link href="/auth/signin">Log In</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="lg"
+                className="rounded-none text-sm font-normal px-10! text-white border border-white"
+                asChild
+              >
+                <Link href="/auth/signup">Sign Up</Link>
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Mobile toggle */}
         <button
+          type="button"
           className="md:hidden"
           onClick={() => setMobileOpen((p) => !p)}
           aria-label="Toggle menu"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-menu"
         >
           {mobileOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
@@ -174,7 +215,10 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden mt-4 px-4 bg-foreground text-accent max-h-[80vh] overflow-y-auto">
+        <div
+          id="mobile-menu"
+          className="md:hidden mt-4 px-4 bg-foreground text-accent max-h-[80vh] overflow-y-auto"
+        >
 
         </div>
       )}

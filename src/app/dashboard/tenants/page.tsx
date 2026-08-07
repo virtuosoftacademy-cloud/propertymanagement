@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import TenantCard from "@/components/tenants/TenantCard";
 import TenantStats from "@/components/tenants/TenantStats";
@@ -458,6 +458,10 @@ export default function TenantsPage() {
   ];
 
   // Fetch tenants - not wrapped in useCallback, using explicit deps in useEffect
+  // Remembers which empty result we last warned about — the search term, or a
+  // sentinel when there is no search — so the toast fires once per distinct case.
+  const lastEmptyResultRef = useRef<string | null>(null);
+
   const fetchTenants = async () => {
     try {
       // Only show main loading on initial load
@@ -494,6 +498,31 @@ export default function TenantsPage() {
       if (data?.pagination) {
         setTotalTenants(data.pagination.total);
         setTotalPages(data.pagination.totalPages);
+      }
+
+      // Warn once per distinct empty result. This refetches on paging, sorting
+      // and filter changes, so the key guards against repeat toasts while the
+      // same fruitless query sits in the filters. Falls back to the row count
+      // because pagination is not always present on the response.
+      const total = data?.pagination?.total ?? tenantsData?.length ?? 0;
+      const term = (searchTerm || "").trim();
+      if (total === 0) {
+        const key = term || "__no-search__";
+        if (lastEmptyResultRef.current !== key) {
+          lastEmptyResultRef.current = key;
+          if (term) {
+            toast.info("No tenants found", {
+              description: `No tenants match "${term}".`,
+            });
+          } else {
+            toast.info("No tenants", {
+              description:
+                "No tenants have been added yet, or none match the current filters.",
+            });
+          }
+        }
+      } else {
+        lastEmptyResultRef.current = null;
       }
     } catch (err) {
       const message =

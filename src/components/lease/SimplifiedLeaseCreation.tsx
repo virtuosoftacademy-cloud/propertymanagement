@@ -1,13 +1,4 @@
-/**
- * PropertyPro - Simplified Lease Creation Form
- * Streamlined lease creation focusing on core fields only.
- *
- * Rent period drives how rent is taken:
- *  - Day / Week: the lease is bounded by a start and end date, and the total is
- *    calculated from the number of days/weeks in that range × the rent amount.
- *  - Month: the start/end dates are hidden — it's an open-ended monthly tenancy
- *    and rent is collected automatically each month on the chosen due day.
- */
+// PropertyPro - Simplified Lease Creation Form
 
 "use client";
 
@@ -138,7 +129,7 @@ const createInitialLeaseState = (): SimplifiedLeaseData => ({
   lateFeeAmount: 50,
   lateFeeGracePeriodDays: 5,
   lateFeeType: "fixed",
-  autoGenerateInvoices: true,
+  autoGenerateInvoices: false,
   autoEmailInvoices: false,
 });
 
@@ -186,16 +177,13 @@ export default function SimplifiedLeaseCreation({
     : "";
 
   const rentCollectionNote = isMonthly
-    ? "Rent is collected automatically each month."
+    ? "Rent is calculated automatically each month."
     : leaseData.rentPeriod === LeaseRentPeriod.DAY
-      ? "Rent is collected daily."
+      ? "Rent is calculated daily."
       : leaseData.rentPeriod === LeaseRentPeriod.WEEK
-        ? "Rent is collected weekly."
+        ? "Rent is calculated weekly."
         : "";
 
-  // For Day/Week periods, calculate the total from the selected date range:
-  //  - Day:  number of days  × rent amount
-  //  - Week: number of weeks × rent amount (whole weeks, rounded up)
   const rentPricing = (() => {
     if (!isDayOrWeek) return null;
     if (!leaseData.startDate || !leaseData.endDate) return null;
@@ -308,7 +296,7 @@ export default function SimplifiedLeaseCreation({
       lateFeeGracePeriodDays: lateFeeConfig?.gracePeriodDays ?? 0,
       lateFeeType:
         lateFeeConfig?.feeType === "percentage" ? "percentage" : "fixed",
-      autoGenerateInvoices: paymentConfig?.autoGenerateInvoices ?? true,
+      autoGenerateInvoices: paymentConfig?.autoGenerateInvoices ?? false,
       autoEmailInvoices: paymentConfig?.autoEmailInvoices ?? false,
     };
   };
@@ -359,12 +347,31 @@ export default function SimplifiedLeaseCreation({
     }
   }, [mode, leaseId, initialLease]);
 
+  const isPercentageLateFee = leaseData.lateFeeType === "percentage";
+
   const handleInputChange = (field: keyof SimplifiedLeaseData, value: any) => {
-    setLeaseData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setLeaseData((prev) => {
+      const next = { ...prev, [field]: value };
+
+      // The invoice automation section is only shown for fixed-term leases.
+      // Clearing the end date hides it, so clear the flags too — otherwise a
+      // lease could be submitted with automation on from a hidden control.
+      if (field === "endDate" && !value) {
+        next.autoGenerateInvoices = false;
+        next.autoEmailInvoices = false;
+      }
+
+      return next;
+    });
     validateField(field, value);
+
+    // Switching to a percentage makes an amount over 100 invalid even though
+    // that field did not change, so re-check it against the type just picked.
+    if (field === "lateFeeType") {
+      validateField("lateFeeAmount", leaseData.lateFeeAmount, {
+        lateFeeType: value,
+      });
+    }
   };
 
   const setError = (
@@ -382,7 +389,7 @@ export default function SimplifiedLeaseCreation({
   // Switching to a monthly tenancy hides + clears the date range (open-ended).
   const handleRentPeriodChange = (value: string) => {
     handleInputChange("rentPeriod", value);
-    if (value === LeaseRentPeriod.MONTH) {
+    if (value === LeaseRentPeriod.MONTH || value === LeaseRentPeriod.WEEK || value === LeaseRentPeriod.DAY) {
       handleInputChange("startDate", "");
       handleInputChange("endDate", "");
       setError("startDate", null);
@@ -392,14 +399,16 @@ export default function SimplifiedLeaseCreation({
 
   const getFieldErrorMessage = (
     field: keyof SimplifiedLeaseData,
-    value: any
+    value: any,
+    // Cross-field rules read sibling values from state, which is stale during
+    // the same change that sets them. Callers pass the new value here so a rule
+    // can be evaluated against what the form is becoming, not what it was.
+    overrides?: Partial<SimplifiedLeaseData>
   ): string | null => {
+    const effective = { ...leaseData, ...overrides };
     let message: string | null = null;
 
-    // Start/end dates only apply to Day and Week tenancies.
-    const requiresDates =
-      leaseData.rentPeriod === LeaseRentPeriod.DAY ||
-      leaseData.rentPeriod === LeaseRentPeriod.WEEK;
+   
 
     if (field === "propertyId" && !value)
       message = t("leases.new.form.validation.propertyRequired");
@@ -411,23 +420,31 @@ export default function SimplifiedLeaseCreation({
       message = t("leases.new.form.validation.rentPeriodRequired", {
         defaultValue: "Please select a rent period",
       });
-    if (field === "startDate" && !value && requiresDates)
-      message = t("leases.new.form.validation.startDateRequired");
-    if (field === "endDate" && !value && requiresDates)
-      message = t("leases.new.form.validation.endDateRequired");
     if (field === "rentAmount" && (typeof value !== "number" || value <= 0))
       message = t("leases.new.form.validation.rentPositive");
     if (field === "securityDeposit" && (typeof value !== "number" || value < 0))
       message = t("leases.new.form.validation.securityDepositNonNegative");
     if (field === "lateFeeAmount" && (typeof value !== "number" || value < 0))
       message = t("leases.new.form.validation.lateFeeNonNegative");
+    // A percentage-of-rent late fee above 100% would charge more than the rent
+    // itself. Only applies to the percentage type — a fixed fee has no ceiling.
+    if (
+      field === "lateFeeAmount" &&
+      effective.lateFeeType === "percentage" &&
+      typeof value === "number" &&
+      value > 100
+    )
+      message = t("leases.new.form.validation.lateFeePercentageMax");
     if (
       field === "lateFeeGracePeriodDays" &&
       (typeof value !== "number" || value < 0)
     )
       message = t("leases.new.form.validation.gracePeriodNonNegative");
 
-    if (field === "endDate" && value && requiresDates && leaseData.startDate) {
+    // endDate is optional for every rent period (Month, Week, and Day) —
+    // no "required" check here. The only rule it's ever subject to is: if a
+    // value is provided, it must fall after the start date.
+    if (field === "endDate" && value && leaseData.startDate) {
       const start = new Date(leaseData.startDate);
       const end = new Date(value);
       if (end <= start)
@@ -439,9 +456,10 @@ export default function SimplifiedLeaseCreation({
 
   const validateField = (
     field: keyof SimplifiedLeaseData,
-    value: any
+    value: any,
+    overrides?: Partial<SimplifiedLeaseData>
   ): boolean => {
-    const message = getFieldErrorMessage(field, value);
+    const message = getFieldErrorMessage(field, value, overrides);
     setError(field, message);
     return !message;
   };
@@ -613,7 +631,7 @@ export default function SimplifiedLeaseCreation({
       endDate: leaseData.endDate,
       terms: {
         rentAmount: leaseData.rentAmount,
-        // Persist the calculated total for Day/Week tenancies.
+        // Remove this  : Persist the calculated total for Day/Week tenancies.
         ...(isDayOrWeek ? { totalAmount: computedTotal } : {}),
         securityDeposit: leaseData.securityDeposit,
         lateFee: leaseData.lateFeeAmount,
@@ -629,10 +647,17 @@ export default function SimplifiedLeaseCreation({
             compoundDaily: false,
             notificationDays: [3, 7, 14],
           },
-          autoGenerateInvoices: leaseData.autoGenerateInvoices,
-          autoEmailInvoices: leaseData.autoEmailInvoices,
-          autoCreatePayments: true,
-          prorationEnabled: true,
+          // Invoice automation is a fixed-term-only feature. Force it off when
+          // there is no end date, so a hidden section can never submit an
+          // enabled flag (e.g. an existing lease hydrated in edit mode).
+          autoGenerateInvoices: leaseData.endDate
+            ? leaseData.autoGenerateInvoices
+            : false,
+          autoEmailInvoices: leaseData.endDate
+            ? leaseData.autoEmailInvoices
+            : false,
+          autoCreatePayments: false,
+          prorationEnabled: false,
           advancePaymentMonths: 0,
         },
       },
@@ -1122,7 +1147,10 @@ export default function SimplifiedLeaseCreation({
 
               <div className="space-y-2">
                 <Label htmlFor="endDate">
-                  {t("leases.new.form.sections.dates.labels.endDate")}
+                  {t("leases.new.form.sections.dates.labels.endDate")}{" "}
+                  <span className="text-xs text-muted-foreground font-normal">
+                    (optional)
+                  </span>
                 </Label>
                 <FormDatePicker
                   id="endDatePicker"
@@ -1258,7 +1286,7 @@ export default function SimplifiedLeaseCreation({
                 )}
               </div>
 
-              {/* Monthly: collection day. Day/Week: calculated total. */}
+              {/* Monthly: collection day. Day/Week: calculated total (edit only). */}
               {isMonthly && (
                 <div className="space-y-2">
                   <Label htmlFor="rentDueDay">
@@ -1290,7 +1318,7 @@ export default function SimplifiedLeaseCreation({
                 </div>
               )}
 
-              {isDayOrWeek && (
+              {isEditMode && (
                 <div className="space-y-2">
                   <Label htmlFor="totalAmount">Total amount</Label>
                   <Input
@@ -1332,11 +1360,14 @@ export default function SimplifiedLeaseCreation({
               <div className="space-y-2">
                 <Label htmlFor="lateFeeAmount">
                   {t("leases.new.form.sections.lateFees.labels.amount")}
+                  {isPercentageLateFee && " (%)"}
                 </Label>
                 <Input
                   id="lateFeeAmount"
                   type="number"
                   min="0"
+                  // A percentage of rent is capped at 100; a fixed amount is not.
+                  max={isPercentageLateFee ? 100 : undefined}
                   step="0.01"
                   value={leaseData.lateFeeAmount}
                   onChange={(e) =>
@@ -1345,7 +1376,7 @@ export default function SimplifiedLeaseCreation({
                       parseFloat(e.target.value) || 0
                     )
                   }
-                  placeholder="50.00"
+                  placeholder={isPercentageLateFee ? "10" : "50.00"}
                 />
                 {fieldErrors.lateFeeAmount && (
                   <p className="text-destructive text-sm">
@@ -1409,69 +1440,73 @@ export default function SimplifiedLeaseCreation({
           </CardContent>
         </Card>
 
-        {/* Automation Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              {t("leases.new.form.sections.automation.title")}
-            </CardTitle>
-            <CardDescription>
-              {t("leases.new.form.sections.automation.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="autoGenerateInvoices">
-                  {t("leases.new.form.sections.automation.labels.autoGenerate")}
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {t("leases.new.form.sections.automation.help.autoGenerate")}
-                </p>
+        {/* Automation Settings — fixed-term leases only. Without an end date
+            the lease is open-ended and invoiced reactively, so these controls
+            are hidden rather than shown with no effect. */}
+        {leaseData.endDate && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                {t("leases.new.form.sections.automation.title")}
+              </CardTitle>
+              <CardDescription>
+                {t("leases.new.form.sections.automation.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="autoGenerateInvoices">
+                    {t("leases.new.form.sections.automation.labels.autoGenerate")}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("leases.new.form.sections.automation.help.autoGenerate")}
+                  </p>
+                </div>
+                <Switch
+                  id="autoGenerateInvoices"
+                  checked={leaseData.autoGenerateInvoices}
+                  onCheckedChange={(checked) =>
+                    handleInputChange("autoGenerateInvoices", checked)
+                  }
+                />
               </div>
-              <Switch
-                id="autoGenerateInvoices"
-                checked={leaseData.autoGenerateInvoices}
-                onCheckedChange={(checked) =>
-                  handleInputChange("autoGenerateInvoices", checked)
-                }
-              />
-            </div>
 
-            <Separator />
+              <Separator />
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="autoEmailInvoices">
-                  {t("leases.new.form.sections.automation.labels.autoEmail")}
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {t("leases.new.form.sections.automation.help.autoEmail")}
-                </p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="autoEmailInvoices">
+                    {t("leases.new.form.sections.automation.labels.autoEmail")}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("leases.new.form.sections.automation.help.autoEmail")}
+                  </p>
+                </div>
+                <Switch
+                  id="autoEmailInvoices"
+                  checked={leaseData.autoEmailInvoices}
+                  onCheckedChange={(checked) =>
+                    handleInputChange("autoEmailInvoices", checked)
+                  }
+                  disabled={!leaseData.autoGenerateInvoices}
+                />
               </div>
-              <Switch
-                id="autoEmailInvoices"
-                checked={leaseData.autoEmailInvoices}
-                onCheckedChange={(checked) =>
-                  handleInputChange("autoEmailInvoices", checked)
-                }
-                disabled={!leaseData.autoGenerateInvoices}
-              />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Summary & Submit */}
         <Card>
-          <CardHeader>
+          {/* <CardHeader>
             <CardTitle>{t("leases.new.form.sections.review.title")}</CardTitle>
             <CardDescription>
               {t("leases.new.form.sections.review.description")}
             </CardDescription>
-          </CardHeader>
+          </CardHeader> */}
           <CardContent className="space-y-4">
-            {leaseData.autoGenerateInvoices && (
+            {/* {leaseData.autoGenerateInvoices && (
               <Alert>
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -1492,7 +1527,7 @@ export default function SimplifiedLeaseCreation({
                   })}
                 </AlertDescription>
               </Alert>
-            )}
+            )} */}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
               <Button

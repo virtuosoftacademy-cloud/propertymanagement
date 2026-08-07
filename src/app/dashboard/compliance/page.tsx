@@ -25,7 +25,16 @@ import {
   PoundSterling,
   Grid3X3,
   List,
+  Download,
+  FileText,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { downloadCsv, downloadPdf, exportFilename } from "@/lib/utils/export";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import { useViewPreferencesStore } from "@/stores/view-preferences.store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -193,6 +202,123 @@ export default function CompliancePage() {
     fetchComplianceReports();
   }, [fetchComplianceReports]);
 
+  // ─── Export ───────────────────────────────────────────────────────────────
+  // This list is server-paginated, so `reports` only holds the current page.
+  // Re-run the same query with a large limit so the export covers every record
+  // matching the active filters, not just the page on screen.
+  const fetchAllForExport = async (): Promise<ComplianceReport[]> => {
+    const params = new URLSearchParams({
+      page: "1",
+      limit: "1000",
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+    });
+
+    if (filters.search.trim()) params.set("search", filters.search.trim());
+    if (filters.status !== "ALL") params.set("status", filters.status);
+    if (filters.category !== "ALL") params.set("category", filters.category);
+    if (filters.expiry === "EXPIRING_SOON") {
+      params.set("isExpiringSoon", "true");
+    } else if (filters.expiry === "EXPIRED") {
+      params.set("isExpired", "true");
+    }
+
+    const res = await fetch(`/api/compliance?${params.toString()}`);
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok || !json.success) {
+      throw new Error(
+        json.error || json.message || `Request failed with status ${res.status}`
+      );
+    }
+    return Array.isArray(json.data) ? json.data : [];
+  };
+
+  const toExportRows = (records: ComplianceReport[]) =>
+    records.map((report) => ({
+      Reference: report._id,
+      Type: formatCategory(report.category),
+      Status: formatStatus(report.status),
+      Property: report.propertyId?.name ?? "",
+      Address: [
+        report.propertyId?.address?.street,
+        report.propertyId?.address?.city,
+        report.propertyId?.address?.state,
+      ]
+        .filter(Boolean)
+        .join(", "),
+      "Issue Date": report.issueDate
+        ? new Date(report.issueDate).toLocaleDateString("en-GB")
+        : "",
+      "Expiry Date": report.expiryDate
+        ? new Date(report.expiryDate).toLocaleDateString("en-GB")
+        : "",
+      "Days Until Expiry":
+        report.daysUntilExpiry != null ? String(report.daysUntilExpiry) : "",
+      Expired: report.isExpired ? "Yes" : "No",
+      "Expiring Soon": report.isExpiringSoon ? "Yes" : "No",
+      Cost: report.estimatedCost != null ? `£${report.estimatedCost}` : "",
+      "Created By": report.createdBy
+        ? [report.createdBy.firstName, report.createdBy.lastName]
+            .filter(Boolean)
+            .join(" ")
+        : "",
+      Documents: String(report.images?.length ?? 0),
+      Notes: report.notes ?? "",
+      Created: report.createdAt
+        ? new Date(report.createdAt).toLocaleString("en-GB")
+        : "",
+    }));
+
+  const handleExportCsv = async () => {
+    try {
+      const count = downloadCsv(
+        toExportRows(await fetchAllForExport()),
+        exportFilename("compliance-reports", "csv")
+      );
+      if (count === 0) {
+        toast.error("There is nothing to export.");
+        return;
+      }
+      toast.success(`Exported ${count} report(s) to CSV.`);
+    } catch (error) {
+      console.error("[compliance] CSV export failed:", error);
+      toast.error("Failed to generate the CSV export.");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      // A readable subset; the CSV carries the full record.
+      const count = await downloadPdf(
+        toExportRows(await fetchAllForExport()),
+        [
+          { key: "Type", label: "Type", width: 150 },
+          { key: "Property", label: "Property", width: 125 },
+          { key: "Status", label: "Status", width: 85 },
+          { key: "Issue Date", label: "Issued", width: 65 },
+          { key: "Expiry Date", label: "Expires", width: 65 },
+          { key: "Days Until Expiry", label: "Days Left", width: 55 },
+          { key: "Cost", label: "Cost", width: 55 },
+          { key: "Created By", label: "Created By", width: 95 },
+          { key: "Documents", label: "Docs", width: 40 },
+        ],
+        {
+          title: "Compliance Reports",
+          filename: exportFilename("compliance-reports", "pdf"),
+        }
+      );
+      if (count === 0) {
+        toast.error("There is nothing to export.");
+        return;
+      }
+      toast.success(`Exported ${count} report(s) to PDF.`);
+    } catch (error) {
+      console.error("[compliance] PDF export failed:", error);
+      toast.error("Failed to generate the PDF export.");
+    }
+  };
+
   const handleStatusUpdate = (
     reportId: string,
     newStatus: ComplianceReport["status"]
@@ -246,11 +372,16 @@ export default function CompliancePage() {
 
   /**
    * Safely format a category value for display.
-   * Handles null/undefined/non-string values that would crash `.split()`.
+   * Prefers the shared label map; falls back to de-hyphenating the raw value
+   * so legacy/unknown values still read cleanly. Handles null/non-string input.
    */
-
-  // Look up label by exact match first
-
+  const formatCategory = (category: unknown): string => {
+    if (category == null || typeof category !== "string") return "—";
+    return (
+      ComplianceCategoryLabels[category as ComplianceCategory] ||
+      category.split("-").filter(Boolean).join(" ")
+    );
+  };
 
   const getExpiryStyle = (days?: number | null) => {
     if (days == null) return "";
@@ -288,7 +419,7 @@ export default function CompliancePage() {
       header: "Type",
       cell: (r) => (
         <div className="font-medium capitalize">
-          {r.category?.replace("-", " ")}
+          {formatCategory(r.category)}
         </div>
       ),
     },
@@ -414,12 +545,36 @@ export default function CompliancePage() {
             Manage building compliance certificates and inspections
           </p>
         </div>
-        <Link href="/dashboard/compliance/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            New Report
-          </Button>
-        </Link>
+        <div className="flex items-center space-x-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.total === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => void handleExportCsv()}>
+                <FileText className="mr-2 h-4 w-4" />
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void handleExportPdf()}>
+                <Download className="mr-2 h-4 w-4" />
+                Export PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Link href="/dashboard/compliance/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              New Report
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -636,7 +791,7 @@ export default function CompliancePage() {
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-1">
                         <h3 className="font-medium line-clamp-2 capitalize">
-                          {report.category?.replace("-", " ")}
+                          {formatCategory(report.category)}
                         </h3>
                         <p className="text-sm text-muted-foreground">
                           {report.propertyId?.name || "—"}

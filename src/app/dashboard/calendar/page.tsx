@@ -32,7 +32,7 @@ import { EventForm } from "@/components/calendar/EventForm";
 import { EventList } from "@/components/calendar/EventList";
 import CalendarView from "@/components/calendar/CalendarView";
 import { CalendarStats } from "@/components/calendar/CalendarStats";
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { CalendarSettings } from "@/components/calendar/CalendarSettings";
 import { CalendarAnalytics } from "@/components/calendar/CalendarAnalytics";
 import { EventDetailsDialog } from "@/components/calendar/EventDetailsDialog";
@@ -257,9 +257,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Quick Stats */}
-      <Suspense fallback={<div>{t("calendar.loading.stats")}</div>}>
-        <CalendarStats />
-      </Suspense>
+      <CalendarStats />
 
       {/* Main Content */}
       <Tabs
@@ -309,17 +307,7 @@ export default function CalendarPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4 mt-4">
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center py-12">
-                <div className="text-gray-500">
-                  {t("calendar.loading.analytics")}
-                </div>
-              </div>
-            }
-          >
-            <CalendarAnalytics />
-          </Suspense>
+          <CalendarAnalytics />
         </TabsContent>
       </Tabs>
 

@@ -230,7 +230,7 @@ export default function TenantApplicationForm({
                   <Input
                     id="phone"
                     {...register("phone")}
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="07700 900123"
                     className={errors.phone ? "border-red-500" : ""}
                   />
                   {errors.phone && (
@@ -256,10 +256,10 @@ export default function TenantApplicationForm({
               </div>
 
               <div>
-                <Label htmlFor="ssn">Social Security Number (Optional)</Label>
+                <Label htmlFor="nino">Social Security Number (Optional)</Label>
                 <Input
-                  id="ssn"
-                  {...register("ssn")}
+                  id="nino"
+                  {...register("nino")}
                   placeholder="XXX-XX-XXXX"
                   type="password"
                 />
@@ -457,7 +457,7 @@ export default function TenantApplicationForm({
                       <Input
                         id={`contact-phone-${index}`}
                         {...register(`emergencyContacts.${index}.phone`)}
-                        placeholder="+1 (555) 123-4567"
+                        placeholder="07700 900123"
                         className={
                           errors.emergencyContacts?.[index]?.phone
                             ? "border-red-500"

@@ -515,7 +515,17 @@ export const lateFeeConfigSchema = z.object({
     .optional(),
   compoundDaily: z.boolean().default(false),
   notificationDays: z.array(z.number()).default([3, 7, 14]),
-});
+})
+  // feeAmount's plain .max(1000) is right for a fixed fee but meaningless for a
+  // percentage, where anything over 100 charges more than the rent itself. The
+  // cap has to be cross-field, so it lives here rather than on the field.
+  .refine(
+    (config) => config.feeType !== "percentage" || config.feeAmount <= 100,
+    {
+      message: "A percentage late fee cannot be more than 100%",
+      path: ["feeAmount"],
+    }
+  );
 
 export const leasePaymentConfigSchema = z.object({
   rentDueDay: z
@@ -600,17 +610,17 @@ export const leaseSchema = z
         }
         return date;
       }),
-    // End date is only required for bounded (Day/Week) tenancies — see refine.
     endDate: z
       .string()
-      .min(1, "End date is required")
       .transform((val) => {
+        if (!val) return undefined;
         const date = new Date(val);
         if (isNaN(date.getTime())) {
           throw new Error("Invalid end date format");
         }
         return date;
       }),
+
     status: z
       .enum(["draft", "pending", "active", "expired", "terminated"])
       .optional(),
@@ -625,14 +635,7 @@ export const leaseSchema = z
     notes: z.string().max(2000, "Notes too long").optional(),
   })
   .superRefine((data, ctx) => {
-    // Day/Week tenancies must have an end date; Monthly tenancies may omit it.
-    if (data.rentPeriod !== "month" && !data.endDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "End date is required for daily and week tenancies",
-        path: ["endDate"],
-      });
-    }
+
     // When an end date is present it must be after the start date.
     if (data.endDate && data.startDate && data.endDate <= data.startDate) {
       ctx.addIssue({
@@ -662,15 +665,15 @@ export const leaseUpdateSchema = z.object({
     .optional(),
   endDate: z
     .string()
-    .min(1, "End date is required")
+    .optional()
     .transform((val) => {
+      if (!val) return undefined; // null or missing → no end date
       const date = new Date(val);
       if (isNaN(date.getTime())) {
         throw new Error("Invalid end date format");
       }
       return date;
-    })
-    .optional(),
+    }),
   status: z
     .enum(["draft", "pending", "active", "expired", "terminated"])
     .optional(),
@@ -1643,9 +1646,9 @@ export const complianceReportSchema = z
       .max(1_000_000, "Cost cannot exceed $1,000,000")
       .optional(),
     images: z
-    .array(z.string().url("Invalid image URL"))
-    .max(10, "Too many images")
-    .default([]),
+      .array(z.string().url("Invalid image URL"))
+      .max(10, "Too many images")
+      .default([]),
     status: z.nativeEnum(ComplianceStatus).optional(),
   })
   .refine((data) => data.expiryDate > data.issueDate, {
@@ -1670,10 +1673,12 @@ export const complianceReportUpdateSchema = z
     expiryDate: z.coerce.date().optional(),
     notes: z.string().max(1000).optional(),
     estimatedCost: z.number().min(0).max(1_000_000).optional(),
+    // Optional, not `.default([])` — this is a partial update, so an omitted
+    // `images` key must leave existing documents alone rather than clear them.
     images: z
-    .array(z.string().url("Invalid image URL"))
-    .max(10, "Too many images")
-    .default([]),
+      .array(z.string().url("Invalid image URL"))
+      .max(10, "Too many images")
+      .optional(),
     status: z.nativeEnum(ComplianceStatus).optional(),
   })
   .refine(

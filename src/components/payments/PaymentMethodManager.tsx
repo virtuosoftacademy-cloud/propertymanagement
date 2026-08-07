@@ -497,11 +497,11 @@ function AddPaymentMethodDialog({
                     address: { ...prev.address, city: e.target.value },
                   }))
                 }
-                placeholder="New York"
+                placeholder="London"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="state">State</Label>
+              <Label htmlFor="state">County</Label>
               <Input
                 id="state"
                 value={billingDetails.address.state}
@@ -511,11 +511,11 @@ function AddPaymentMethodDialog({
                     address: { ...prev.address, state: e.target.value },
                   }))
                 }
-                placeholder="NY"
+                placeholder="Greater London"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="postal">ZIP</Label>
+              <Label htmlFor="postal">Postcode</Label>
               <Input
                 id="postal"
                 value={billingDetails.address.postal_code}
@@ -525,7 +525,7 @@ function AddPaymentMethodDialog({
                     address: { ...prev.address, postal_code: e.target.value },
                   }))
                 }
-                placeholder="10001"
+                placeholder="SW1A 1AA"
               />
             </div>
           </div>

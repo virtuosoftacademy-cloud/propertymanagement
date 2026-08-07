@@ -100,20 +100,27 @@ export function LeaseCard({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString("en-GB", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
   };
 
-  const getDaysRemaining = () => {
+  // Open-ended leases have no endDate — there is nothing to count down to.
+  // Returning null keeps NaN out of the comparisons below, which previously
+  // fell through to "Expired" (in green) for every open-ended lease.
+  const getDaysRemaining = (): number | null => {
+    if (!lease.endDate) return null;
     const endDate = new Date(lease.endDate);
+    if (isNaN(endDate.getTime())) return null;
     const now = new Date();
     const diffTime = endDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
   const handleDelete = async () => {
@@ -309,14 +316,18 @@ export function LeaseCard({
             </div>
             <span
               className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                daysRemaining < 30 && daysRemaining > 0
+                daysRemaining === null
+                  ? "text-muted-foreground bg-muted"
+                  : daysRemaining < 30 && daysRemaining > 0
                   ? "text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900/30"
                   : daysRemaining <= 0
                   ? "text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/30"
                   : "text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/30"
               }`}
             >
-              {daysRemaining > 0
+              {daysRemaining === null
+                ? "Ongoing"
+                : daysRemaining > 0
                 ? `${daysRemaining} days remaining`
                 : daysRemaining === 0
                 ? "Expires today"
@@ -324,7 +335,8 @@ export function LeaseCard({
             </span>
           </div>
           <div className="text-[11px] text-muted-foreground px-1">
-            {formatDate(lease.startDate)} - {formatDate(lease.endDate)}
+            {formatDate(lease.startDate) ?? "—"} —{" "}
+            {formatDate(lease.endDate) ?? "Present"}
           </div>
 
           {/* Financial Summary */}
@@ -335,8 +347,14 @@ export function LeaseCard({
                 <span className="text-[10px] font-medium uppercase tracking-wide">Rent Amount</span>
               </div>
               <p className="text-sm font-bold text-foreground">
+                {/* Match the table: prefer a computed total (day/week
+                    tenancies), fall back to the recurring rent. The card
+                    previously read unit.rentAmount first and so disagreed
+                    with the table for the same lease. */}
                 {formatCurrency(
-                  lease.unit?.rentAmount || lease.terms.rentAmount
+                  (lease.unit?.totalAmount || lease.terms?.totalAmount || 0) ||
+                    lease.terms?.rentAmount ||
+                    0
                 )}
               </p>
             </div>

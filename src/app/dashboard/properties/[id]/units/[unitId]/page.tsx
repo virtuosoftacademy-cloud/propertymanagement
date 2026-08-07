@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -420,26 +421,8 @@ export default function UnitDetailsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <div className="h-8 w-8 bg-muted rounded animate-pulse" />
-          <div className="h-8 bg-muted rounded animate-pulse w-64" />
-        </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <div className="h-6 bg-muted rounded animate-pulse w-32" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-4 bg-muted rounded animate-pulse w-full" />
-                  <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="flex justify-center items-center py-16">
+        <LoadingSpinner message="" size="lg" />
       </div>
     );
   }

@@ -40,8 +40,13 @@ export const GET = withRoleAndDB([
         return createErrorResponse("Invalid tenant ID", 400);
       }
 
-      // Find the tenant user
-      const tenantUser = await User.findOne({ _id: id, role: UserRole.TENANT });
+      // Find the tenant user. statusHistory.changedBy is a User ref — without
+      // populating it the status history renders "undefined undefined" for
+      // whoever made each change.
+      const tenantUser = await User.findOne({
+        _id: id,
+        role: UserRole.TENANT,
+      }).populate("statusHistory.changedBy", "firstName lastName");
 
       if (!tenantUser) {
         return createErrorResponse("Tenant not found", 404);
@@ -61,10 +66,17 @@ export const GET = withRoleAndDB([
       // Find the tenant profile
       const tenantProfile = await Tenant.findOne({ userId: id });
 
-      // Combine user and tenant profile data
+      // Combine user and tenant profile data.
+      // The profile is spread second so its fields win, but it carries its own
+      // `_id` from the tenants collection — which would otherwise overwrite the
+      // User id the client sends back to every tenant route (status changes,
+      // updates, deletes), all of which look tenants up by User id. Re-assert
+      // the User id, and expose the profile id separately.
       const combinedTenantData = {
         ...tenantUser.toObject(),
         ...(tenantProfile ? tenantProfile.toObject() : {}),
+        _id: tenantUser._id,
+        tenantProfileId: tenantProfile?._id,
       };
 
       return createSuccessResponse(
@@ -268,13 +280,20 @@ export const PUT = withRoleAndDB([
         });
       }
 
-      // Return the updated tenant user with populated tenant profile
-      const updatedTenant = await User.findById(id).lean();
+      // Return the updated tenant user with populated tenant profile.
+      // Populates changedBy so the status history keeps showing names, and
+      // re-asserts the User id — the profile carries its own `_id`, which
+      // would otherwise become the id the client sends back to every route.
+      const updatedTenant = await User.findById(id)
+        .populate("statusHistory.changedBy", "firstName lastName")
+        .lean();
 
       return createSuccessResponse(
         {
           ...updatedTenant,
           ...tenantProfile.toObject(),
+          _id: id,
+          tenantProfileId: tenantProfile._id,
         },
         "Tenant updated successfully"
       );

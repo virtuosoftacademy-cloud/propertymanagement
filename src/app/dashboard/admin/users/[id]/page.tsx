@@ -48,6 +48,7 @@ import { formatDate } from "@/lib/utils";
 import { UserActivityLog } from "@/components/users/user-activity-log";
 import { UserSessionManagement } from "@/components/users/user-session-management";
 import { formatCurrency } from "@/lib/utils/formatting";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 
 interface UserDetailPageProps {
   params: Promise<{ id: string }>;
@@ -263,25 +264,8 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
 
   if (sessionStatus === "loading" || isLoading) {
     return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex items-center gap-4">
-          <div className="h-9 w-16 bg-muted rounded animate-pulse" />
-          <div className="space-y-2">
-            <div className="h-8 w-64 bg-muted rounded animate-pulse" />
-            <div className="h-4 w-48 bg-muted rounded animate-pulse" />
-          </div>
-        </div>
-
-        {/* User Info Skeleton */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <div className="h-96 bg-muted rounded-lg animate-pulse" />
-          </div>
-          <div className="lg:col-span-2">
-            <div className="h-96 bg-muted rounded-lg animate-pulse" />
-          </div>
-        </div>
+      <div className="flex justify-center items-center py-16">
+        <LoadingSpinner message="" size="lg" />
       </div>
     );
   }
@@ -438,9 +422,9 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
                 </h4>
                 <div className="flex items-center gap-2">
                   {user?.isActive ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-success" />
                   ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
+                    <XCircle className="h-4 w-4 text-destructive" />
                   )}
                   <span className="text-sm">
                     {user?.isActive
@@ -450,7 +434,7 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
                 </div>
                 {!!user?.emailVerified && (
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-success" />
                     <span className="text-sm">
                       {t("admin.userDetail.emailVerified")}
                     </span>
@@ -552,7 +536,7 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center p-4 border rounded-lg">
-                      <Building2 className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                      <Building2 className="h-8 w-8 text-info mx-auto mb-2" />
                       <div className="text-2xl font-bold">
                         {isStatsLoading ? (
                           <div className="h-8 w-8 bg-muted rounded animate-pulse mx-auto" />
@@ -565,7 +549,7 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
                       </div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <FileText className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <FileText className="h-8 w-8 text-success mx-auto mb-2" />
                       <div className="text-2xl font-bold">
                         {isStatsLoading ? (
                           <div className="h-8 w-8 bg-muted rounded animate-pulse mx-auto" />
@@ -578,7 +562,7 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
                       </div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <PoundSterling className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                      <PoundSterling className="h-8 w-8 text-primary mx-auto mb-2" />
                       <div className="text-2xl font-bold">
                         {isStatsLoading ? (
                           <div className="h-8 w-8 bg-muted rounded animate-pulse mx-auto" />
@@ -632,7 +616,7 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
                             key={i}
                             className="flex items-center gap-3 p-3 border rounded-lg"
                           >
-                            <Building2 className="h-8 w-8 text-blue-600" />
+                            <Building2 className="h-8 w-8 text-info" />
                             <div className="flex-1">
                               <p className="font-medium">
                                 {t("admin.userDetail.properties.property")}{" "}
@@ -993,7 +977,7 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
             <AlertDialogAction
               onClick={handleDeleteUser}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
               {isDeleting ? (
                 <>

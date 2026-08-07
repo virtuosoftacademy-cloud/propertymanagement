@@ -32,7 +32,7 @@ export default function LandingWorks() {
           <div className="font-serif text-sm md:text-lg text-foreground/60 leading-relaxed">
             <p>
               Managing properties isn't just about collecting rent, it's about
-              staying on top of dozens of moving parts, all at once. Nexus was
+              staying on top of dozens of moving parts, all at once. Tenure was
               built to bring order to that complexity. We created a centralized
               platform that gives property managers complete visibility and
               control, from tracking individual rooms within a property, to
@@ -40,7 +40,7 @@ export default function LandingWorks() {
               exactly where you need it.
             </p>
             <p>
-              Whether you manage one building or twenty, Nexus adapts to your
+              Whether you manage one building or twenty, Tenure adapts to your
               scale, so nothing slips through the cracks.
             </p>
           </div>

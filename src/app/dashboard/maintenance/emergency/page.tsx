@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { GlobalPagination } from "@/components/ui/global-pagination";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
@@ -67,6 +66,7 @@ import {
   AnalyticsCardGrid,
 } from "@/components/analytics/AnalyticsCard";
 import { toast } from "sonner";
+import { downloadCsv, downloadPdf, exportFilename } from "@/lib/utils/export";
 import { formatDistanceToNow } from "date-fns";
 import { MaintenanceStatus } from "@/types";
 import { formatAddress } from "@/lib/utils";
@@ -208,7 +208,6 @@ export default function EmergencyMaintenancePage() {
     Array<{ id: string; name: string; email: string }>
   >([]);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -285,6 +284,95 @@ export default function EmergencyMaintenancePage() {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchEmergencyRequests();
+  };
+
+  // ─── Export handlers ──────────────────────────────────────────────────────
+  // Both export the currently filtered/sorted list, so what you download
+  // matches what you can see on screen.
+
+  const formatAddress = (
+    address: EmergencyRequest["property"]["address"]
+  ): string => {
+    if (!address) return "";
+    if (typeof address === "string") return address;
+    return [address.street, address.city, address.state, address.zipCode]
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  const exportRows = () =>
+    filteredRequests.map((req) => ({
+      Reference: req._id,
+      Title: req.title ?? "",
+      Status: req.status ?? "",
+      Priority: req.priority ?? "",
+      Category: req.category ?? "",
+      Property: req.property?.name ?? "",
+      Address: formatAddress(req.property?.address),
+      Tenant: [req.tenant?.firstName, req.tenant?.lastName]
+        .filter(Boolean)
+        .join(" "),
+      "Tenant Email": req.tenant?.email ?? "",
+      "Tenant Phone": req.tenant?.phone ?? "",
+      "Assigned To": req.assignedUser
+        ? [req.assignedUser.firstName, req.assignedUser.lastName]
+            .filter(Boolean)
+            .join(" ")
+        : "Unassigned",
+      "Hours Open": String(Math.round(req.hoursSinceCreation ?? 0)),
+      Overdue: req.isOverdue ? "Yes" : "No",
+      "Estimated Cost": req.estimatedCost != null ? `£${req.estimatedCost}` : "",
+      "Actual Cost": req.actualCost != null ? `£${req.actualCost}` : "",
+      Created: req.createdAt
+        ? new Date(req.createdAt).toLocaleString("en-GB")
+        : "",
+      Completed: req.completedAt
+        ? new Date(req.completedAt).toLocaleString("en-GB")
+        : "",
+    }));
+
+  const handleExportCsv = () => {
+    const count = downloadCsv(
+      exportRows(),
+      exportFilename("emergency-maintenance", "csv")
+    );
+    if (count === 0) {
+      toast.error("There is nothing to export.");
+      return;
+    }
+    toast.success(`Exported ${count} request(s) to CSV.`);
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      // A readable subset of columns; the CSV carries the full record.
+      const count = await downloadPdf(
+        exportRows(),
+        [
+          { key: "Title", label: "Title", width: 150 },
+          { key: "Status", label: "Status", width: 70 },
+          { key: "Priority", label: "Priority", width: 60 },
+          { key: "Property", label: "Property", width: 110 },
+          { key: "Tenant", label: "Tenant", width: 95 },
+          { key: "Assigned To", label: "Assigned To", width: 95 },
+          { key: "Hours Open", label: "Hrs", width: 35 },
+          { key: "Overdue", label: "Overdue", width: 50 },
+          { key: "Created", label: "Created", width: 110 },
+        ],
+        {
+          title: "Emergency Maintenance Requests",
+          filename: exportFilename("emergency-maintenance", "pdf"),
+        }
+      );
+      if (count === 0) {
+        toast.error("There is nothing to export.");
+        return;
+      }
+      toast.success(`Exported ${count} request(s) to PDF.`);
+    } catch (error) {
+      console.error("[emergency] PDF export failed:", error);
+      toast.error("Failed to generate the PDF export.");
+    }
   };
 
   // Bulk action handlers
@@ -881,25 +969,6 @@ export default function EmergencyMaintenancePage() {
     setCurrentPage(1);
   };
 
-  // Enhanced auto-refresh with configurable interval
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      if (!loading && !refreshing && !bulkActionLoading) {
-        fetchEmergencyRequests();
-      }
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [
-    fetchEmergencyRequests,
-    loading,
-    refreshing,
-    bulkActionLoading,
-    autoRefresh,
-  ]);
-
   // Update URL params when filters change
   useEffect(() => {
     const params = new URLSearchParams();
@@ -981,12 +1050,6 @@ export default function EmergencyMaintenancePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 mr-4">
-            <label className="text-sm font-medium">
-              {t("maintenance.emergency.list.header.autoRefresh")}
-            </label>
-            <Checkbox checked={autoRefresh} onCheckedChange={setAutoRefresh} />
-          </div>
           <Button
             variant="outline"
             size="sm"
@@ -1010,11 +1073,11 @@ export default function EmergencyMaintenancePage() {
                 <FileText className="mr-2 h-4 w-4" />
                 {t("maintenance.emergency.list.export.printReport")}
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportCsv}>
                 <Download className="mr-2 h-4 w-4" />
                 {t("maintenance.emergency.list.export.exportCsv")}
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void handleExportPdf()}>
                 <Download className="mr-2 h-4 w-4" />
                 {t("maintenance.emergency.list.export.exportPdf")}
               </DropdownMenuItem>

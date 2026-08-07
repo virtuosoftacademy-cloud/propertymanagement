@@ -13,7 +13,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-state";
+import {
+  downloadCsv,
+  downloadPdf,
+  exportFilename,
+  type PdfColumn,
+} from "@/lib/utils/export";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
   TrendingUp,
@@ -24,6 +36,8 @@ import {
   Target,
   AlertCircle,
   Building2,
+  Download,
+  FileText,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -50,7 +64,6 @@ import {
   formatPercentage as formatPercentageValue,
 } from "@/lib/formatters";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
-import { useRealTimePayments } from "@/hooks/useRealTimePayments";
 
 // Helpers
 
@@ -323,6 +336,162 @@ export default function FinancialAnalyticsPage() {
     }
   }, [t]);
 
+  // ─── Export ───────────────────────────────────────────────────────────────
+  // Each tab shows a different dataset, so the export follows the active tab —
+  // you get what you are looking at, filtered by the same date range and
+  // property as the charts.
+  const monthLabel = (id?: { year: number; month: number }) =>
+    id ? `${String(id.month).padStart(2, "0")}/${id.year}` : "";
+
+  const exportConfig = (): {
+    rows: Record<string, string>[];
+    columns: PdfColumn[];
+    title: string;
+    slug: string;
+  } => {
+    switch (activeTab) {
+      case "profit-loss":
+        return {
+          rows: (profitLossData?.monthlyPL ?? []).map((r) => ({
+            Month: monthLabel(r._id),
+            Revenue: `£${r.revenue ?? 0}`,
+            Expenses: `£${r.expenses ?? 0}`,
+            "Net Income": `£${r.netIncome ?? 0}`,
+            Payments: String(r.paymentCount ?? 0),
+          })),
+          columns: [
+            { key: "Month", label: "Month", width: 90 },
+            { key: "Revenue", label: "Revenue", width: 110 },
+            { key: "Expenses", label: "Expenses", width: 110 },
+            { key: "Net Income", label: "Net Income", width: 110 },
+            { key: "Payments", label: "Payments", width: 80 },
+          ],
+          title: "Profit & Loss",
+          slug: "profit-loss",
+        };
+
+      case "cash-flow":
+        return {
+          rows: (cashFlowData?.cashInflows ?? []).map((r) => ({
+            Month: monthLabel(r._id),
+            "Total Inflow": `£${r.totalInflow ?? 0}`,
+            "Rent Inflow": `£${r.rentInflow ?? 0}`,
+            "Fee Inflow": `£${r.feeInflow ?? 0}`,
+            Transactions: String(r.transactionCount ?? 0),
+          })),
+          columns: [
+            { key: "Month", label: "Month", width: 90 },
+            { key: "Total Inflow", label: "Total Inflow", width: 110 },
+            { key: "Rent Inflow", label: "Rent Inflow", width: 110 },
+            { key: "Fee Inflow", label: "Fee Inflow", width: 100 },
+            { key: "Transactions", label: "Transactions", width: 90 },
+          ],
+          title: "Cash Flow",
+          slug: "cash-flow",
+        };
+
+      case "properties":
+        return {
+          rows: (propertyPerformanceData?.propertyPerformance ?? []).map(
+            (r) => ({
+              Property: r.propertyName ?? "",
+              Type: r.propertyType ?? "",
+              Revenue: `£${r.totalRevenue ?? 0}`,
+              Expected: `£${r.totalExpected ?? 0}`,
+              Overdue: `£${r.overdueAmount ?? 0}`,
+              "Average Rent": `£${r.averageRent ?? 0}`,
+              "Collection Rate": `${r.collectionRate ?? 0}%`,
+              Payments: String(r.paymentCount ?? 0),
+            })
+          ),
+          columns: [
+            { key: "Property", label: "Property", width: 150 },
+            { key: "Type", label: "Type", width: 80 },
+            { key: "Revenue", label: "Revenue", width: 100 },
+            { key: "Expected", label: "Expected", width: 100 },
+            { key: "Overdue", label: "Overdue", width: 95 },
+            { key: "Average Rent", label: "Avg Rent", width: 95 },
+            { key: "Collection Rate", label: "Collection", width: 85 },
+          ],
+          title: "Property Performance",
+          slug: "property-performance",
+        };
+
+      case "expenses":
+        return {
+          rows: (expenseAnalysisData?.expenseCategories ?? []).map((r) => ({
+            Category: r.category ?? "",
+            Amount: `£${r.amount ?? 0}`,
+            Share: `${r.percentage ?? 0}%`,
+            Trend: r.trend ?? "",
+          })),
+          columns: [
+            { key: "Category", label: "Category", width: 200 },
+            { key: "Amount", label: "Amount", width: 120 },
+            { key: "Share", label: "Share", width: 90 },
+            { key: "Trend", label: "Trend", width: 90 },
+          ],
+          title: "Expense Analysis",
+          slug: "expense-analysis",
+        };
+
+      default: {
+        // Overview exports the KPI summary as label/value pairs.
+        const o = analyticsData?.kpis;
+        const rows = o
+          ? Object.entries(o).map(([key, value]) => ({
+              Metric: key.replace(/([A-Z])/g, " $1").replace(/^./, (c) =>
+                c.toUpperCase()
+              ),
+              Value:
+                typeof value === "number" ? String(value) : String(value ?? ""),
+            }))
+          : [];
+        return {
+          rows,
+          columns: [
+            { key: "Metric", label: "Metric", width: 260 },
+            { key: "Value", label: "Value", width: 160 },
+          ],
+          title: "Financial Overview",
+          slug: "financial-overview",
+        };
+      }
+    }
+  };
+
+  const exportSubtitle = () =>
+    `${selectedPropertyLabel} · ${dateRange.replace(/-/g, " ")} · generated ${new Date().toLocaleString("en-GB")}`;
+
+  const handleExportCsv = () => {
+    const { rows, slug } = exportConfig();
+    const count = downloadCsv(rows, exportFilename(slug, "csv"));
+    if (count === 0) {
+      toast.error("There is nothing to export on this tab.");
+      return;
+    }
+    toast.success(`Exported ${count} row(s) to CSV.`);
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const { rows, columns, title, slug } = exportConfig();
+      const count = await downloadPdf(rows, columns, {
+        title,
+        filename: exportFilename(slug, "pdf"),
+        subtitle: exportSubtitle(),
+      });
+      if (count === 0) {
+        toast.error("There is nothing to export on this tab.");
+        return;
+      }
+      toast.success(`Exported ${count} row(s) to PDF.`);
+    } catch (error) {
+      console.error("[financial analytics] PDF export failed:", error);
+      toast.error("Failed to generate the PDF export.");
+    }
+  };
+
   const loadFinancialActions = useCallback(async () => {
     if (!session) return;
 
@@ -464,45 +633,43 @@ export default function FinancialAnalyticsPage() {
   //   []
   // );
 
-  const { lastUpdate } = useRealTimePayments({
-    propertyId: selectedProperty !== "all" ? selectedProperty : undefined,
-    enabled: true,
-  });
-  const lastUpdateProcessedRef = useRef<string | null>(null);
+  // Depend on the user id, not the session object: next-auth replaces the
+  // session on every window-focus refetch, which would otherwise reload all
+  // five reports, the property list and the action items each time you tab
+  // back — an auto-refresh nobody asked for.
+  const sessionUserId = session?.user?.id;
 
   useEffect(() => {
-    if (!session) return;
+    if (!sessionUserId) return;
     fetchPropertyOptions();
-  }, [session, fetchPropertyOptions]);
+  }, [sessionUserId, fetchPropertyOptions]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!sessionUserId) return;
     loadAllReports();
-  }, [session, loadAllReports]);
+  }, [sessionUserId, loadAllReports]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!sessionUserId) return;
     loadFinancialActions();
-  }, [session, loadFinancialActions]);
-
-  useEffect(() => {
-    if (!session) return;
-    if (!lastUpdate) return;
-    if (!lastUpdate.type.startsWith("payment_")) return;
-    if (isLoading) return;
-
-    const id = `${lastUpdate.type}-${lastUpdate.timestamp}`;
-    if (lastUpdateProcessedRef.current === id) return;
-    lastUpdateProcessedRef.current = id;
-
-    loadAllReports();
-    loadFinancialActions();
-  }, [session, lastUpdate, loadAllReports, loadFinancialActions]);
+  }, [sessionUserId, loadFinancialActions]);
 
   if (!session) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // One spinner for the whole screen. Five reports load in parallel, so
+  // per-section spinners meant up to seven at once. Shown on the initial load
+  // only — a refresh or filter change keeps the existing figures on screen
+  // rather than blanking the page.
+  if (isLoading && !analyticsData) {
+    return (
+      <div className="flex justify-center items-center h-[90vh]">
+        <LoadingSpinner message="" size="lg" />
       </div>
     );
   }
@@ -577,19 +744,42 @@ export default function FinancialAnalyticsPage() {
             </Select>
 
             <div className="flex items-center gap-2">
-              {lastUpdatedLabel && (
+              {/* {lastUpdatedLabel && (
                 <span className="hidden text-xs text-muted-foreground xl:inline-flex">
                   {t("analytics.financial.lastUpdated", {
                     values: { time: lastUpdatedLabel },
                   })}
                 </span>
-              )}
+              )} */}
+              {/* Exports whichever tab is open, using the same date range and
+                  property filter as the charts. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={isLoading}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportCsv}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void handleExportPdf()}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   if (!isLoading) {
+                    // Refresh both: this is now the only way the page updates,
+                    // so it has to cover what the payment-event listener did.
                     loadAllReports();
+                    loadFinancialActions();
                   }
                 }}
                 disabled={isLoading}
@@ -616,19 +806,7 @@ export default function FinancialAnalyticsPage() {
         )}
 
         {/* KPI Cards */}
-        {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <Skeleton className="h-4 w-24 mb-2" />
-                  <Skeleton className="h-8 w-32 mb-1" />
-                  <Skeleton className="h-3 w-20" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : analyticsData ? (
+        {analyticsData ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -748,17 +926,7 @@ export default function FinancialAnalyticsPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {isLoading ? (
-              <div className="grid gap-6 md:grid-cols-2">
-                {[...Array(2)].map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-6">
-                      <Skeleton className="h-[300px] w-full" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
+            {(
               <div className="grid gap-6 md:grid-cols-2">
                 {analyticsData?.revenueTrends ? (
                   <RevenueTrendsChart
@@ -861,13 +1029,7 @@ export default function FinancialAnalyticsPage() {
           </TabsContent>
 
           <TabsContent value="profit-loss" className="space-y-6">
-            {isLoading ? (
-              <Card>
-                <CardContent className="p-6">
-                  <Skeleton className="h-[400px] w-full" />
-                </CardContent>
-              </Card>
-            ) : profitLossData ? (
+            {profitLossData ? (
               <ProfitLossChart data={profitLossData.monthlyPL} height={400} />
             ) : (
               <Card>
@@ -881,13 +1043,7 @@ export default function FinancialAnalyticsPage() {
           </TabsContent>
 
           <TabsContent value="cash-flow" className="space-y-6">
-            {isLoading ? (
-              <Card>
-                <CardContent className="p-6">
-                  <Skeleton className="h-[400px] w-full" />
-                </CardContent>
-              </Card>
-            ) : cashFlowData ? (
+            {cashFlowData ? (
               <CashFlowChart
                 inflows={cashFlowData.cashInflows}
                 outflows={cashFlowData.cashOutflows}
@@ -905,13 +1061,7 @@ export default function FinancialAnalyticsPage() {
           </TabsContent>
 
           <TabsContent value="properties" className="space-y-6">
-            {isLoading ? (
-              <Card>
-                <CardContent className="p-6">
-                  <Skeleton className="h-[400px] w-full" />
-                </CardContent>
-              </Card>
-            ) : propertyPerformanceData ? (
+            {propertyPerformanceData ? (
               <PropertyPerformanceChart
                 data={propertyPerformanceData.propertyPerformance}
                 height={400}
@@ -928,13 +1078,7 @@ export default function FinancialAnalyticsPage() {
           </TabsContent>
 
           <TabsContent value="expenses" className="space-y-6">
-            {isLoading ? (
-              <Card>
-                <CardContent className="p-6">
-                  <Skeleton className="h-[400px] w-full" />
-                </CardContent>
-              </Card>
-            ) : expenseAnalysisData ? (
+            {expenseAnalysisData ? (
               <ExpenseBreakdownChart
                 data={expenseAnalysisData.expenseCategories}
                 height={400}
@@ -962,19 +1106,7 @@ export default function FinancialAnalyticsPage() {
             </p>
           </CardHeader>
           <CardContent>
-            {actionsLoading ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <div className="h-4 bg-gray-200 rounded w-4 animate-pulse" />
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
-                      <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : actionsError ? (
+            {actionsLoading ? null : actionsError ? (
               <div className="text-center py-8">
                 <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold">

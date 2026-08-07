@@ -2,7 +2,7 @@
 
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PricingPlan } from "@/app/_constant";
+import { PricingPlan } from "../_constant";
 
 interface PricingCardProps {
   plan: PricingPlan;

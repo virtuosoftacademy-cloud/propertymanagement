@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { GlobalSearch } from "@/components/ui/global-search";
 import {
   Select,
   SelectContent,
@@ -37,7 +37,6 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   FileText,
-  Search,
   MoreHorizontal,
   Eye,
   Check,
@@ -115,7 +114,13 @@ interface ApplicationRow {
 export default function TenantApplicationsPage() {
   const { t, formatDate } = useLocalizationContext();
   const { data: session } = useSession();
-  const [applications, setApplications] = useState<ApplicationRow[]>([]);
+  // A stable primitive: the session object is replaced on every window-focus
+  // refetch, so depending on it directly would re-run data fetches.
+  const sessionUserId = session?.user?.id;
+  // Raw rows as fetched. Search and status are applied client-side below, so
+  // changing either filters instantly without touching the network — the page
+  // only refetches on mount or when Refresh is pressed.
+  const [allApplications, setAllApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -186,7 +191,16 @@ export default function TenantApplicationsPage() {
     if (!Array.isArray(data)) return [];
 
     return data.map((tenant) => {
-      const reviewer = tenant.reviewedBy || {};
+      // Tenant rows are Users, which have no `reviewedBy` field — the reviewer
+      // is whoever made the most recent status change that wasn't the
+      // applicant's own initial submission.
+      const history = Array.isArray(tenant.statusHistory)
+        ? tenant.statusHistory
+        : [];
+      const lastReview = [...history]
+        .reverse()
+        .find((entry: any) => entry?.status !== "application_submitted");
+      const reviewer = lastReview?.changedBy || {};
       return {
         id: tenant._id,
         source: "tenant",
@@ -202,7 +216,9 @@ export default function TenantApplicationsPage() {
           reviewer?.firstName || reviewer?.lastName
             ? [reviewer.firstName, reviewer.lastName].filter(Boolean).join(" ")
             : undefined,
-        reviewDate: normalizeDate(tenant.lastStatusUpdate),
+        reviewDate: normalizeDate(
+          lastReview?.changedAt || tenant.lastStatusUpdate
+        ),
         propertyName: tenant.currentLeaseId?.propertyId?.name,
         propertyLocation: formatLocation(
           tenant.currentLeaseId?.propertyId?.address
@@ -211,19 +227,20 @@ export default function TenantApplicationsPage() {
     });
   }, []);
 
+  // Remembers which empty result we last warned about — search term plus
+  // status filter — so the toast fires once per distinct case.
+  const lastEmptyResultRef = useRef<string | null>(null);
+
   const fetchApplications = useCallback(async () => {
-    if (!session) return;
+    if (!sessionUserId) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams();
-      if (searchTerm) {
-        params.append("search", searchTerm);
-      }
-
-      const response = await fetch(`/api/applications?${params.toString()}`);
+      // Fetched unfiltered — search and status are applied client-side, so a
+      // filter change never triggers a request.
+      const response = await fetch(`/api/applications`);
       let rows: ApplicationRow[] = [];
 
       if (response.ok) {
@@ -234,21 +251,7 @@ export default function TenantApplicationsPage() {
       }
 
       if (rows.length === 0) {
-        const tenantParams = new URLSearchParams();
-        const tenantStatusQuery =
-          statusFilter === "approved"
-            ? "approved"
-            : statusFilter === "rejected"
-            ? "terminated"
-            : "pending";
-        tenantParams.append("status", tenantStatusQuery);
-        if (searchTerm) {
-          tenantParams.append("search", searchTerm);
-        }
-
-        const tenantResponse = await fetch(
-          `/api/tenants?${tenantParams.toString()}`
-        );
+        const tenantResponse = await fetch(`/api/tenants?limit=1000`);
 
         if (tenantResponse.ok) {
           const tenantPayload = await tenantResponse.json();
@@ -256,11 +259,7 @@ export default function TenantApplicationsPage() {
         }
       }
 
-      const filteredRows = rows.filter((row) =>
-        matchesStatusFilter(row.status, statusFilter)
-      );
-
-      setApplications(filteredRows);
+      setAllApplications(rows);
     } catch (err) {
       const message =
         err instanceof Error
@@ -271,18 +270,75 @@ export default function TenantApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [
-    session,
-    searchTerm,
-    statusFilter,
-    mapApplicationDocuments,
-    mapTenantApplications,
-    t,
-  ]);
+    // Deliberately excludes searchTerm and statusFilter: they are applied
+    // client-side, so including them here would refetch on every change.
+    // Depends on the user id rather than the session object — next-auth
+    // refetches the session on window focus, handing back a new object each
+    // time, which would otherwise reload the list every time you tab back.
+  }, [sessionUserId, mapApplicationDocuments, mapTenantApplications, t]);
 
   useEffect(() => {
     fetchApplications();
   }, [fetchApplications]);
+
+  // Search + status applied over the fetched rows. No network involved, so
+  // typing and switching filters is instant.
+  const applications = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return allApplications.filter((row) => {
+      if (!matchesStatusFilter(row.status, statusFilter)) return false;
+      if (!term) return true;
+
+      return [
+        row.applicantName,
+        row.applicantEmail,
+        row.applicantPhone,
+        row.propertyName,
+        row.propertyLocation,
+      ]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term));
+    });
+  }, [allApplications, searchTerm, statusFilter]);
+
+  // Warn once per distinct empty result. Keyed on search term plus status
+  // filter, since either can empty the list independently.
+  useEffect(() => {
+    if (loading) return;
+
+    const term = searchTerm.trim();
+    if (applications.length > 0) {
+      lastEmptyResultRef.current = null;
+      return;
+    }
+
+    const key = `${term}|${statusFilter}`;
+    if (lastEmptyResultRef.current === key) return;
+    lastEmptyResultRef.current = key;
+
+    if (term) {
+      toast.info("No applications found", {
+        description: `No applications match "${term}".`,
+      });
+    } else {
+      toast.info("No applications", {
+        description:
+          "No applications have been submitted yet, or none match the current filter.",
+      });
+    }
+  }, [applications, loading, searchTerm, statusFilter]);
+
+  // `name` is optional on the session, so the note read "Status approved by ."
+  // whenever it was absent. Prefer the full name, then the display name, then
+  // the email — which is always present.
+  const actorName =
+    [session?.user?.firstName, session?.user?.lastName]
+      .filter(Boolean)
+      .join(" ") ||
+    session?.user?.name ||
+    session?.user?.email ||
+    "Unknown user";
 
   const handleStatusChange = useCallback(
     async (application: ApplicationRow, action: "approve" | "reject") => {
@@ -297,7 +353,7 @@ export default function TenantApplicationsPage() {
               },
               body: JSON.stringify({
                 notes: t("tenants.applications.statusChange.notes", {
-                  values: { action, name: session?.user?.name },
+                  values: { action, name: actorName },
                 }),
               }),
             }
@@ -353,7 +409,7 @@ export default function TenantApplicationsPage() {
         toast.error(message);
       }
     },
-    [fetchApplications, session?.user?.name, t]
+    [fetchApplications, actorName, t]
   );
 
   const getStatusBadge = (status: string) => {
@@ -439,17 +495,16 @@ export default function TenantApplicationsPage() {
         <CardContent>
           <div className="flex items-center space-x-4">
             <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder={t(
-                    "tenants.applications.filters.searchPlaceholder"
-                  )}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+              {/* Debounced: `searchTerm` feeds fetchApplications' dependency
+                  array, so an undebounced input refetched on every keystroke. */}
+              <GlobalSearch
+                placeholder={t(
+                  "tenants.applications.filters.searchPlaceholder"
+                )}
+                initialValue={searchTerm}
+                onSearch={setSearchTerm}
+                isLoading={loading}
+              />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-48">

@@ -138,9 +138,12 @@ const LeasePaymentConfigSchema = new Schema<ILeasePaymentConfig>(
       max: [12, "Advance payment months cannot exceed 12"],
       default: 0,
     },
+    // Opt-in only: invoices are never generated automatically unless the user
+    // ticks the option on the lease form. Defaulting this to true meant any
+    // lease created outside that form silently started invoicing.
     autoGenerateInvoices: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     autoEmailInvoices: {
       type: Boolean,
@@ -197,11 +200,11 @@ const LeaseTermsSchema = new Schema<ILeaseTerms>(
       min: [0, "Late fee cannot be negative"],
       max: [1000, "Late fee cannot exceed $1,000"],
     },
-    petDeposit: {
-      type: Number,
-      min: [0, "Pet deposit cannot be negative"],
-      max: [5000, "Pet deposit cannot exceed $5,000"],
-    },
+    // petDeposit: {
+    //   type: Number,
+    //   min: [0, "Pet deposit cannot be negative"],
+    //   max: [5000, "Pet deposit cannot exceed $5,000"],
+    // },
     utilities: {
       type: [String],
       default: [],
@@ -301,8 +304,6 @@ const LeaseSchema = new Schema<ILease>(
       ref: "User",
       required: [true, "Tenant ID is required"],
     },
-    // How rent is collected. Monthly tenancies are open-ended (no end date);
-    // Day/Week tenancies are bounded by start and end dates.
     rentPeriod: {
       type: String,
       enum: {
@@ -318,21 +319,37 @@ const LeaseSchema = new Schema<ILease>(
     },
     endDate: {
       type: Date,
-      // End date is only required for bounded (Day/Week) tenancies. Monthly
-      // tenancies are open-ended and may omit it.
-      required: [
-        function (this: any) {
-          return this.rentPeriod !== LeaseRentPeriod.MONTH;
-        },
-        "Lease end date is required",
-      ],
+      default: null,
       validate: {
-        validator: function (date: Date) {
-          if (!date) return true; // optional for open-ended (monthly) tenancies
+        validator: function (date: Date | null) {
+          if (!date) return true;
+          if(!this.startDate) return true;
           return date > this.startDate;
         },
         message: "End date must be after start date",
       },
+    },
+    // Actual departure date — the cutoff the final invoice is prorated to.
+    // Set on closure; may be backdated relative to when the admin acted.
+    departureDate: {
+      type: Date,
+      default: null,
+      validate: {
+        validator: function (this: ILease, date: Date | null) {
+          if (!date) return true;
+          if (!this.startDate) return true;
+          return date >= this.startDate;
+        },
+        message: "Departure date cannot be before the lease start date",
+      },
+    },
+    // Day-of-month defining billing cycle boundaries. Derived from startDate
+    // in the pre-save hook below rather than supplied by callers.
+    billingAnchorDay: {
+      type: Number,
+      default: null,
+      min: [1, "Billing anchor day must be between 1 and 31"],
+      max: [31, "Billing anchor day must be between 1 and 31"],
     },
     status: {
       type: String,
@@ -647,11 +664,26 @@ LeaseSchema.methods.renew = function (newEndDate: Date, newTerms?: any) {
 
 // Query middleware to exclude soft deleted documents
 LeaseSchema.pre(/^find/, function (this: any) {
-  this.find({ deletedAt: null });
+  // Exclude soft-deleted leases by default, but let a caller opt in by naming
+  // `deletedAt` explicitly — otherwise a history view could never query them,
+  // since this would append `deletedAt: null` to its own filter.
+  const conditions = this.getQuery();
+  if (!("deletedAt" in conditions)) {
+    this.where({ deletedAt: null });
+  }
 });
 
 // Pre-save middleware for validation
 LeaseSchema.pre("save", async function (next) {
+  // Derive the billing anchor from startDate. Only fills a missing value —
+  // once a lease has been billed, its cycle boundaries must not shift because
+  // someone corrected the start date.
+  // (Aliased because this hook's `this` is not generically typed.)
+  const lease = this as unknown as ILease;
+  if (lease.startDate && lease.billingAnchorDay == null) {
+    lease.billingAnchorDay = lease.startDate.getDate();
+  }
+
   // Validate property exists
   if (this.isModified("propertyId")) {
     const Property = mongoose.model("Property");

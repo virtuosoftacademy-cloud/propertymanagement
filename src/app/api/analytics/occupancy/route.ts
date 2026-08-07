@@ -44,9 +44,10 @@ export async function GET(request: NextRequest) {
     const userRole = session.user.role as UserRole;
 
     // Only allow ADMIN and MANAGER roles to access analytics
-    if (
-      ![UserRole.ADMIN, UserRole.MANAGER, UserRole.ADMIN].includes(userRole)
-    ) {
+    if (![UserRole.ADMIN, UserRole.MANAGER].includes(userRole)) {
+      console.warn(
+        `[analytics/occupancy] 403 for role "${userRole}" (user ${session.user.email}) — not in [admin, manager]`
+      );
       return createApiErrorResponse("Forbidden", 403, "Forbidden");
     }
 
@@ -170,6 +171,9 @@ export async function GET(request: NextRequest) {
       "Occupancy analytics retrieved successfully"
     );
   } catch (error) {
+    // Log before swallowing — a bare 500 with no trace makes this route
+    // impossible to diagnose from the client's generic error toast.
+    console.error("[analytics/occupancy] GET failed:", error);
     return createApiErrorResponse(
       "Internal server error",
       500,

@@ -99,6 +99,35 @@ const InvoiceSchema = new Schema<IInvoice>(
       index: true,
     },
 
+    // Billing Period — what the invoice covers, as opposed to issueDate/dueDate
+    // which describe when payment is requested.
+    periodStart: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    periodEnd: {
+      type: Date,
+      default: null,
+      validate: {
+        validator: function (this: IInvoice, date: Date | null) {
+          if (!date || !this.periodStart) return true;
+          return date >= this.periodStart;
+        },
+        message: "Period end must be on or after period start",
+      },
+    },
+    // Partial-period invoice — amount is prorated rather than a full cycle.
+    isProrated: {
+      type: Boolean,
+      default: false,
+    },
+    // The lease-closing invoice, prorated to the tenant's departure date.
+    isFinal: {
+      type: Boolean,
+      default: false,
+    },
+
     // Financial Information
     subtotal: {
       type: Number,
@@ -253,6 +282,12 @@ InvoiceSchema.index({ deletedAt: 1 });
 // Compound indexes for common queries
 InvoiceSchema.index({ tenantId: 1, status: 1, dueDate: 1 });
 InvoiceSchema.index({ propertyId: 1, status: 1, dueDate: 1 });
+
+// Natural key for the recurring job's "already billed this cycle?" lookup.
+// Intentionally non-unique: closure can legitimately add a second, final
+// invoice covering part of a cycle already invoiced. Whether to enforce
+// uniqueness is a Phase 2 decision once that flow is settled.
+InvoiceSchema.index({ leaseId: 1, periodStart: 1 });
 
 // Virtual for days overdue
 InvoiceSchema.virtual("daysOverdue").get(function () {
@@ -409,10 +444,17 @@ InvoiceSchema.pre("save", function (next) {
   next();
 });
 
-// Query middleware to exclude soft deleted documents
-InvoiceSchema.pre(/^find/, function () {
-  // @ts-ignore
-  this.find({ $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] });
+// Query middleware to exclude soft deleted documents.
+// Escapable: a query that names `deletedAt` itself opts out, which is how the
+// history view and the restore handler reach records this hook would otherwise
+// make unreachable. Note this does not run for countDocuments() or aggregate().
+InvoiceSchema.pre(/^find/, function (this: any) {
+  const conditions = this.getQuery();
+  if (!("deletedAt" in conditions)) {
+    this.find({
+      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+    });
+  }
 });
 
 // Create and export the model

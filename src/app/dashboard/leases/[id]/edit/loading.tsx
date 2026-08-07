@@ -1,5 +1,9 @@
-import { FormSkeleton } from "@/components/ui/skeleton-layouts";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 
 export default function LeaseEditLoading() {
-  return <FormSkeleton showHeader={true} fieldCount={10} showSidebar={true} />;
+  return (
+    <div className="flex justify-center items-center h-[90vh]">
+      <LoadingSpinner message="" size="lg" />
+    </div>
+  );
 }

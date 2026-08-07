@@ -548,7 +548,7 @@ export function EditUnitDialog({
                     )}
                   />
 
-                  {/* <FormField
+                  <FormField
                     control={form.control}
                     name="status"
                     render={({ field }) => (
@@ -587,7 +587,7 @@ export function EditUnitDialog({
                         <FormMessage />
                       </FormItem>
                     )}
-                  /> */}
+                  />
                 </div>
               </CardContent>
             </Card>

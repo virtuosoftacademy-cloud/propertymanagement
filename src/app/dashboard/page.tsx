@@ -31,7 +31,6 @@ import {
   AnalyticsCardGrid,
 } from "@/components/analytics/AnalyticsCard";
 import { ResponsiveLayout } from "@/components/layout/responsive-layout";
-import { DashboardSkeleton } from "@/components/ui/skeleton-layouts";
 import { DashboardAlert, DashboardOverviewResponse } from "@/types/dashboard";
 import {
   Building2,
@@ -374,9 +373,9 @@ export default function DashboardPage() {
   const handleAlertClick = useCallback(
     (alertType: string) => {
       switch (alertType) {
-        // case "payment":
-        //   router.push("/dashboard/payments?filter=overdue");
-        //   break;
+        case "payment":
+          router.push("/dashboard/payments?filter=overdue");
+          break;
         case "maintenance":
           router.push("/dashboard/maintenance?filter=urgent");
           break;
@@ -510,10 +509,10 @@ export default function DashboardPage() {
 
   const getAlertTitleText = (alert: DashboardAlert) => {
     switch (alert.id) {
-      // case "overdue-payments":
-      //   return t("dashboard.alerts.overduePayments.title", {
-      //     defaultValue: alert.title,
-      //   });
+      case "overdue-payments":
+        return t("dashboard.alerts.overduePayments.title", {
+          defaultValue: alert.title,
+        });
       case "urgent-maintenance":
         return t("dashboard.alerts.urgentMaintenance.title", {
           defaultValue: alert.title,
@@ -534,16 +533,16 @@ export default function DashboardPage() {
   const getAlertMessageText = (alert: DashboardAlert) => {
     const count = alert.count;
     switch (alert.id) {
-      // case "overdue-payments":
-      //   return t(
-      //     count > 0
-      //       ? "dashboard.alerts.overduePayments.message.withCount"
-      //       : "dashboard.alerts.overduePayments.message.zero",
-      //     {
-      //       defaultValue: alert.message,
-      //       values: { count },
-      //     }
-      //   );
+      case "overdue-payments":
+        return t(
+          count > 0
+            ? "dashboard.alerts.overduePayments.message.withCount"
+            : "dashboard.alerts.overduePayments.message.zero",
+          {
+            defaultValue: alert.message,
+            values: { count },
+          }
+        );
       case "urgent-maintenance":
         return t(
           count > 0
@@ -838,7 +837,7 @@ export default function DashboardPage() {
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: "#64748b" }}
-                    tickFormatter={(value) => `£{value / 1000}k`}
+                    tickFormatter={(value) => `£${value / 1000}k`}
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {

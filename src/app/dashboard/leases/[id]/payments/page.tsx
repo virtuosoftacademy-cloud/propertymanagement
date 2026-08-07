@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -116,13 +117,12 @@ export default function LeasePaymentManagementPage() {
     }
   };
 
-  if (loading) {
+  // Spinner on the initial load only: the Refresh button reuses the same
+  // `loading` flag, and blanking the page mid-refresh would flicker.
+  if (loading && !lease) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
+      <div className="flex justify-center items-center h-[90vh]">
+        <LoadingSpinner message="" size="lg" />
       </div>
     );
   }

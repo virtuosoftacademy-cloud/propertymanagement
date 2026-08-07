@@ -124,6 +124,7 @@ export default function ApplicationsPage() {
         setLoading(true);
       }
       setIsSearching(true);
+      setError(null);
 
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -144,8 +145,9 @@ export default function ApplicationsPage() {
       }
 
       const data = await response.json();
-      setApplications(data.applications);
-      setTotalPages(data.pagination.pages);
+      // The API wraps payloads as { success, data, message, pagination }
+      setApplications(Array.isArray(data.data) ? data.data : []);
+      setTotalPages(data.pagination?.totalPages ?? 1);
     } catch (err) {
       setError("Failed to load applications");
     } finally {
@@ -172,14 +174,18 @@ export default function ApplicationsPage() {
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Failed to ${action} application`);
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || result?.success === false) {
+        // Surface the server's reason (e.g. "Application cannot be approved in
+        // its current status") instead of a generic failure message
+        throw new Error(result?.error || `Failed to ${action} application`);
       }
 
       // Refresh the applications list
-      fetchApplications();
+      await fetchApplications();
     } catch (err) {
-      alert(`Failed to ${action} application`);
+      alert(err instanceof Error ? err.message : `Failed to ${action} application`);
     }
   };
 

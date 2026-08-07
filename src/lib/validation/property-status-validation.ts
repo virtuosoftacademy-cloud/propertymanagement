@@ -104,6 +104,8 @@ export function validateUnitStatusTransition(
     );
   }
 
+  return result;
+}
 
 /**
  * Infer what the property status *should* be based on unit states

@@ -388,7 +388,7 @@ export function EnhancedApplicationForm({
                       <FormItem>
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="(555) 123-4567" {...field} />
+                          <Input placeholder="07700 900123" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

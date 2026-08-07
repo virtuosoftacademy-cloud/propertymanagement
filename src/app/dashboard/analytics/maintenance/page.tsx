@@ -29,12 +29,24 @@ import {
   Wrench,
   PoundSterling,
   RefreshCw,
+  Download,
   Filter,
   Clock,
   TrendingUp,
 } from "lucide-react";
 import { UserRole } from "@/types";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
+import {
+  downloadCsv,
+  downloadPdf,
+  exportFilename,
+} from "@/lib/utils/export";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface MaintenanceAnalyticsData {
   overview: {
@@ -89,6 +101,74 @@ export default function MaintenanceAnalyticsPage() {
     fetchMaintenanceData();
   }, [selectedProperty]);
 
+  // ─── Export ───────────────────────────────────────────────────────────────
+  // The page has no tabs, so the export is the per-property breakdown — the
+  // table on screen — with the overall totals carried in the PDF subtitle.
+  const exportRows = () =>
+    (data?.propertyBreakdown ?? []).map((row) => ({
+      Property: row.propertyName ?? "",
+      Requests: String(row.totalRequests ?? 0),
+      Completed: String(row.completedRequests ?? 0),
+      Outstanding: String(
+        Math.max(0, (row.totalRequests ?? 0) - (row.completedRequests ?? 0))
+      ),
+      "Total Cost": `£${row.totalCost ?? 0}`,
+      "Avg Response (hrs)": (row.avgResponseTime ?? 0).toFixed(1),
+    }));
+
+  const exportColumns = [
+    { key: "Property", label: "Property", width: 180 },
+    { key: "Requests", label: "Requests", width: 85 },
+    { key: "Completed", label: "Completed", width: 90 },
+    { key: "Outstanding", label: "Outstanding", width: 95 },
+    { key: "Total Cost", label: "Total Cost", width: 100 },
+    { key: "Avg Response (hrs)", label: "Avg Response (hrs)", width: 120 },
+  ];
+
+  const exportSubtitle = () => {
+    const o = data?.overview;
+    return [
+      selectedProperty === "all"
+        ? "All properties"
+        : availableProperties.find((p) => p.id === selectedProperty)?.name ??
+        "Selected property",
+      `${o?.totalRequests ?? 0} requests`,
+      `${(o?.completionRate ?? 0).toFixed(1)}% completed`,
+      `£${o?.totalCost ?? 0} total cost`,
+      `generated ${new Date().toLocaleString("en-GB")}`,
+    ].join(" · ");
+  };
+
+  const handleExportCsv = () => {
+    const count = downloadCsv(
+      exportRows(),
+      exportFilename("maintenance-analytics", "csv")
+    );
+    if (count === 0) {
+      toast.error("There is nothing to export.");
+      return;
+    }
+    toast.success(`Exported ${count} property/properties to CSV.`);
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const count = await downloadPdf(exportRows(), exportColumns, {
+        title: "Maintenance Analytics",
+        filename: exportFilename("maintenance-analytics", "pdf"),
+        subtitle: exportSubtitle(),
+      });
+      if (count === 0) {
+        toast.error("There is nothing to export.");
+        return;
+      }
+      toast.success(`Exported ${count} property/properties to PDF.`);
+    } catch (error) {
+      console.error("[maintenance analytics] PDF export failed:", error);
+      toast.error("Failed to generate the PDF export.");
+    }
+  };
+
   const fetchMaintenanceData = async () => {
     try {
       setIsLoading(true);
@@ -97,14 +177,22 @@ export default function MaintenanceAnalyticsPage() {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch maintenance data");
+        // Surface the status and server message rather than a bare string —
+        // a 403 (role) and a 500 (server fault) need very different fixes.
+        const detail = await response.text().catch(() => "");
+        throw new Error(
+          `Maintenance request failed: ${response.status} ${response.statusText} ${detail}`
+        );
       }
 
       const result = await response.json();
       setData(result.analytics);
       setAvailableProperties(result.properties || []);
     } catch (error) {
-      toast.error(t("analytics.toasts.maintenanceLoadError"));
+      console.error("[maintenance analytics] load failed:", error);
+      toast.error(t("analytics.toasts.maintenanceLoadError"), {
+        description: error instanceof Error ? error.message : undefined,
+      });
       setData({
         overview: {
           totalRequests: 0,
@@ -191,14 +279,14 @@ export default function MaintenanceAnalyticsPage() {
       </div>
 
       <Card className="mb-6">
-        <CardHeader>
+        {/* <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
             {t("analytics.maintenance.filters.title")}
           </CardTitle>
-        </CardHeader>
+        </CardHeader> */}
         <CardContent>
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-4 items-center justify-between">
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 {t("analytics.maintenance.filters.property")}
@@ -223,17 +311,40 @@ export default function MaintenanceAnalyticsPage() {
               </Select>
             </div>
 
-            <Button
-              variant="outline"
-              onClick={fetchMaintenanceData}
-              disabled={isLoading}
-              className="mt-6"
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-              />
-              {t("analytics.maintenance.filters.refresh")}
-            </Button>
+            <div className="space-x-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={isLoading || !data?.propertyBreakdown?.length}
+                    className="mt-6"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportCsv}>
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPdf}>
+                    Export as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="outline"
+                onClick={fetchMaintenanceData}
+                disabled={isLoading}
+                className="mt-6"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+                />
+                {t("analytics.maintenance.filters.refresh")}
+              </Button>
+            </div>
+
           </div>
         </CardContent>
       </Card>
@@ -278,7 +389,7 @@ export default function MaintenanceAnalyticsPage() {
                   amount: formatAmount(
                     data?.overview && data.overview.totalRequests > 0
                       ? (data.overview.totalCost || 0) /
-                          data.overview.totalRequests
+                      data.overview.totalRequests
                       : 0
                   ),
                 },
@@ -456,10 +567,10 @@ export default function MaintenanceAnalyticsPage() {
                     const completionRate =
                       property.totalRequests > 0
                         ? Math.round(
-                            (property.completedRequests /
-                              property.totalRequests) *
-                              100
-                          )
+                          (property.completedRequests /
+                            property.totalRequests) *
+                          100
+                        )
                         : 0;
 
                     return (

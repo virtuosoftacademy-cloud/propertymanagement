@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlobalSearch } from "@/components/ui/global-search";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { DataTable, DataTableColumn } from "@/components/ui/data-table";
 import {
@@ -535,6 +535,10 @@ export default function PropertiesPage() {
     hasPrev: false,
   });
 
+  // Remembers the term we last warned about, so the toast fires once per
+  // distinct fruitless search rather than on every refetch.
+  const lastEmptySearchRef = useRef<string | null>(null);
+
   const fetchProperties = useCallback(async () => {
     try {
       if (!filters.search) {
@@ -546,6 +550,29 @@ export default function PropertiesPage() {
       const response = await propertyService.getProperties(filters);
       setProperties(response.data);
       setPagination(response.pagination);
+
+      // Warn once per distinct empty result. This refetches on paging, sorting
+      // and filter changes, so the key guards against repeat toasts while the
+      // same fruitless query sits in the filters.
+      const term = (filters.search || "").trim();
+      if (response.pagination.total === 0) {
+        const key = term || "__no-search__";
+        if (lastEmptySearchRef.current !== key) {
+          lastEmptySearchRef.current = key;
+          if (term) {
+            toast.info("No properties found", {
+              description: `No properties match "${term}".`,
+            });
+          } else {
+            toast.info("No properties", {
+              description:
+                "No properties have been added yet, or none match the current filters.",
+            });
+          }
+        }
+      } else {
+        lastEmptySearchRef.current = null;
+      }
     } catch {
       const fallbackMessage = t("properties.error.fetchFailed");
       setError(fallbackMessage);

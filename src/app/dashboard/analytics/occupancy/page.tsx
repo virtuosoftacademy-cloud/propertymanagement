@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
@@ -44,9 +44,24 @@ import {
   Filter,
   RefreshCw,
   Wrench,
+  BarChart2,
+  ChartColumn,
+  Building,
+  Building2,
 } from "lucide-react";
 import { UserRole } from "@/types";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
+import {
+  downloadCsv,
+  downloadPdf,
+  exportFilename,
+} from "@/lib/utils/export";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface OccupancyData {
   totalUnits: number;
@@ -83,23 +98,120 @@ export default function OccupancyAnalyticsPage() {
 
   useEffect(() => {
     fetchOccupancyData();
-    fetchAvailableProperties();
   }, [selectedProperty]);
 
-  const fetchAvailableProperties = async () => {
+  const fetchAvailableProperties = useCallback(async () => {
     try {
-      const response = await fetch("/api/properties");
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableProperties(
-          data.properties?.map((property: any) => ({
-            id: property._id,
-            name: property.name,
-          })) || []
-        );
+      const response = await fetch(
+        "/api/properties?limit=100&sortBy=name&sortOrder=asc",
+        { cache: "no-store" }
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to load properties");
       }
+
+      type ApiProperty = {
+        _id?: string;
+        id?: string;
+        name?: string;
+      };
+
+      // The API responds with { success, data, pagination } — the list is
+      // under `data`, not `properties`.
+      const rawProperties: ApiProperty[] = Array.isArray(result.data)
+        ? (result.data as ApiProperty[])
+        : [];
+
+      const options = rawProperties
+        .map((property) => ({
+          id: property._id ?? property.id ?? "",
+          name: property.name || "Untitled Property",
+        }))
+        .filter((property) => property.id !== "");
+
+      setAvailableProperties(options);
+
+      // Drop a selection that no longer exists, so the filter can't get stuck
+      // on a property that isn't in the list.
+      setSelectedProperty((current) => {
+        if (
+          current !== "all" &&
+          !options.some((option) => option.id === current)
+        ) {
+          return "all";
+        }
+        return current;
+      });
     } catch (error) {
       toast.error(t("analytics.toasts.propertiesListError"));
+    }
+  }, [t]);
+
+  // The property list doesn't depend on the selection — fetch it once.
+  useEffect(() => {
+    fetchAvailableProperties();
+  }, [fetchAvailableProperties]);
+
+  // ─── Export ───────────────────────────────────────────────────────────────
+  // Exports the per-property breakdown, which is the table on screen, honouring
+  // the selected property filter.
+  const exportRows = () =>
+    (occupancyData?.propertyBreakdown ?? []).map((row) => ({
+      Property: row.propertyName ?? "",
+      "Total Units": String(row.totalUnits ?? 0),
+      Occupied: String(row.occupiedUnits ?? 0),
+      Vacant: String(row.vacantUnits ?? 0),
+      Maintenance: String(row.maintenanceUnits ?? 0),
+      Unavailable: String(row.unavailableUnits ?? 0),
+      "Occupancy Rate": `${row.occupancyRate ?? 0}%`,
+    }));
+
+  const exportColumns = [
+    { key: "Property", label: "Property", width: 170 },
+    { key: "Total Units", label: "Total", width: 70 },
+    { key: "Occupied", label: "Occupied", width: 80 },
+    { key: "Vacant", label: "Vacant", width: 75 },
+    { key: "Maintenance", label: "Maintenance", width: 100 },
+    { key: "Unavailable", label: "Unavailable", width: 95 },
+    { key: "Occupancy Rate", label: "Occupancy", width: 90 },
+  ];
+
+  const handleExportCsv = () => {
+    const count = downloadCsv(
+      exportRows(),
+      exportFilename("occupancy-report", "csv")
+    );
+    if (count === 0) {
+      toast.error("There is nothing to export.");
+      return;
+    }
+    toast.success(`Exported ${count} property/properties to CSV.`);
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const count = await downloadPdf(exportRows(), exportColumns, {
+        title: "Occupancy Report",
+        filename: exportFilename("occupancy-report", "pdf"),
+        subtitle: `${
+          selectedProperty === "all"
+            ? "All properties"
+            : availableProperties.find((p) => p.id === selectedProperty)?.name ??
+              "Selected property"
+        } · ${occupancyData?.occupancyRate ?? 0}% occupancy · generated ${new Date().toLocaleString(
+          "en-GB"
+        )}`,
+      });
+      if (count === 0) {
+        toast.error("There is nothing to export.");
+        return;
+      }
+      toast.success(`Exported ${count} property/properties to PDF.`);
+    } catch (error) {
+      console.error("[occupancy] PDF export failed:", error);
+      toast.error("Failed to generate the PDF export.");
     }
   };
 
@@ -111,7 +223,12 @@ export default function OccupancyAnalyticsPage() {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch occupancy data");
+        // Surface the status and server message rather than a bare string —
+        // a 403 (role) and a 500 (server fault) need very different fixes.
+        const detail = await response.text().catch(() => "");
+        throw new Error(
+          `Occupancy request failed: ${response.status} ${response.statusText} ${detail}`
+        );
       }
 
       const data = await response.json();
@@ -127,7 +244,10 @@ export default function OccupancyAnalyticsPage() {
         }
       );
     } catch (error) {
-      toast.error(t("analytics.toasts.occupancyLoadError"));
+      console.error("[occupancy] load failed:", error);
+      toast.error(t("analytics.toasts.occupancyLoadError"), {
+        description: error instanceof Error ? error.message : undefined,
+      });
       setOccupancyData({
         totalUnits: 0,
         occupiedUnits: 0,
@@ -154,7 +274,7 @@ export default function OccupancyAnalyticsPage() {
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <BarChart className="h-8 w-8 text-primary" />
+          <Building2 className="h-8 w-8 text-white"/>
           <h1 className="text-3xl font-bold">
             {t("analytics.occupancy.page.title")}
           </h1>
@@ -165,14 +285,14 @@ export default function OccupancyAnalyticsPage() {
       </div>
 
       <Card className="mb-6">
-        <CardHeader>
+        {/* <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
             {t("analytics.occupancy.filters.title")}
           </CardTitle>
-        </CardHeader>
+        </CardHeader> */}
         <CardContent>
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-4 items-center justify-between">
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 {t("analytics.occupancy.filters.property")}
@@ -197,17 +317,38 @@ export default function OccupancyAnalyticsPage() {
               </Select>
             </div>
 
-            <Button
-              variant="outline"
-              onClick={fetchOccupancyData}
-              disabled={isLoading}
-              className="mt-6"
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-              />
-              {t("analytics.occupancy.filters.refresh")}
-            </Button>
+            <div className="flex items-center gap-2 mt-6">
+              {/* Exports the per-property breakdown for the current filter. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" disabled={isLoading}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportCsv}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void handleExportPdf()}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                variant="outline"
+                onClick={fetchOccupancyData}
+                disabled={isLoading}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+                />
+                {t("analytics.occupancy.filters.refresh")}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -12,7 +12,7 @@ import {
   NetworkErrorAlert,
   NotFoundErrorAlert,
 } from "@/components/ui/error-alert";
-import { DetailPageSkeleton } from "@/components/ui/skeleton-layouts";
+import { LoadingSpinner } from "@/components/ui/loading-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -136,7 +136,7 @@ export default function TenantDetailPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const error = new Error(
-          errorData.message || `HTTP ${response.status}: Failed to fetch tenant`
+          errorData.error || errorData.message || `HTTP ${response.status}: Failed to fetch tenant`
         );
         (error as HttpError).status = response.status;
         throw error;
@@ -187,7 +187,7 @@ export default function TenantDetailPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const error = new Error(errorData.message || "Failed to delete tenant");
+        const error = new Error(errorData.error || errorData.message || "Failed to delete tenant");
         (error as HttpError).status = response.status;
         throw error;
       }
@@ -217,7 +217,11 @@ export default function TenantDetailPage() {
   };
 
   if (isLoading) {
-    return <DetailPageSkeleton showImage={false} showTabs={true} />;
+    return (
+      <div className="flex justify-center items-center py-16">
+        <LoadingSpinner message="" size="lg" />
+      </div>
+    );
   }
 
   if (errorState.hasError) {
@@ -345,7 +349,7 @@ export default function TenantDetailPage() {
             size="sm"
             variant="outline"
             onClick={() => handleDeleteTenant()}
-            className="flex items-center text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+            className="flex items-center text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
           >
             <Trash2 className="h-4 w-4" />
             <span>{t("tenants.actions.delete")}</span>
@@ -632,7 +636,7 @@ export default function TenantDetailPage() {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-destructive hover:bg-destructive/90 focus:ring-red-600"
             >
               {isDeleting
                 ? t("tenants.deleteDialog.deleting")

@@ -226,8 +226,13 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         result = await paginateQuery(User, query, filters);
       }
 
-      // No need to populate since we're fetching users directly
-      const populatedData = result.data;
+      // The tenant rows are Users, so most fields need no populating — but
+      // statusHistory.changedBy is a User ref, and consumers (e.g. the
+      // applications "Reviewed By" column) need the reviewer's name, not an id.
+      const populatedData = await User.populate(result.data, {
+        path: "statusHistory.changedBy",
+        select: "firstName lastName",
+      });
 
       return createSuccessResponse(
         populatedData,
@@ -262,6 +267,25 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         applicationDate: new Date(), // Set current date as application date
         // Set default tenant status if not provided
         tenantStatus: body.tenantStatus || "application_submitted",
+        // Record who set the initial status. The User model only seeds
+        // statusHistory when tenantStatus is absent, and this route always
+        // supplies one — so without this, a tenant created as `under_review`
+        // or `approved` had no history at all, and the applications list
+        // showed "Not reviewed" for them.
+        statusHistory:
+          Array.isArray(body.statusHistory) && body.statusHistory.length > 0
+            ? body.statusHistory
+            : [
+                {
+                  status: body.tenantStatus || "application_submitted",
+                  changedBy: user.id,
+                  changedAt: new Date(),
+                  reason: "Tenant record created",
+                  notes: `Created with status ${
+                    body.tenantStatus || "application_submitted"
+                  }`,
+                },
+              ],
         // Transform employment info dates
         employmentInfo:
           body.employmentInfo && body.employmentInfo.employer

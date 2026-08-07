@@ -77,13 +77,13 @@ const Footer = () => {
           <div className="flex justify-between flex-wrap space-y-10 gap-10">
             <div className="flex justify-center md:justify-start">
               <Link href="/">
-                <Image src={currentLogo ? logoSrc : ""} alt="Property Logo" width={40} height={10} className="w-48 h-auto md:py-2" />
+                <Image src={currentLogo ? logoSrc : ""} alt="Tenure Logo" width={40} height={10} className="w-48 h-auto md:py-2" />
               </Link>
             </div>
 
             <div>
               <p className="text-base md:text-[1.2rem] text-foreground dark:text-muted-foreground md:max-w-lg leading-relaxed font-serif">
-                Stay ahead in a rapidly changing world. Subscribe to Nexus Insights — our monthly look at the critical issues facing global businesses.
+                Bring your properties, tenants, payments, and workflows together in one powerful platform designed to simplify operations and keep you in control.
               </p>
             </div>
             <div className="text-sm md:text-base dark:text-muted-foreground text-foreground">
@@ -102,7 +102,7 @@ const Footer = () => {
         </div>
         <hr className="bg-accent dark:bg-muted-foreground" />
         <div className="dark:text-muted-foreground text-foreground pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm md:text-base">
-          <p>© 2026 PropertyPro | All rights reserved.</p>
+          <p>© 2026 Tenure | All rights reserved.</p>
         </div>
 
       </div>

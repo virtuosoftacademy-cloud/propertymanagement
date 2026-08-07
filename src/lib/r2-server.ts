@@ -1,5 +1,4 @@
 /**
- * PropertyPro - Cloudflare R2 Server-Side Utilities
  * Server-side only utilities for R2 integration
  * This file should only be imported in API routes and server-side code
  */

@@ -33,6 +33,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PaymentStatus, PaymentType, PaymentMethod } from "@/types";
+import { downloadCsv, downloadPdf, exportFilename } from "@/lib/utils/export";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface PaymentData {
   _id: string;
@@ -44,6 +51,11 @@ interface PaymentData {
   paidDate?: string;
   createdAt: string;
   updatedAt: string;
+  // Populated by the API (`propertyId`/`tenantId` come back as objects, not ids).
+  // They can still be null when the referenced document has been removed.
+  propertyId?: { name?: string; address?: unknown } | null;
+  tenantId?: { firstName?: string; lastName?: string; email?: string } | null;
+  description?: string;
 }
 
 export default function PaymentAnalyticsPage() {
@@ -74,6 +86,11 @@ export default function PaymentAnalyticsPage() {
         params.append("startDate", startDate.toISOString());
         params.append("endDate", endDate.toISOString());
 
+        // Every stat and chart on this page is computed client-side from the
+        // rows returned here, so the API's default page size (12) would have
+        // silently capped the analytics. Ask for the maximum the route allows.
+        params.append("limit", "100");
+
         const response = await fetch(`/api/payments?${params.toString()}`);
 
         if (response.ok) {
@@ -96,45 +113,91 @@ export default function PaymentAnalyticsPage() {
     fetchPayments();
   }, [session, dateRange, statusFilter, typeFilter]);
 
-  const handleExport = async () => {
+  // ─── Export ───────────────────────────────────────────────────────────────
+  // This previously re-fetched `/api/payments?export=true`, but that route has
+  // no export branch: it returned the usual JSON envelope, which was saved
+  // verbatim under a .csv name. Build the file from the rows already on screen
+  // so the export always matches the filters the user can see.
+  const formatDate = (value?: string) => {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? ""
+      : date.toLocaleDateString("en-GB");
+  };
+
+  const titleCase = (value?: string) =>
+    (value ?? "")
+      .split("_")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+  const exportRows = () =>
+    payments.map((payment) => ({
+      Tenant:
+        [payment.tenantId?.firstName, payment.tenantId?.lastName]
+          .filter(Boolean)
+          .join(" ") || "—",
+      Property: payment.propertyId?.name ?? "—",
+      Type: titleCase(payment.type),
+      Status: titleCase(payment.status),
+      Method: titleCase(payment.paymentMethod) || "—",
+      Amount: `£${(payment.amount ?? 0).toFixed(2)}`,
+      "Due Date": formatDate(payment.dueDate),
+      "Paid Date": formatDate(payment.paidDate) || "—",
+    }));
+
+  const exportColumns = [
+    { key: "Tenant", label: "Tenant", width: 120 },
+    { key: "Property", label: "Property", width: 130 },
+    { key: "Type", label: "Type", width: 95 },
+    { key: "Status", label: "Status", width: 80 },
+    { key: "Method", label: "Method", width: 95 },
+    { key: "Amount", label: "Amount", width: 80 },
+    { key: "Due Date", label: "Due Date", width: 75 },
+    { key: "Paid Date", label: "Paid Date", width: 75 },
+  ];
+
+  const exportSubtitle = () => {
+    const total = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+    return [
+      `Last ${dateRange} days`,
+      statusFilter === "all" ? "All statuses" : titleCase(statusFilter),
+      typeFilter === "all" ? "All types" : titleCase(typeFilter),
+      `${payments.length} payments`,
+      `£${total.toFixed(2)} total`,
+      `generated ${new Date().toLocaleString("en-GB")}`,
+    ].join(" · ");
+  };
+
+  const handleExportCsv = () => {
+    const count = downloadCsv(
+      exportRows(),
+      exportFilename("payment-analytics", "csv")
+    );
+    if (count === 0) {
+      toast.error("There is nothing to export.");
+      return;
+    }
+    toast.success(`Exported ${count} payment(s) to CSV.`);
+  };
+
+  const handleExportPdf = async () => {
     try {
-      // Build query parameters for export
-      const params = new URLSearchParams();
-      if (statusFilter !== "all") params.append("status", statusFilter);
-      if (typeFilter !== "all") params.append("type", typeFilter);
-
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - parseInt(dateRange));
-      params.append("startDate", startDate.toISOString());
-      params.append("endDate", endDate.toISOString());
-      params.append("export", "true");
-
-      const response = await fetch(`/api/payments?${params.toString()}`);
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `payment-analytics-${
-          new Date().toISOString().split("T")[0]
-        }.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-
-        toast.success("Payment analytics exported successfully.");
-      } else {
-        throw new Error("Failed to export data");
+      const count = await downloadPdf(exportRows(), exportColumns, {
+        title: "Payment Analytics",
+        filename: exportFilename("payment-analytics", "pdf"),
+        subtitle: exportSubtitle(),
+      });
+      if (count === 0) {
+        toast.error("There is nothing to export.");
+        return;
       }
+      toast.success(`Exported ${count} payment(s) to PDF.`);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to export payment analytics. Please try again."
-      );
+      console.error("[payment analytics] PDF export failed:", error);
+      toast.error("Failed to generate the PDF export.");
     }
   };
 
@@ -190,10 +253,22 @@ export default function PaymentAnalyticsPage() {
           </p>
         </div>
 
-        <Button onClick={handleExport} variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export Data
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" disabled={payments.length === 0}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExportCsv}>
+              Export as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportPdf}>
+              Export as PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Filters */}

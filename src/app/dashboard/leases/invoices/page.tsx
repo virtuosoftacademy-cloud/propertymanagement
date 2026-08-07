@@ -47,6 +47,7 @@ import {
   CheckSquare,
   Printer,
   Building2,
+  History,
   X,
 } from "lucide-react";
 import {
@@ -165,6 +166,9 @@ export default function LeaseInvoicesPage() {
     useLocalizationContext();
   const initialLeaseId = searchParams.get("leaseId") || undefined;
   const initialPropertyId = searchParams.get("propertyId") || undefined;
+  // The filter state and the API have always supported tenantId; only the URL
+  // reader was missing it, so ?tenantId=... arrived and was silently dropped.
+  const initialTenantId = searchParams.get("tenantId") || undefined;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
@@ -190,6 +194,7 @@ export default function LeaseInvoicesPage() {
     sortOrder: "desc",
     ...(initialPropertyId ? { propertyId: initialPropertyId } : {}),
     ...(initialLeaseId ? { leaseId: initialLeaseId } : {}),
+    ...(initialTenantId ? { tenantId: initialTenantId } : {}),
   });
   const viewMode = useViewPreferencesStore((state) => state.invoicesView);
   const setViewMode = useViewPreferencesStore((state) => state.setInvoicesView);
@@ -548,6 +553,43 @@ export default function LeaseInvoicesPage() {
     [formatCurrencyLocalized]
   );
 
+  // ─── Derived status ───────────────────────────────────────────────────────
+  // `status` is stored on the document and only refreshed when something writes
+  // that document, so an invoice that fell past its due date since the last
+  // write still reads "issued". The list already reddens such a due date, which
+  // left a red date sitting next to an "Issued" badge on the same card. Derive
+  // the display status from the same rule the Invoice model's `isOverdue`
+  // virtual uses: past due and still owing.
+  const resolveStatus = (invoice: Invoice) => {
+    if (invoice.status === "paid" || invoice.status === "cancelled") {
+      return invoice.status;
+    }
+    const due = new Date(invoice.dueDate);
+    if (Number.isNaN(due.getTime())) return invoice.status;
+    return due < new Date() && (invoice.balanceRemaining ?? 0) > 0
+      ? "overdue"
+      : invoice.status;
+  };
+
+  const resolveDaysOverdue = (invoice: Invoice) => {
+    if (typeof invoice.daysOverdue === "number" && invoice.daysOverdue > 0) {
+      return invoice.daysOverdue;
+    }
+    const due = new Date(invoice.dueDate);
+    if (Number.isNaN(due.getTime())) return undefined;
+    const days = Math.floor((Date.now() - due.getTime()) / 86_400_000);
+    return days > 0 ? days : undefined;
+  };
+
+  // UK app: render every invoice date as dd/MM/yyyy rather than leaving it to
+  // whatever locale the viewer's browser happens to be set to.
+  const formatInvoiceDate = (value: string) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? "—"
+      : date.toLocaleDateString("en-GB");
+  };
+
   const getStatusBadge = (status: string, daysOverdue?: number) => {
     const statusConfig = {
       scheduled: {
@@ -727,9 +769,7 @@ export default function LeaseInvoicesPage() {
       id: "issueDate",
       header: t("leases.invoices.table.issueDate"),
       cell: (invoice) => (
-        <span className="text-sm">
-          {new Date(invoice.issueDate).toLocaleDateString()}
-        </span>
+        <span className="text-sm">{formatInvoiceDate(invoice.issueDate)}</span>
       ),
       visibility: "md" as const,
     },
@@ -737,8 +777,14 @@ export default function LeaseInvoicesPage() {
       id: "dueDate",
       header: t("leases.invoices.table.dueDate"),
       cell: (invoice) => (
-        <span className="text-sm">
-          {new Date(invoice.dueDate).toLocaleDateString()}
+        <span
+          className={`text-sm ${
+            resolveStatus(invoice) === "overdue"
+              ? "text-red-600 dark:text-red-400 font-medium"
+              : ""
+          }`}
+        >
+          {formatInvoiceDate(invoice.dueDate)}
         </span>
       ),
     },
@@ -780,7 +826,8 @@ export default function LeaseInvoicesPage() {
     {
       id: "status",
       header: t("leases.invoices.table.status"),
-      cell: (invoice) => getStatusBadge(invoice.status, invoice.daysOverdue),
+      cell: (invoice) =>
+        getStatusBadge(resolveStatus(invoice), resolveDaysOverdue(invoice)),
     },
     {
       id: "actions",
@@ -887,6 +934,18 @@ export default function LeaseInvoicesPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             {t("leases.actions.refresh")}
           </Button>
+          {/* Deleted invoices live on their own route; tenants have no business
+              in the deletion log, so the entry point is hidden from them. */}
+          {session?.user?.role !== UserRole.TENANT && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/dashboard/leases/invoices/history")}
+            >
+              <History className="mr-2 h-4 w-4" />
+              History
+            </Button>
+          )}
           {/* {session?.user?.role !== UserRole.TENANT && (
             <>
               <Button
@@ -1287,7 +1346,7 @@ export default function LeaseInvoicesPage() {
                             {t("leases.invoices.table.issueDate")}
                           </div>
                           <div className="font-medium">
-                            {new Date(invoice.issueDate).toLocaleDateString()}
+                            {formatInvoiceDate(invoice.issueDate)}
                           </div>
                         </div>
                         <div>
@@ -1296,13 +1355,12 @@ export default function LeaseInvoicesPage() {
                           </div>
                           <div
                             className={`font-medium ${
-                              new Date(invoice.dueDate) < new Date() &&
-                              invoice.status !== "paid"
-                                ? "text-red-600"
+                              resolveStatus(invoice) === "overdue"
+                                ? "text-red-600 dark:text-red-400"
                                 : ""
                             }`}
                           >
-                            {new Date(invoice.dueDate).toLocaleDateString()}
+                            {formatInvoiceDate(invoice.dueDate)}
                           </div>
                         </div>
                       </div>
@@ -1341,7 +1399,10 @@ export default function LeaseInvoicesPage() {
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t">
-                        {getStatusBadge(invoice.status, invoice.daysOverdue)}
+                        {getStatusBadge(
+                          resolveStatus(invoice),
+                          resolveDaysOverdue(invoice)
+                        )}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm">
