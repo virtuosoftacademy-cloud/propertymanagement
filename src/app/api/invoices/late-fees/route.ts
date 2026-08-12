@@ -4,7 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { UserRole } from "@/types";
 import { connectDB } from "@/lib/db";
+import { requireRole } from "@/lib/auth/require-role";
 import { automatedLateFeeService } from "@/lib/services/automated-late-fee.service";
 import {
   createSuccessResponse,
@@ -18,6 +20,12 @@ import {
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const body = await request.json();
     const { dryRun = false, customRules, leaseId } = body;
@@ -68,6 +76,12 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const { searchParams } = new URL(request.url);
     const leaseId = searchParams.get("leaseId");
@@ -128,6 +142,12 @@ export async function PATCH(request: NextRequest) {
   try {
     await connectDB();
 
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
+
     const body = await request.json();
     const { leaseId, rules, enabled } = body;
 
@@ -174,6 +194,12 @@ export async function DELETE(request: NextRequest) {
   try {
     await connectDB();
 
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
+
     const { searchParams } = new URL(request.url);
     const invoiceIds = searchParams.get("invoiceIds")?.split(",") || [];
     const leaseId = searchParams.get("leaseId");
@@ -205,6 +231,12 @@ export async function DELETE(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const body = await request.json();
     const { invoiceId, lateFeeAmount, reason, applyImmediately = true } = body;

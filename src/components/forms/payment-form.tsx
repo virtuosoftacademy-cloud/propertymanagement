@@ -48,6 +48,10 @@ import {
   Lock,
 } from "lucide-react";
 import { PaymentType, PaymentMethod } from "@/types";
+import {
+  ENABLED_PAYMENT_METHODS,
+  DEFAULT_PAYMENT_METHOD,
+} from "@/lib/payments/enabled-methods";
 import { paymentCreateSchema } from "@/lib/validations";
 import { FormDatePicker } from "@/components/ui/date-picker";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
@@ -169,7 +173,13 @@ function PaymentFormInner({
       leaseId: initialData?.leaseId || "",
       amount: initialData?.amount || 0,
       type: initialData?.type || PaymentType.RENT,
-      paymentMethod: initialData?.paymentMethod || undefined,
+      // Preselect the only enabled method so the manager is not asked to pick
+      // from a list of one. Reverts to no default once more are enabled.
+      paymentMethod:
+        initialData?.paymentMethod ??
+        (ENABLED_PAYMENT_METHODS.length === 1
+          ? DEFAULT_PAYMENT_METHOD
+          : undefined),
       dueDate: initialData?.dueDate || "",
       description: initialData?.description || "",
       notes: initialData?.notes || "",
@@ -444,31 +454,15 @@ function PaymentFormInner({
                             />
                           </SelectTrigger>
                         </FormControl>
+                        {/* Driven by ENABLED_PAYMENT_METHODS rather than a
+                            hardcoded list — cash only for now. Add methods back
+                            to that array to restore the full set here. */}
                         <SelectContent>
-                          <SelectItem value={PaymentMethod.CREDIT_CARD}>
-                            {getPaymentMethodLabel(PaymentMethod.CREDIT_CARD)}
-                          </SelectItem>
-                          <SelectItem value={PaymentMethod.DEBIT_CARD}>
-                            {getPaymentMethodLabel(PaymentMethod.DEBIT_CARD)}
-                          </SelectItem>
-                          <SelectItem value={PaymentMethod.BANK_TRANSFER}>
-                            {getPaymentMethodLabel(PaymentMethod.BANK_TRANSFER)}
-                          </SelectItem>
-                          <SelectItem value={PaymentMethod.ACH}>
-                            {getPaymentMethodLabel(PaymentMethod.ACH)}
-                          </SelectItem>
-                          <SelectItem value={PaymentMethod.CHECK}>
-                            {getPaymentMethodLabel(PaymentMethod.CHECK)}
-                          </SelectItem>
-                          <SelectItem value={PaymentMethod.CASH}>
-                            {getPaymentMethodLabel(PaymentMethod.CASH)}
-                          </SelectItem>
-                          <SelectItem value={PaymentMethod.MONEY_ORDER}>
-                            {getPaymentMethodLabel(PaymentMethod.MONEY_ORDER)}
-                          </SelectItem>
-                          <SelectItem value={PaymentMethod.OTHER}>
-                            {getPaymentMethodLabel(PaymentMethod.OTHER)}
-                          </SelectItem>
+                          {ENABLED_PAYMENT_METHODS.map((method) => (
+                            <SelectItem key={method} value={method}>
+                              {getPaymentMethodLabel(method)}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormDescription>

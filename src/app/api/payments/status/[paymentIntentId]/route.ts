@@ -18,15 +18,14 @@ import {
 // GET /api/payments/status/[paymentIntentId] - Check payment status
 // ============================================================================
 
-export const GET = withRoleAndDB(
-  [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
+export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT])(
   async (
     user,
     request: NextRequest,
-    { params }: { params: { paymentIntentId: string } }
+    { params }: { params: Promise<{ paymentIntentId: string }> }
   ) => {
     try {
-      const { paymentIntentId } = params;
+      const { paymentIntentId } = await params;
 
       if (!paymentIntentId) {
         return createErrorResponse("Payment intent ID is required", 400);

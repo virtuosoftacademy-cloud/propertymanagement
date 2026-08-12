@@ -5,12 +5,16 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
+import { assertPaymentMethodEnabled } from "@/lib/payments/enabled-methods";
+import { requireRole } from "@/lib/auth/require-role";
+import { canAccessProperty } from "@/lib/auth/property-scope";
 import { Invoice, Payment } from "@/models";
 import {
   InvoiceStatus,
   PaymentStatus,
   PaymentMethod,
   PaymentType,
+  UserRole,
 } from "@/types";
 import {
   createSuccessResponse,
@@ -28,6 +32,12 @@ export async function GET(
 ) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const { id } = await params;
 
@@ -63,6 +73,20 @@ export async function GET(
       return createErrorResponse("Invoice not found", 404);
     }
 
+    // Reads are open to tenants, so without this any tenant could fetch any
+    // invoice by guessing an id. Staff are limited to their own properties.
+    // 404 rather than 403 — don't confirm the invoice exists.
+    const ownerId = (invoice.tenantId?._id ?? invoice.tenantId)?.toString();
+    const propId = (invoice.propertyId?._id ?? invoice.propertyId)?.toString();
+
+    if (user.role === UserRole.TENANT) {
+      if (ownerId !== user.id) {
+        return createErrorResponse("Invoice not found", 404);
+      }
+    } else if (propId && !(await canAccessProperty(user, propId))) {
+      return createErrorResponse("Invoice not found", 404);
+    }
+
     return createSuccessResponse(invoice, "Invoice retrieved successfully");
   } catch (error) {
     return handleApiError(error, "Failed to retrieve invoice");
@@ -78,6 +102,12 @@ export async function PUT(
 ) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const { id } = await params;
     const body = await request.json();
@@ -206,6 +236,12 @@ export async function DELETE(
   try {
     await connectDB();
 
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
+
     const { id } = await params;
 
     if (!Types.ObjectId.isValid(id)) {
@@ -249,6 +285,12 @@ export async function PATCH(
 ) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const { id } = await params;
     const body = await request.json();
@@ -368,6 +410,16 @@ async function handleAddPayment(invoice: any, data: any) {
           return PaymentMethod.CASH;
       }
     };
+
+    // Rent is cash-only. Checked on the NORMALISED value: callers send legacy
+    // strings like "manual" (which maps to cash) as well as enum values, so
+    // asserting on the raw input would reject valid cash payments.
+    const methodError = assertPaymentMethodEnabled(
+      normalizeMethod(String(paymentMethod))
+    );
+    if (methodError) {
+      throw new Error(methodError);
+    }
 
     const inferredType: PaymentType =
       invoice.lineItems && invoice.lineItems[0]?.type

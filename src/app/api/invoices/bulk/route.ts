@@ -5,8 +5,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
+import { requireRole } from "@/lib/auth/require-role";
 import { Invoice, Payment } from "@/models";
-import { InvoiceStatus } from "@/types";
+import { InvoiceStatus, UserRole, PaymentMethod } from "@/types";
+import { assertPaymentMethodEnabled } from "@/lib/payments/enabled-methods";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -20,6 +22,12 @@ import { Types } from "mongoose";
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const body = await request.json();
     const { operation, invoiceIds, data = {} } = body;
@@ -87,6 +95,18 @@ export async function POST(request: NextRequest) {
 async function bulkMarkAsPaid(invoiceIds: Types.ObjectId[], data: any) {
   const { paymentMethod = "manual", paidDate = new Date() } = data;
 
+  // Rent is cash-only. "manual" is the legacy default used by this endpoint and
+  // means cash, so it is mapped before the check — anything else must be an
+  // enabled method. Note this route stores the value verbatim, so an unmapped
+  // string would otherwise land in the enum field unchecked.
+  const resolvedMethod =
+    String(paymentMethod) === "manual" ? PaymentMethod.CASH : paymentMethod;
+
+  const methodError = assertPaymentMethodEnabled(resolvedMethod);
+  if (methodError) {
+    throw new Error(methodError);
+  }
+
   const results = {
     successful: [],
     failed: [],
@@ -113,7 +133,7 @@ async function bulkMarkAsPaid(invoiceIds: Types.ObjectId[], data: any) {
         leaseId: invoice.leaseId,
         invoiceId: invoice._id,
         amount: invoice.balanceRemaining,
-        paymentMethod: paymentMethod,
+        paymentMethod: resolvedMethod,
         status: "completed",
         paidDate: new Date(paidDate),
         description: `Bulk payment for invoice ${invoice.invoiceNumber}`,

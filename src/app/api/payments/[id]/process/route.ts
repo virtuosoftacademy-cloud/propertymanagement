@@ -18,10 +18,10 @@ interface ProcessPaymentRequest {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const paymentId = params.id;
+    const paymentId = (await params).id;
     const body: ProcessPaymentRequest = await request.json();
 
 
@@ -201,10 +201,10 @@ async function updateLeasePaymentStatus(
 // GET endpoint to retrieve payment processing status
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const paymentId = params.id;
+    const paymentId = (await params).id;
 
     // Connect to database
     const { db } = await connectToDatabase();

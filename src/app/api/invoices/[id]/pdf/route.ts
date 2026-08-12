@@ -4,7 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { UserRole } from "@/types";
 import { connectDB } from "@/lib/db";
+import { requireRole } from "@/lib/auth/require-role";
+import { canAccessProperty } from "@/lib/auth/property-scope";
 import { Invoice } from "@/models";
 import {
   createSuccessResponse,
@@ -24,6 +27,12 @@ export async function GET(
   try {
     await connectDB();
 
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
+
     const { id } = await params;
 
     if (!Types.ObjectId.isValid(id)) {
@@ -36,6 +45,19 @@ export async function GET(
       .populate("leaseId", "startDate endDate terms");
 
     if (!invoice) {
+      return createErrorResponse("Invoice not found", 404);
+    }
+
+    // A PDF is the full invoice — same ownership rule as the detail route, or
+    // any tenant could download anyone's invoice by id.
+    const pdfOwnerId = (invoice.tenantId?._id ?? invoice.tenantId)?.toString();
+    const pdfPropId = (invoice.propertyId?._id ?? invoice.propertyId)?.toString();
+
+    if (user.role === UserRole.TENANT) {
+      if (pdfOwnerId !== user.id) {
+        return createErrorResponse("Invoice not found", 404);
+      }
+    } else if (pdfPropId && !(await canAccessProperty(user, pdfPropId))) {
       return createErrorResponse("Invoice not found", 404);
     }
 
@@ -67,6 +89,12 @@ export async function POST(
 ) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const { id } = await params;
 

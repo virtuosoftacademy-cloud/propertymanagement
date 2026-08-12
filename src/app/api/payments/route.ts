@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { Payment, Property } from "@/models";
 import { UserRole, PaymentStatus } from "@/types";
+import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 import {
   createSuccessResponse as createApiSuccessResponse,
   createErrorResponse as createApiErrorResponse,
@@ -88,6 +89,12 @@ export async function GET(request: NextRequest) {
     if (propertyId && userRole !== UserRole.TENANT)
       query.propertyId = propertyId;
     if (tenantId && userRole !== UserRole.TENANT) query.tenantId = tenantId;
+
+    // Restrict to the caller's properties. Mirrors the ownership check the POST
+    // handler in this same file already performs before creating a payment.
+    if (userRole !== UserRole.TENANT) {
+      await applyDerivedPropertyScope(query, session.user as any);
+    }
     if (paymentMethod && paymentMethod !== "all") query.paymentMethod = paymentMethod;
 
     // Date range filter

@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PaymentMethod } from "@/types";
+import { ENABLED_PAYMENT_METHODS } from "@/lib/payments/enabled-methods";
 import {
   CreditCard,
   Banknote,
@@ -121,7 +122,10 @@ export function PaymentMethodSelector({
           </SelectTrigger>
         </FormControl>
         <SelectContent>
-          {Object.values(PaymentMethod).map((method) => {
+          {/* Only the methods currently accepted — cash for now. The badge
+              below still renders every method, since historical records may
+              hold values that are no longer selectable. */}
+          {ENABLED_PAYMENT_METHODS.map((method) => {
             const Icon = getPaymentMethodIcon(method);
             return (
               <SelectItem key={method} value={method}>
@@ -200,7 +204,8 @@ export function SimplePaymentMethodSelector({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {Object.values(PaymentMethod).map((method) => {
+        {/* Only the methods currently accepted — cash for now. */}
+        {ENABLED_PAYMENT_METHODS.map((method) => {
           const Icon = getPaymentMethodIcon(method);
           return (
             <SelectItem key={method} value={method}>

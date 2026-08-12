@@ -36,7 +36,9 @@ import {
   Receipt,
   ArrowLeft,
   Download,
+  Banknote,
 } from "lucide-react";
+import { isOnlinePaymentEnabled } from "@/lib/payments/enabled-methods";
 import Link from "next/link";
 import { UserRole, PaymentStatus, PaymentType } from "@/types";
 import { StripePayment } from "@/components/payments/stripe-payment";
@@ -989,20 +991,43 @@ function PaymentDialog({
             </CardContent>
           </Card>
 
-          {/* Stripe Payment Form */}
-          <div className="min-h-[200px]">
-            <StripePayment
-              paymentId={payment._id}
-              amount={totalAmount}
-              description={`${payment.type
-                .replace("_", " ")
-                .replace(/\b\w/g, (l) => l.toUpperCase())} payment for ${
-                payment.propertyId?.name || "property"
-              }`}
-              onSuccess={handlePaymentSuccess}
-              onError={handlePaymentError}
-            />
-          </div>
+          {/* Payment method.
+              Rent is cash-only for now, so there is nothing for the tenant to
+              submit here — they pay their manager in person and the manager
+              records it. The Stripe card form is still available and renders
+              automatically once a card method is added back to
+              ENABLED_PAYMENT_METHODS (src/lib/payments/enabled-methods.ts). */}
+          {isOnlinePaymentEnabled() ? (
+            <div className="min-h-[200px]">
+              <StripePayment
+                paymentId={payment._id}
+                amount={totalAmount}
+                description={`${payment.type
+                  .replace("_", " ")
+                  .replace(/\b\w/g, (l) => l.toUpperCase())} payment for ${
+                  payment.propertyId?.name || "property"
+                }`}
+                onSuccess={handlePaymentSuccess}
+                onError={handlePaymentError}
+              />
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="space-y-3 pt-6">
+                <div className="flex items-start gap-3">
+                  <Banknote className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-medium">Cash payment</p>
+                    <p className="text-muted-foreground text-sm">
+                      Pay {formatCurrency(totalAmount)} in cash to your property
+                      manager. They will record it against this payment and it
+                      will show as paid here once they do.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <AlertDialogFooter>

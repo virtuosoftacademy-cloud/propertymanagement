@@ -5,8 +5,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
+import { requireRole } from "@/lib/auth/require-role";
+import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 import { Invoice, Lease, Payment } from "@/models";
-import { InvoiceStatus, InvoiceType } from "@/types";
+import { InvoiceStatus, InvoiceType, UserRole } from "@/types";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -20,6 +22,12 @@ import { Types } from "mongoose";
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const { searchParams } = new URL(request.url);
     const tenantId = searchParams.get("tenantId");
@@ -44,6 +52,14 @@ export async function GET(request: NextRequest) {
     if (tenantId) filter.tenantId = new Types.ObjectId(tenantId);
     if (propertyId) filter.propertyId = new Types.ObjectId(propertyId);
     if (leaseId) filter.leaseId = new Types.ObjectId(leaseId);
+
+    // A tenant sees only their own invoices — overriding, not merging, any
+    // tenantId they supplied. Staff are restricted to their own properties.
+    if (user.role === UserRole.TENANT) {
+      filter.tenantId = new Types.ObjectId(user.id);
+    } else {
+      await applyDerivedPropertyScope(filter, user);
+    }
     if (status) {
       filter.status = status;
     } else if (!deleted) {
@@ -164,6 +180,12 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
 
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
+
     const body = await request.json();
     const { leaseId, dueDate, lineItems, notes, issueDate = new Date() } = body;
 
@@ -256,6 +278,12 @@ export async function PATCH(request: NextRequest) {
   try {
     await connectDB();
 
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
+
     const body = await request.json();
     const { invoiceIds, updates } = body;
 
@@ -299,6 +327,12 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     await connectDB();
+
+    // This route had NO authentication of any kind.
+    const gate = await requireRole([UserRole.ADMIN, UserRole.MANAGER]);
+    if ("error" in gate) return gate.error;
+    const { user } = gate;
+    void user;
 
     const { searchParams } = new URL(request.url);
     const invoiceIds = searchParams.get("ids")?.split(",") || [];

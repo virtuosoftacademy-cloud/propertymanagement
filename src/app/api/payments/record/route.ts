@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
+import { assertPaymentMethodEnabled } from "@/lib/payments/enabled-methods";
 import { paymentInvoiceLinkingService } from "@/lib/services/payment-invoice-linking.service";
 import { receiptGenerationService } from "@/lib/services/receipt-generation.service";
 import {
@@ -44,6 +45,13 @@ export async function POST(request: NextRequest) {
 
     if (!paymentMethod) {
       return createErrorResponse("Payment method is required", 400);
+    }
+
+    // Rent is cash-only. The selector already hides the other methods; this is
+    // what makes it true for a request that bypasses the UI.
+    const methodError = assertPaymentMethodEnabled(paymentMethod);
+    if (methodError) {
+      return createErrorResponse(methodError, 400);
     }
 
     // Validate tenant ID format
