@@ -6,6 +6,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +69,10 @@ export function EmergencyMobileDashboard({
 }: EmergencyMobileDashboardProps) {
   const [requests, setRequests] = useState<EmergencyRequest[]>([]);
   const [stats, setStats] = useState<EmergencyStats | null>(null);
+  /** Escalation is admin-only; the API refuses it for anyone else. */
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === UserRole.ADMIN;
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -379,13 +385,18 @@ export function EmergencyMobileDashboard({
                       </Button>
                     )}
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuickAction(request._id, "escalate")}
-                    >
-                      <AlertTriangle className="h-3 w-3" />
-                    </Button>
+                    {/* Escalation reassigns the request — admin-only. */}
+                    {isAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleQuickAction(request._id, "escalate")
+                        }
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                      </Button>
+                    )}
 
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/dashboard/maintenance/${request._id}`}>

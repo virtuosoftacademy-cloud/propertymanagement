@@ -97,6 +97,8 @@ export function MaintenanceStatusManager({
   // Check user permissions
   const userRole = session?.user?.role as UserRole;
   const canManage = [UserRole.ADMIN, UserRole.MANAGER].includes(userRole);
+  /** Assigning/reassigning a request is an admin-only action. */
+  const canAssign = userRole === UserRole.ADMIN;
   const canWork = [UserRole.ADMIN, UserRole.MANAGER].includes(userRole);
   const isAssignedToUser = request.assignedTo?.toString() === session?.user?.id;
 
@@ -148,7 +150,9 @@ export function MaintenanceStatusManager({
             requiresConfirmation: true,
           });
         }
-        if (canManage) {
+        // Reassignment is admin-only; the API returns 403 for anyone else, so
+        // don't offer the action to managers.
+        if (canAssign) {
           actions.push({
             action: "reassign",
             label: "Reassign",

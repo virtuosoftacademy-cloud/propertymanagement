@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { MaintenanceRequest, User } from "@/models";
 import { UserRole, MaintenanceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { resolveUserRole, staffRoleNames } from "@/lib/auth/resolve-role";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -29,12 +31,18 @@ const escalationSchema = z.object({
   notes: z.string().optional(),
 });
 
-export const POST = withRoleAndDB([
-  UserRole.ADMIN,
-  UserRole.MANAGER,
-  UserRole.MANAGER,
-])(async (user, request: NextRequest) => {
+// Escalating reassigns the request, and assignment is admin-only — so the
+// whole action is admin-only, both the automatic and the explicitly-targeted
+// path. A manager can no longer escalate an emergency at all; raising and
+// working requests is unaffected.
+export const POST = withRoleAndDB([UserRole.ADMIN])(
+  async (user, request: NextRequest) => {
   try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role check above.
+      const denied = requirePermission(user, "maintenance_management");
+      if (denied) return denied;
+
     const { success, data: body, error } = await parseRequestBody(request);
     if (!success) {
       return createErrorResponse(error!, 400);
@@ -63,19 +71,35 @@ export const POST = withRoleAndDB([
       return createErrorResponse("Request is not an emergency", 400);
     }
 
-    // Determine escalation target
+    // Determine escalation target. The caller is necessarily an admin — the
+    // route guard above is ADMIN-only — so there is no per-path role check
+    // here; only the TARGET still needs validating.
     let escalationTarget;
     if (escalateTo) {
       escalationTarget = await User.findById(escalateTo);
       if (!escalationTarget) {
         return createErrorResponse("Escalation target user not found", 404);
       }
+
+      // Same assignee rule as every other assignment endpoint: resolved role
+      // must be staff. Previously there was no role check here at all, so a
+      // request could be escalated onto a tenant.
+      const targetRole = (await resolveUserRole(escalationTarget.role))
+        .effectiveRole;
+      if (![UserRole.ADMIN, UserRole.MANAGER].includes(targetRole)) {
+        return createErrorResponse(
+          "Escalation target must be staff (admin or manager level)",
+          400
+        );
+      }
     } else {
-      // Auto-escalate to property manager or super admin
+      // Auto-escalate. Matching on role NAMES that resolve to staff, so custom
+      // roles such as maintenance_staff are eligible — a plain
+      // `$in: [MANAGER, ADMIN]` would only ever pick a built-in user.
       escalationTarget = await User.findOne({
-        role: { $in: [UserRole.MANAGER, UserRole.ADMIN] },
+        role: { $in: await staffRoleNames() },
         isActive: true,
-      }).sort({ role: 1 }); // Prefer property manager over super admin
+      }).sort({ role: 1 });
     }
 
     if (!escalationTarget) {
@@ -88,7 +112,7 @@ export const POST = withRoleAndDB([
 
     // Prepare escalation log entry
     const escalationLogEntry = {
-      escalatedBy: user._id,
+      escalatedBy: user.id,
       escalatedTo: escalationTarget._id,
       reason: escalationReason || `Escalated to level ${newEscalationLevel}`,
       urgencyLevel,
@@ -103,7 +127,7 @@ export const POST = withRoleAndDB([
       status: MaintenanceStatus.ASSIGNED,
       escalationLevel: newEscalationLevel,
       updatedAt: new Date(),
-      updatedBy: user._id,
+      updatedBy: user.id,
       $push: {
         escalationLogs: escalationLogEntry,
       },
@@ -116,7 +140,7 @@ export const POST = withRoleAndDB([
       }${notes ? `\nNotes: ${notes}` : ""}`;
       updateData.$push.notes = {
         content: escalationNote,
-        createdBy: user._id,
+        createdBy: user.id,
         createdAt: new Date(),
       };
     }
@@ -126,7 +150,7 @@ export const POST = withRoleAndDB([
     // Create escalation log entry (this could be a separate collection in a real app)
     const escalationLog = {
       requestId: emergencyRequest._id,
-      escalatedBy: user._id,
+      escalatedBy: user.id,
       escalatedTo: escalationTarget._id,
       reason: escalationReason,
       urgencyLevel,
@@ -175,6 +199,11 @@ export const GET = withRoleAndDB([
   UserRole.MANAGER,
 ])(async (user, request: NextRequest) => {
   try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role check above.
+      const denied = requirePermission(user, "maintenance_view");
+      if (denied) return denied;
+
     const { searchParams } = new URL(request.url);
     const requestId = searchParams.get("requestId");
     const limit = parseInt(searchParams.get("limit") || "12");

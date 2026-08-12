@@ -5,15 +5,36 @@ export interface IRole extends mongoose.Document {
   label: string;
   description: string;
   permissions: string[];
+  /**
+   * The built-in role this custom role behaves as for route authorisation.
+   *
+   * Every API guard is written as withRoleAndDB([ADMIN, MANAGER, ...]) against
+   * the three-value UserRole enum. Without this, a user holding a custom role
+   * matches none of them and is refused everywhere — which is exactly why
+   * "agent" and "manual_manager" could be created and assigned but never used.
+   */
+  inheritsFrom: "admin" | "manager" | "tenant";
   isSystem: boolean;
   isActive: boolean;
-  color: string;
+  /**
+   * Narrowed to match the schema's own enum below. It was declared as `string`,
+   * so assigning it to IRoleConfig.color (the same union) failed in every roles
+   * route — four TS2322 errors that only stayed quiet because
+   * next.config.ts sets typescript.ignoreBuildErrors.
+   */
+  color: "default" | "destructive" | "outline" | "secondary";
   userCount: number;
   createdBy: mongoose.Types.ObjectId;
   updatedBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+
+  /**
+   * Declared because RoleSchema.methods.softDelete exists but was never on the
+   * interface, so calling it from the roles route was a TS2339 error.
+   */
+  softDelete(deletedBy: mongoose.Types.ObjectId): Promise<IRole>;
 }
 
 // Available system permissions
@@ -26,6 +47,16 @@ export const SYSTEM_PERMISSIONS = [
   // Property Management
   "property_management",
   "property_view",
+  /**
+   * Lifts the per-property visibility scope.
+   *
+   * Without it a user sees only properties they created or were assigned
+   * (see src/lib/auth/property-scope.ts). Granting it makes a custom role
+   * behave like an admin for property visibility — which is why the scope is
+   * driven by this permission rather than a hardcoded role check: an
+   * admin-created role can opt in from the Roles UI without a code change.
+   */
+  "property_view_all",
   "property_create",
   "property_edit",
   "property_delete",
@@ -50,6 +81,16 @@ export const SYSTEM_PERMISSIONS = [
   "maintenance_requests",
   "work_orders",
   "maintenance_history",
+
+  // Compliance Management
+  // Mirrors the property/tenant/lease naming so the roles UI groups them the
+  // same way. Backs the ComplianceReport surface: /api/compliance,
+  // /api/compliance/[id] (+ renew, revoke), /active and /stats.
+  "compliance_management",
+  "compliance_view",
+  "compliance_create",
+  "compliance_edit",
+  "compliance_delete",
 
   // Financial Management
   "financial_management",
@@ -128,6 +169,17 @@ const RoleSchema = new Schema<IRole>(
         message: "Invalid permission specified",
       },
     },
+    inheritsFrom: {
+      type: String,
+      enum: {
+        values: ["admin", "manager", "tenant"],
+        message: "Base role must be admin, manager or tenant",
+      },
+      // Tenant is the safe default: a role created without an explicit base
+      // gets the least access rather than the most.
+      default: "tenant",
+      required: true,
+    },
     isSystem: {
       type: Boolean,
       default: false,
@@ -166,7 +218,9 @@ const RoleSchema = new Schema<IRole>(
     collection: "roles",
     toJSON: {
       virtuals: true,
-      transform: function (doc, ret) {
+      transform: function (doc, ret: Record<string, any>) {
+        // `ret` is typed with __v required, so deleting it needs a widened
+        // type rather than a non-null field.
         delete ret.__v;
         return ret;
       },
@@ -224,7 +278,7 @@ RoleSchema.methods.addPermission = function (permission: string): void {
 };
 
 RoleSchema.methods.removePermission = function (permission: string): void {
-  this.permissions = this.permissions.filter((p) => p !== permission);
+  this.permissions = this.permissions.filter((p: string) => p !== permission);
 };
 
 RoleSchema.methods.softDelete = function (

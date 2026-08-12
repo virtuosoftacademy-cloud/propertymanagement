@@ -8,6 +8,9 @@ import connectDB from "@/lib/mongodb";
 import { NextRequest } from "next/server";
 import { MaintenanceRequest, Property, User } from "@/models";
 import { UserRole, MaintenancePriority, MaintenanceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { resolveUserRole } from "@/lib/auth/resolve-role";
+import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -45,6 +48,11 @@ export async function GET(request: NextRequest) {
     }
 
     const user = session.user;
+
+    // Custom roles must hold this permission; built-in roles are
+    // governed by the role check above.
+    const denied = requirePermission(user as any, "maintenance_view");
+    if (denied) return denied;
     const { searchParams } = new URL(request.url);
     const paginationParams = parsePaginationParams(searchParams);
 
@@ -89,6 +97,11 @@ export async function GET(request: NextRequest) {
     if (filters.unitId) query.unitId = filters.unitId;
     if (filters.tenantId) query.tenantId = filters.tenantId;
     if (filters.assignedTo) query.assignedTo = filters.assignedTo;
+
+    // Restrict to the caller's properties (no-op for admins).
+    if (user.role !== UserRole.TENANT) {
+      await applyDerivedPropertyScope(query, user);
+    }
 
     // Emergency filter
     if (filters.emergency) {
@@ -207,6 +220,11 @@ export async function POST(request: NextRequest) {
     }
 
     const user = session.user;
+
+    // Custom roles must hold this permission; built-in roles are
+    // governed by the role check above.
+    const denied = requirePermission(user as any, "maintenance_create");
+    if (denied) return denied;
     const { success, data: body, error } = await parseRequestBody(request);
     if (!success) {
       return createErrorResponse(error!, 400);
@@ -259,6 +277,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Assignment is admin-only, so a non-admin cannot pre-assign at creation
+    // time. Dropped rather than rejected: raising a request is allowed, it just
+    // arrives unassigned for an admin to route.
+    if (maintenanceData.assignedTo && user.role !== UserRole.ADMIN) {
+      delete (maintenanceData as any).assignedTo;
+    }
+
     // Verify assigned user if provided
     if (maintenanceData.assignedTo) {
       const assignedUser = await User.findById(maintenanceData.assignedTo);
@@ -266,18 +291,13 @@ export async function POST(request: NextRequest) {
         return createErrorResponse("Assigned user not found", 404);
       }
 
-      // Accept common maintenance-capable roles
-      const role = (assignedUser.role || "").toLowerCase();
-      const allowedAssigneeRoles = [
-        "maintenance_staff",
-        "property_manager",
-        "manager",
-        "super_admin",
-        "admin",
-        "technician",
-      ];
+      // Resolve to the built-in role the assignee behaves as. The old list
+      // matched raw names, several of which (property_manager, super_admin,
+      // technician) no longer exist in UserRole at all.
+      const assigneeRole = (await resolveUserRole(assignedUser.role))
+        .effectiveRole;
 
-      if (!allowedAssigneeRoles.includes(role)) {
+      if (![UserRole.ADMIN, UserRole.MANAGER].includes(assigneeRole)) {
         return createErrorResponse(
           "User cannot be assigned maintenance requests",
           400
@@ -354,6 +374,11 @@ export async function PUT(request: NextRequest) {
       return createErrorResponse("Forbidden", 403);
     }
 
+    // Custom roles must hold this permission; built-in roles are governed by
+    // the role check above.
+    const denied = requirePermission(session.user as any, "maintenance_management");
+    if (denied) return denied;
+
     const { success, data: body, error } = await parseRequestBody(request);
     if (!success) {
       return createErrorResponse(error!, 400);
@@ -414,6 +439,11 @@ export async function DELETE(request: NextRequest) {
     if (session.user.role !== UserRole.ADMIN) {
       return createErrorResponse("Forbidden", 403);
     }
+
+    // Custom roles must hold this permission; built-in roles are governed by
+    // the role check above.
+    const denied = requirePermission(session.user as any, "maintenance_management");
+    if (denied) return denied;
 
     const { searchParams } = new URL(request.url);
     const requestIds = searchParams.get("ids")?.split(",") || [];

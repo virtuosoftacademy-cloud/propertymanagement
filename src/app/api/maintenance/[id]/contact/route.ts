@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { MaintenanceRequest } from "@/models";
 import { UserRole } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -36,10 +37,15 @@ export const POST = withRoleAndDB([
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const { id } = params;
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role check above.
+      const denied = requirePermission(user, "maintenance_management");
+      if (denied) return denied;
+
+      const { id } = await params;
 
       // Validate request ID
       if (!isValidObjectId(id)) {
@@ -72,7 +78,7 @@ export const POST = withRoleAndDB([
       const contactLog = {
         method,
         contactedAt: new Date(contactedAt),
-        contactedBy: user._id,
+        contactedBy: user.id,
         notes,
         successful,
         createdAt: new Date(),
@@ -85,7 +91,7 @@ export const POST = withRoleAndDB([
         },
         lastContactedAt: new Date(contactedAt),
         updatedAt: new Date(),
-        updatedBy: user._id,
+        updatedBy: user.id,
       };
 
       await MaintenanceRequest.findByIdAndUpdate(id, updateData);

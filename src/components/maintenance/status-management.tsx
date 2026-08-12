@@ -353,9 +353,12 @@ export function NextAction({
     const canWork = [UserRole.ADMIN, UserRole.MANAGER].includes(userRole);
     const isAssignedToUser = assignedTo === currentUserId;
 
+    // Assigning is admin-only; the API refuses it for anyone else.
+    const canAssign = userRole === UserRole.ADMIN;
+
     switch (status) {
       case MaintenanceStatus.SUBMITTED:
-        if (canManage) {
+        if (canAssign) {
           return {
             action: "assign",
             label: "Assign Technician",

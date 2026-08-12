@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { ApiResponse, PaginationParams, UserRole } from "@/types";
+import { resolveUserRole } from "@/lib/auth/resolve-role";
 import connectDB, { connectDBSafe } from "./mongodb";
 import { ensureTenantProfile } from "./tenant-utils";
 // Import will be done dynamically to avoid circular dependencies
@@ -229,9 +230,44 @@ export function validateRequiredFields(data: any, fields: string[]) {
 // AUTHENTICATION MIDDLEWARE
 // ============================================================================
 
+/**
+ * The user object every guarded route handler receives as its first argument.
+ *
+ * `role` is the RESOLVED base role — a custom role reports the role it inherits
+ * from, so existing checks keep working — while `assignedRole` is what the user
+ * actually holds, e.g. "agent".
+ */
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  /**
+   * Carried through from the session because several maintenance routes build
+   * display names from them. They are optional on the session, so treat them
+   * as optional here rather than asserting.
+   */
+  firstName?: string;
+  lastName?: string;
+  role: UserRole;
+  assignedRole: string;
+  isCustomRole: boolean;
+  permissions: string[];
+  isActive: boolean;
+}
+
+/**
+ * Typed so call sites stop inferring `user` as implicit-any. `handler` was
+ * `any`, which left the parameter untyped in every guarded route and cost
+ * handlers any autocomplete on the user object.
+ */
+type AuthenticatedHandler = (
+  user: AuthenticatedUser,
+  request: NextRequest,
+  context?: any
+) => Promise<NextResponse<any>> | NextResponse<any>;
+
 // Primary authentication middleware for Next.js 15 App Router
 export function withRoleAndDB(roles: UserRole | UserRole[]) {
-  return function (handler: any): any {
+  return function (handler: AuthenticatedHandler): any {
     return async (
       request: NextRequest,
       context?: any
@@ -252,13 +288,25 @@ export function withRoleAndDB(roles: UserRole | UserRole[]) {
           return createErrorResponse("Invalid session", 401);
         }
 
-        // Get user role with fallback
-        const userRole = (session.user.role as UserRole) || UserRole.TENANT;
+        // Resolve the assigned role. Built-in roles pass through untouched;
+        // an admin-created role is looked up in the `roles` collection and
+        // resolved to the base role it inherits from. Previously this was a
+        // bare `as UserRole` cast, so a custom role matched nothing in
+        // allowedRoles and was refused by every guarded route.
+        const resolved = await resolveUserRole(session.user.role as string);
 
-        const user = {
+        const user: AuthenticatedUser = {
           id: session.user.id,
           email: session.user.email,
-          role: userRole,
+          firstName: session.user.firstName,
+          lastName: session.user.lastName,
+          // The base role, so existing checks keep working unchanged.
+          role: resolved.effectiveRole,
+          /** What the user is actually assigned, e.g. "agent". */
+          assignedRole: resolved.assignedRole,
+          isCustomRole: resolved.isCustom,
+          /** Available to handlers that want a finer check than a role. */
+          permissions: resolved.permissions,
           isActive: session?.user?.isActive !== false,
         };
 

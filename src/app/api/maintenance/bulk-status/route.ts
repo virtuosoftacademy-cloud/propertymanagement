@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { MaintenanceRequest } from "@/models";
 import { UserRole, MaintenanceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -30,6 +31,11 @@ const bulkStatusSchema = z.object({
 export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (user, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role check above.
+      const denied = requirePermission(user, "maintenance_management");
+      if (denied) return denied;
+
       const body = await request.json();
       const validatedData = bulkStatusSchema.parse(body);
       const { requestIds, status, notes } = validatedData;
@@ -65,7 +71,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const updateData: any = {
         status,
         updatedAt: new Date(),
-        updatedBy: user._id,
+        updatedBy: user.id,
       };
 
       // Add completion timestamp if marking as completed
@@ -78,7 +84,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         updateData.$push = {
           notes: {
             content: notes,
-            createdBy: user._id,
+            createdBy: user.id,
             createdAt: new Date(),
           },
         };

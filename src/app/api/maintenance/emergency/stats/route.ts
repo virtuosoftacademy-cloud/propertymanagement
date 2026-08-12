@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { MaintenanceRequest } from "@/models";
 import { UserRole, MaintenancePriority, MaintenanceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -25,6 +26,11 @@ export const GET = withRoleAndDB([
   UserRole.MANAGER,
 ])(async (user, request: NextRequest) => {
   try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role check above.
+      const denied = requirePermission(user, "maintenance_view");
+      if (denied) return denied;
+
     const { searchParams } = new URL(request.url);
     const timeframe = searchParams.get("timeframe") || "30"; // days
     const propertyId = searchParams.get("propertyId");
@@ -46,7 +52,7 @@ export const GET = withRoleAndDB([
     // Role-based access control
     if (user.role === UserRole.MANAGER) {
       baseQuery.$or = [
-        { assignedTo: user._id },
+        { assignedTo: user.id },
         { assignedTo: { $exists: false } },
       ];
     }

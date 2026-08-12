@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +91,10 @@ export function EmergencyStatusManagement({
   onEscalate,
   availableStaff = [],
 }: EmergencyStatusManagementProps) {
+  /** Escalation is admin-only; see the actions list below. */
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === UserRole.ADMIN;
+
   const [loading, setLoading] = useState(false);
   const [escalationDialogOpen, setEscalationDialogOpen] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
@@ -246,7 +252,9 @@ export function EmergencyStatusManagement({
       });
     }
 
-    if (request.status !== MaintenanceStatus.COMPLETED) {
+    // Escalation reassigns the request, so it is admin-only — the API returns
+    // 403 for anyone else and offering the button would just fail.
+    if (request.status !== MaintenanceStatus.COMPLETED && isAdmin) {
       actions.push({
         label: "Escalate",
         icon: ArrowUp,

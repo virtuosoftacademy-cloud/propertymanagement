@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { MaintenanceRequest, User } from "@/models";
 import { UserRole, MaintenanceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { resolveUserRole } from "@/lib/auth/resolve-role";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -27,11 +29,18 @@ const bulkAssignSchema = z.object({
 // POST /api/maintenance/bulk-assign - Bulk assign maintenance requests
 // ============================================================================
 
-export const POST = withRoleAndDB([
-  UserRole.ADMIN,
-  UserRole.MANAGER,
-])(async (user, request: NextRequest) => {
+// Assigning maintenance requests is an ADMIN-only action. Managers may raise,
+// update and close requests, but deciding WHO does the work rests with an
+// admin. A custom role resolving to admin passes; one resolving to manager does
+// not, which is the whole point of comparing the resolved role.
+export const POST = withRoleAndDB([UserRole.ADMIN])(
+  async (user, request: NextRequest) => {
   try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role check above.
+      const denied = requirePermission(user, "maintenance_assign");
+      if (denied) return denied;
+
     const body = await request.json();
     const validatedData = bulkAssignSchema.parse(body);
     const { requestIds, assigneeId, notes } = validatedData;
@@ -56,13 +65,11 @@ export const POST = withRoleAndDB([
       return createErrorResponse("Assignee not found", 404);
     }
 
-    if (
-      ![
-        UserRole.MANAGER,
-        UserRole.MANAGER,
-        UserRole.ADMIN,
-      ].includes(assignee.role)
-    ) {
+    // Resolved, not raw — otherwise a custom role that inherits from manager
+    // (maintenance_staff, agent) cannot be assigned work.
+    const assigneeRole = (await resolveUserRole(assignee.role)).effectiveRole;
+
+    if (![UserRole.ADMIN, UserRole.MANAGER].includes(assigneeRole)) {
       return createErrorResponse(
         "Assignee must be maintenance staff or manager",
         400
@@ -88,14 +95,14 @@ export const POST = withRoleAndDB([
       assignedTo: assigneeId,
       status: MaintenanceStatus.ASSIGNED,
       updatedAt: new Date(),
-      updatedBy: user._id,
+      updatedBy: user.id,
     };
 
     if (notes) {
       updateData.$push = {
         notes: {
           content: notes,
-          createdBy: user._id,
+          createdBy: user.id,
           createdAt: new Date(),
         },
       };

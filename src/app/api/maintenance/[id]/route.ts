@@ -8,6 +8,8 @@ import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { MaintenanceRequest, User } from "@/models";
 import { UserRole, MaintenanceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { resolveUserRole } from "@/lib/auth/resolve-role";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -49,6 +51,11 @@ export async function GET(
     }
 
     const user = session.user;
+
+    // Custom roles must hold this permission; built-in roles are
+    // governed by the role check above.
+    const denied = requirePermission(user as any, "maintenance_view");
+    if (denied) return denied;
     const { id } = await params;
 
     if (!isValidObjectId(id)) {
@@ -144,6 +151,11 @@ export async function PUT(
     }
 
     const user = session.user;
+
+    // Custom roles must hold this permission; built-in roles are
+    // governed by the role check above.
+    const denied = requirePermission(user as any, "maintenance_management");
+    if (denied) return denied;
     const { id } = await params;
 
     if (!isValidObjectId(id)) {
@@ -282,6 +294,12 @@ export async function DELETE(
       return createErrorResponse("Forbidden", 403);
     }
 
+    // Custom roles must hold this permission; built-in roles are governed by
+    // the role check above. This handler declares no `user` local, which is
+    // why the batch pass skipped it.
+    const denied = requirePermission(session.user as any, "maintenance_management");
+    if (denied) return denied;
+
     const { id } = await params;
 
     if (!isValidObjectId(id)) {
@@ -346,6 +364,11 @@ export async function PATCH(
     }
 
     const user = session.user;
+
+    // Custom roles must hold this permission; built-in roles are
+    // governed by the role check above.
+    const denied = requirePermission(user as any, "maintenance_management");
+    if (denied) return denied;
     const { id } = await params;
 
     if (!isValidObjectId(id)) {
@@ -379,9 +402,12 @@ export async function PATCH(
 
     switch (action) {
       case "assign":
-        if (user.role === UserRole.TENANT) {
+        // Admin-only. This previously refused tenants and allowed managers;
+        // deciding who does the work is now an admin decision. `user.role` is
+        // the RESOLVED role, so a custom role inheriting admin still passes.
+        if (user.role !== UserRole.ADMIN) {
           return createErrorResponse(
-            "Tenants cannot assign maintenance requests",
+            "Only an admin can assign maintenance requests",
             403
           );
         }
@@ -395,16 +421,14 @@ export async function PATCH(
           return createErrorResponse("Assigned user not found", 404);
         }
 
-        if (
-          ![
-            "maintenance_staff",
-            "property_manager",
-            "manager",
-            "super_admin",
-            "admin",
-            "technician",
-          ].includes(assignedUser.role)
-        ) {
+        // Compare the RESOLVED role. This list held names removed when the
+        // role model collapsed to admin|manager|tenant, and matched the raw
+        // assigned name — so a custom role such as "maintenance_staff" only
+        // passed by coincidence of naming, and any other custom role failed.
+        const assigneeRole = (await resolveUserRole(assignedUser.role))
+          .effectiveRole;
+
+        if (![UserRole.ADMIN, UserRole.MANAGER].includes(assigneeRole)) {
           return createErrorResponse(
             "User cannot be assigned maintenance requests",
             400

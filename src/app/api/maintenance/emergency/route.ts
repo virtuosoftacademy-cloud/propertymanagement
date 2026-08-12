@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { MaintenanceRequest, Property, Tenant, User } from "@/models";
 import { UserRole, MaintenancePriority, MaintenanceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { resolveUserRole } from "@/lib/auth/resolve-role";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -34,6 +36,11 @@ export const GET = withRoleAndDB([
   UserRole.MANAGER,
 ])(async (user, request: NextRequest) => {
   try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role check above.
+      const denied = requirePermission(user, "maintenance_view");
+      if (denied) return denied;
+
     const { searchParams } = new URL(request.url);
     const paginationParams = parsePaginationParams(searchParams);
 
@@ -438,6 +445,11 @@ export const POST = withRoleAndDB([
   UserRole.TENANT,
 ])(async (user, request: NextRequest) => {
   try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role check above.
+      const denied = requirePermission(user, "maintenance_create");
+      if (denied) return denied;
+
     const { success, data: body, error } = await parseRequestBody(request);
     if (!success) {
       return createErrorResponse(error!, 400);
@@ -492,17 +504,32 @@ export const POST = withRoleAndDB([
       return createErrorResponse("Tenant not found", 404);
     }
 
-    // Auto-assign to available maintenance staff if possible
-    let assignedTo = emergencyData.assignedTo;
-    if (!assignedTo) {
-      const availableStaff = await User.findOne({
-        role: UserRole.MANAGER,
-        isActive: true,
-      }).sort({ createdAt: 1 }); // Get the oldest staff member (round-robin style)
+    // Assignment is admin-only, with no automatic fallback: an emergency
+    // raised by anyone else arrives SUBMITTED (unassigned) for an admin to
+    // route. The previous round-robin auto-assign picked the oldest active
+    // staff member and is deliberately gone — it assigned work without an
+    // admin deciding, which is exactly what this rule forbids.
+    //
+    // NOTE: nothing now routes an emergency automatically. It stays unassigned
+    // until an admin picks it up.
+    let assignedTo: string | undefined;
 
-      if (availableStaff) {
-        assignedTo = availableStaff._id.toString();
+    if (user.role === UserRole.ADMIN && emergencyData.assignedTo) {
+      // Same assignee rule as every other assignment endpoint.
+      const target = await User.findById(emergencyData.assignedTo);
+      if (!target) {
+        return createErrorResponse("Assigned user not found", 404);
       }
+
+      const targetRole = (await resolveUserRole(target.role)).effectiveRole;
+      if (![UserRole.ADMIN, UserRole.MANAGER].includes(targetRole)) {
+        return createErrorResponse(
+          "Can only assign to staff (admin or manager level)",
+          400
+        );
+      }
+
+      assignedTo = emergencyData.assignedTo;
     }
 
     // Create emergency maintenance request

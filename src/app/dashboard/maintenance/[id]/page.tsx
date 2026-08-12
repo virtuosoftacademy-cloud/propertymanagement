@@ -976,11 +976,10 @@ export default function MaintenanceRequestDetailPage() {
                   <p className="text-sm text-muted-foreground mb-3">
                     {t("maintenance.details.card.noTechnicianAssigned")}
                   </p>
-                  {/* Only show assign button to admin/manager */}
-                  {session?.user?.role &&
-                    [UserRole.ADMIN, UserRole.MANAGER].includes(
-                      session.user.role as UserRole
-                    ) && (
+                  {/* Assignment is admin-only — the API refuses it for anyone
+                      else, so offering the button to managers would just
+                      produce a 403. */}
+                  {session?.user?.role === UserRole.ADMIN && (
                       <Button
                         size="sm"
                         className="w-full"

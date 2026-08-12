@@ -8,6 +8,8 @@ import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { MaintenanceRequest, User } from "@/models";
 import { UserRole, MaintenanceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { resolveUserRole } from "@/lib/auth/resolve-role";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -47,6 +49,11 @@ export async function PATCH(
     }
 
     const user = session.user;
+
+    // Custom roles must hold this permission; built-in roles are
+    // governed by the role check above.
+    const denied = requirePermission(user as any, "maintenance_management");
+    if (denied) return denied;
     const { id } = await params;
 
     if (!isValidObjectId(id)) {
@@ -94,9 +101,11 @@ export async function PATCH(
     switch (action) {
       case "assign":
       case "reassign":
-        if (!canManage) {
+        // Admin-only, matching PATCH /api/maintenance/[id] and bulk-assign.
+        // `canManage` also allowed managers through.
+        if (user.role !== UserRole.ADMIN) {
           return createErrorResponse(
-            "Only managers can assign maintenance requests",
+            "Only an admin can assign maintenance requests",
             403
           );
         }
@@ -112,8 +121,18 @@ export async function PATCH(
         if (!assignedUser) {
           return createErrorResponse("Assigned user not found", 404);
         }
-        if (![UserRole.MANAGER].includes(assignedUser.role as UserRole)) {
-          return createErrorResponse("Can only assign to managers", 400);
+        // Resolved, not raw: this only accepted the literal built-in "manager",
+        // so a custom role like maintenance_staff — created precisely to take
+        // this work — was refused. Admin is accepted too, matching the other
+        // assignment endpoints.
+        const assigneeRole = (await resolveUserRole(assignedUser.role))
+          .effectiveRole;
+
+        if (![UserRole.ADMIN, UserRole.MANAGER].includes(assigneeRole)) {
+          return createErrorResponse(
+            "Can only assign to staff (admin or manager level)",
+            400
+          );
         }
 
         maintenanceRequest.assignedTo = assignedTo;
@@ -255,6 +274,12 @@ export async function GET(
     if (!session?.user) {
       return createErrorResponse("Unauthorized", 401);
     }
+
+    // This handler has no role check at all — any authenticated user could read
+    // a request's status history. Built-in roles keep that behaviour; a custom
+    // role now needs the permission.
+    const denied = requirePermission(session.user as any, "maintenance_view");
+    if (denied) return denied;
 
     const { id } = await params;
 
