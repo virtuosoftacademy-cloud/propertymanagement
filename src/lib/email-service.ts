@@ -31,6 +31,7 @@ export class EmailService {
   private fromEmail: string;
   private appName: string;
   private appUrl: string;
+  private configured: boolean;
 
   constructor() {
     // Initialize email configuration from environment variables
@@ -49,16 +50,35 @@ export class EmailService {
     this.appName = process.env.APP_NAME || "PropertyPro";
     this.appUrl = process.env.APP_URL || "http://localhost:3000";
 
-    // Validate email configuration
-    if (!config.auth.user || !config.auth.pass) {
+    // Placeholders shipped in .env.example. Treated as "not configured" rather
+    // than attempted, because Gmail answers them with EAUTH 535 and the real
+    // cause — nobody filled the values in — gets lost in the stack trace.
+    const PLACEHOLDERS = [
+      "your-email@gmail.com",
+      "your-app-password",
+      "your-password",
+    ];
+    const isPlaceholder = (value: string) =>
+      !value || PLACEHOLDERS.includes(value.trim().toLowerCase());
+
+    this.configured =
+      !isPlaceholder(config.auth.user) && !isPlaceholder(config.auth.pass);
+
+    if (!this.configured) {
       console.warn(
-        "⚠️  Email service: Missing EMAIL_SERVER_USER or EMAIL_SERVER_PASSWORD"
+        "⚠️  Email service is NOT configured — no mail will be sent.\n" +
+          "    Set real values for EMAIL_SERVER_USER and EMAIL_SERVER_PASSWORD in .env.local.\n" +
+          "    For Gmail this must be a 16-character App Password, not the account password."
       );
-    } else {
     }
 
     // Create transporter using nodemailer
     this.transporter = nodemailer.createTransport(config);
+  }
+
+  /** Whether real credentials are present. False means sends are skipped. */
+  isConfigured(): boolean {
+    return this.configured;
   }
 
   // Verify email service connection
@@ -82,6 +102,16 @@ export class EmailService {
       contentType?: string;
     }>
   ): Promise<boolean> {
+    // Fail fast and legibly instead of spending a socket timeout to reach an
+    // EAUTH the caller cannot act on.
+    if (!this.configured) {
+      console.error(
+        `Email NOT sent to ${to} ("${template.subject}") — email service is not configured. ` +
+          `Set EMAIL_SERVER_USER and EMAIL_SERVER_PASSWORD in .env.local.`
+      );
+      return false;
+    }
+
     try {
       const mailOptions = {
         from: `${this.appName} <${this.fromEmail}>`,
@@ -352,6 +382,57 @@ If you have any questions, please contact our support team.
       {
         text: "Reset My Password",
         url: resetUrl,
+      }
+    );
+
+    return this.sendEmail(userEmail, template);
+  }
+
+  /**
+   * Welcome a customer who has just bought a subscription and needs to choose
+   * their first password.
+   *
+   * Deliberately not sendPasswordReset: that email says "we received a request
+   * to reset your password", which is wrong and alarming for someone who has
+   * never had one. Same token type and endpoint, different message.
+   */
+  async sendManagerWelcome(
+    userEmail: string,
+    userName: string,
+    resetToken: string,
+    planName: string
+  ): Promise<boolean> {
+    const setupUrl = `${this.appUrl}/auth/reset-password?token=${resetToken}`;
+
+    const content = `
+      <p>Hello <strong>${userName}</strong>,</p>
+
+      <p>Thank you for subscribing to ${this.appName} on the <strong>${planName}</strong> plan. Your manager account is ready.</p>
+
+      <p>To get started, choose a password for your account:</p>
+
+      <div class="security-notice">
+        <strong>This link is unique to you and expires in 7 days.</strong>
+        If it expires before you use it, you can request a new one from the sign-in page.
+      </div>
+
+      <p>Once you're in, you can:</p>
+      <ul>
+        <li>Add your properties and units</li>
+        <li>Record tenants and leases</li>
+        <li>Set up rent invoicing and track payments</li>
+        <li>Keep compliance certificates in one place</li>
+      </ul>
+
+      <p>If you didn't sign up for ${this.appName}, please contact us and ignore this email — no password will be set until this link is used.</p>
+    `;
+
+    const template = this.generateBaseTemplate(
+      `Welcome to ${this.appName} — set your password`,
+      content,
+      {
+        text: "Set My Password",
+        url: setupUrl,
       }
     );
 

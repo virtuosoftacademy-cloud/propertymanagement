@@ -6,6 +6,7 @@
 import crypto from "crypto";
 import InvitationToken, { IInvitationToken } from "@/models/InvitationToken";
 import connectDB from "@/lib/mongodb";
+import { emailService } from "@/lib/email-service";
 
 // Generate secure random token
 export function generateSecureToken(): string {
@@ -13,9 +14,18 @@ export function generateSecureToken(): string {
 }
 
 // Create password reset token
+export const ONE_HOUR_MS = 60 * 60 * 1000;
+/**
+ * Welcome links need far longer than a reset link. A customer who has just paid
+ * may not open their inbox for a day or two, and an expired link is the first
+ * thing they experience of the product.
+ */
+export const SEVEN_DAYS_MS = 7 * 24 * ONE_HOUR_MS;
+
 export async function createPasswordResetToken(
   userId: string,
-  email: string
+  email: string,
+  expiresInMs: number = ONE_HOUR_MS
 ): Promise<{ success: boolean; token?: string; error?: string }> {
   try {
     await connectDB();
@@ -29,8 +39,7 @@ export async function createPasswordResetToken(
     // Generate secure token
     const token = generateSecureToken();
 
-    // Create password reset token (expires in 1 hour)
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + expiresInMs);
 
     const resetToken = new InvitationToken({
       email: email.toLowerCase(),
@@ -80,20 +89,21 @@ export async function sendPasswordResetEmail(
       };
     }
 
-    // Send password reset email
-    // TODO: Temporarily disabled email sending due to nodemailer configuration issue
-    // const emailSent = await emailService.sendPasswordReset(
-    //   resetToken.email,
-    //   userName,
-    //   token
-    // );
+    const emailSent = await emailService.sendPasswordReset(
+      resetToken.email,
+      userName,
+      token
+    );
 
-    // if (!emailSent) {
-    //   return {
-    //     success: false,
-    //     error: "Failed to send password reset email",
-    //   };
-    // }
+    if (!emailSent) {
+      // Report the failure rather than returning success: a caller that thinks
+      // the email went out will tell the user to check their inbox for
+      // something that was never sent.
+      return {
+        success: false,
+        error: "Failed to send password reset email",
+      };
+    }
 
     return {
       success: true,

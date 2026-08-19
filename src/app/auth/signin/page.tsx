@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import {
@@ -38,7 +40,7 @@ const DEFAULT_BRANDING: Branding = {
   favicon: "/favicon.ico",
   primaryColor: "#188182",
   secondaryColor: "#1F1F1F",
-  companyName: "Tenure",
+  companyName: "PropertyPro",
 };
 
 export default function SignInPage() {
@@ -52,8 +54,10 @@ export default function SignInPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   
-  if (session?.user) { 
-    redirect("/landing")
+  // Was redirect("/landing"), which no longer exists. /dashboard is also where
+  // the root page sends an authenticated visitor, so the two now agree.
+  if (session?.user) {
+    redirect("/dashboard")
   }
 
   useEffect(() => {
@@ -147,7 +151,15 @@ export default function SignInPage() {
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                   <Input
