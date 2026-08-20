@@ -15,6 +15,7 @@ import {
   createSuccessResponse as createApiSuccessResponse,
   createErrorResponse as createApiErrorResponse,
 } from "@/lib/api-utils";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 // Helper functions
 function createSuccessResponse(
@@ -41,6 +42,12 @@ export async function GET(request: NextRequest) {
     if (!session?.user) {
       return createErrorResponse("Authentication required", 401);
     }
+
+    // Role-gating alone let any manager-inheriting role read the payment
+    // ledger, including plan roles that do not carry payment_history.
+    // Built-in roles pass through untouched.
+    const denied = requirePermission(session.user as any, "payment_history");
+    if (denied) return denied;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");

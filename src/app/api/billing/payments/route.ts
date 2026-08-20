@@ -1,16 +1,17 @@
 /**
- * PropertyPro - Manager payments ledger API
+ * PropertyPro - Subscription payments
  *
- * What has actually been received against manager accounts. Card rows are
- * written by the Stripe webhook; this endpoint records the cash ones.
+ * Payments are EMBEDDED on the subscription document, so this endpoint reads
+ * across subscriptions and flattens their arrays rather than querying a second
+ * collection. Card rows are written by the Stripe webhook; this records cash.
  */
 
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { ManagerAccount, ManagerPayment } from "@/models";
+import { Subscription } from "@/models";
 import { UserRole } from "@/types";
-import type { ManagerPaymentsView } from "@/types/billing";
+import type { SubscriptionPaymentsView } from "@/types/billing";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -18,13 +19,13 @@ import {
   parseRequestBody,
   withRoleAndDB,
 } from "@/lib/api-utils";
-import { serializePayment } from "@/lib/billing/serialize";
+import { flattenPayments, serializePayment } from "@/lib/billing/serialize";
 import { summarisePayments } from "@/lib/billing/summarise";
 
 const recordPaymentSchema = z.object({
-  accountId: z
+  subscriptionId: z
     .string()
-    .refine((v) => mongoose.Types.ObjectId.isValid(v), "Select an account"),
+    .refine((v) => mongoose.Types.ObjectId.isValid(v), "Select a subscription"),
   amount: z
     .number({ invalid_type_error: "Enter an amount" })
     .positive("Amount must be greater than zero")
@@ -35,31 +36,29 @@ const recordPaymentSchema = z.object({
 });
 
 // ============================================================================
-// GET /api/billing/manager-payments
+// GET /api/billing/payments
 // ============================================================================
 
 export const GET = withRoleAndDB([UserRole.ADMIN])(
   async (_user, request: NextRequest) => {
     try {
       const { searchParams } = new URL(request.url);
-      const accountId = searchParams.get("accountId");
+      const subscriptionId = searchParams.get("subscriptionId");
 
       const filter: Record<string, unknown> = {};
-      if (accountId) {
-        if (!mongoose.Types.ObjectId.isValid(accountId)) {
-          return createErrorResponse("Invalid account id", 400);
+      if (subscriptionId) {
+        if (!mongoose.Types.ObjectId.isValid(subscriptionId)) {
+          return createErrorResponse("Invalid subscription id", 400);
         }
-        filter.accountId = accountId;
+        filter._id = subscriptionId;
       }
 
-      // Newest first — a ledger is read from the most recent payment backwards.
-      const docs = await ManagerPayment.find(filter)
-        .sort({ receivedOn: -1 })
-        .lean();
+      const docs = await Subscription.find(filter).lean();
+      // flattenPayments sorts newest first — a ledger is read backwards from
+      // the most recent payment.
+      const payments = flattenPayments(docs as any[]);
 
-      const payments = (docs as any[]).map(serializePayment);
-
-      const view: ManagerPaymentsView = {
+      const view: SubscriptionPaymentsView = {
         summary: summarisePayments(payments),
         payments,
       };
@@ -72,7 +71,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN])(
 );
 
 // ============================================================================
-// POST /api/billing/manager-payments - record a cash payment
+// POST /api/billing/payments - record a cash payment
 // ============================================================================
 
 export const POST = withRoleAndDB([UserRole.ADMIN])(
@@ -91,12 +90,14 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
 
       const v = parsed.data;
 
-      const account = await ManagerAccount.findById(v.accountId);
-      if (!account) return createErrorResponse("Account not found", 404);
+      const subscription = await Subscription.findById(v.subscriptionId);
+      if (!subscription) {
+        return createErrorResponse("Subscription not found", 404);
+      }
 
-      if (account.stripeSubscriptionId) {
+      if (subscription.stripeSubscriptionId) {
         return createErrorResponse(
-          "This account is billed through Stripe. Its payments are written from Stripe invoices — recording one by hand would double-count the revenue.",
+          "This subscription is billed through Stripe. Its payments are written from Stripe invoices — recording one by hand would double-count the revenue.",
           409
         );
       }
@@ -106,13 +107,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
         return createErrorResponse("Invalid received date", 400);
       }
 
-      const created = await ManagerPayment.create({
-        accountId: account._id,
-        // Denormalised deliberately: a historic row should keep saying what was
-        // true when the money arrived, even if the account is later renamed.
-        clientName: account.clientName,
-        companyName: account.companyName,
-        planId: account.planId,
+      subscription.payments.push({
         amount: v.amount,
         receivedOn,
         method: "cash",
@@ -121,17 +116,19 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
           user.email,
         periodLabel: v.periodLabel,
         notes: v.notes,
-      });
+      } as any);
 
-      // A received payment is what makes an account current.
-      account.lastPaymentAt = receivedOn;
-      if (account.status === "past_due" || account.status === "pending") {
-        account.status = "active";
+      // A received payment is what makes a subscription current.
+      subscription.lastPaymentAt = receivedOn;
+      if (subscription.status === "past_due" || subscription.status === "pending") {
+        subscription.status = "active";
       }
-      await account.save();
+      await subscription.save();
+
+      const added = subscription.payments[subscription.payments.length - 1];
 
       return createSuccessResponse(
-        serializePayment(created as any),
+        serializePayment(added, subscription),
         "Payment recorded"
       );
     } catch (error) {

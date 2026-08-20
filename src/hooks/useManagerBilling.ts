@@ -10,9 +10,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type {
-  ManagerAccountsView,
-  ManagerAnalyticsView,
-  ManagerPaymentsView,
+  SubscriptionsView,
+  SubscriptionAnalyticsView,
+  SubscriptionPaymentsView,
   SelectableUser,
 } from "@/types/billing";
 
@@ -60,20 +60,20 @@ function useBillingResource<T>(url: string): Result<T> {
 }
 
 export function useManagerAccounts() {
-  return useBillingResource<ManagerAccountsView>(
+  return useBillingResource<SubscriptionsView>(
     "/api/billing/manager-accounts"
   );
 }
 
 export function useManagerPayments(accountId?: string) {
   const query = accountId ? `?accountId=${encodeURIComponent(accountId)}` : "";
-  return useBillingResource<ManagerPaymentsView>(
+  return useBillingResource<SubscriptionPaymentsView>(
     `/api/billing/manager-payments${query}`
   );
 }
 
 export function useManagerAnalytics() {
-  return useBillingResource<ManagerAnalyticsView>("/api/billing/analytics");
+  return useBillingResource<SubscriptionAnalyticsView>("/api/billing/analytics");
 }
 
 export function useSelectableUsers() {
@@ -81,7 +81,7 @@ export function useSelectableUsers() {
 }
 
 /** Empty views, so a page can render its normal layout before data arrives. */
-export const EMPTY_ACCOUNTS_VIEW: ManagerAccountsView = {
+export const EMPTY_ACCOUNTS_VIEW: SubscriptionsView = {
   summary: {
     totalAccounts: 0,
     activeAccounts: 0,
@@ -92,7 +92,7 @@ export const EMPTY_ACCOUNTS_VIEW: ManagerAccountsView = {
   accounts: [],
 };
 
-export const EMPTY_PAYMENTS_VIEW: ManagerPaymentsView = {
+export const EMPTY_PAYMENTS_VIEW: SubscriptionPaymentsView = {
   summary: {
     totalReceived: 0,
     receivedThisMonth: 0,

@@ -13,14 +13,23 @@ import {
   showSimpleSuccess,
   parseValidationErrors,
 } from "@/lib/toast-notifications";
+import {
+  UpgradePrompt,
+  asUnitLimitError,
+  type UnitLimitError,
+} from "@/components/billing/upgrade-prompt";
 
 export default function EnhancedNewPropertyPage() {
   const router = useRouter();
   const { t } = useLocalizationContext();
   const [isLoading, setIsLoading] = useState(false);
+  // Kept on the page rather than shown as a toast: a toast vanishes and leaves
+  // the user staring at a form that will not submit.
+  const [limitError, setLimitError] = useState<UnitLimitError | null>(null);
   
   const handlePropertySubmit = async (data: any) => {
     setIsLoading(true);
+    setLimitError(null);
     try {
       const response = await fetch("/api/properties", {
         method: "POST",
@@ -29,6 +38,14 @@ export default function EnhancedNewPropertyPage() {
       });
 
       const result = await response.json();
+
+      // A plan ceiling is not a validation failure — it needs an upgrade link,
+      // not an error message the user can do nothing about.
+      const limit = asUnitLimitError(result);
+      if (limit) {
+        setLimitError(limit);
+        return;
+      }
 
       if (!response.ok) {
         const errorDetails = result.details || result.error || result.message;
@@ -104,6 +121,15 @@ export default function EnhancedNewPropertyPage() {
           </Link>
         </div>
       </div>
+
+      {limitError && (
+        <UpgradePrompt
+          message={limitError.error}
+          allowance={limitError.allowance}
+          upgradeUrl={limitError.upgradeUrl}
+          className="mb-6"
+        />
+      )}
 
       <EnhancedPropertyForm
         onSubmit={handlePropertySubmit}

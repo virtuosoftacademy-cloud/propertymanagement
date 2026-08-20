@@ -12,8 +12,8 @@
  * Set STRIPE_SUBSCRIPTION_WEBHOOK_SECRET to this endpoint's signing secret.
  *
  * Stripe retries on any non-2xx, so every handler here must be idempotent —
- * hence the unique indexes on ManagerAccount.stripeSubscriptionId and
- * ManagerPayment.stripeInvoiceId, which make a double delivery collide rather
+ * hence the unique indexes on Subscription.stripeSubscriptionId and
+ * Subscription.stripeInvoiceId, which make a double delivery collide rather
  * than silently create a second account or double-count revenue.
  */
 
@@ -23,7 +23,7 @@ import { model as dbModel } from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import connectDB from "@/lib/mongodb";
-import { ManagerAccount, ManagerPayment, User } from "@/models";
+import { Subscription, Subscription, User } from "@/models";
 import { resolvePlan } from "@/lib/billing/plans";
 import { planForStripePrice } from "@/lib/billing/stripe-prices";
 import {
@@ -132,7 +132,7 @@ async function handleCheckoutCompleted(
   if (!subscriptionId) return;
 
   // Already provisioned — a retried delivery, not a second sale.
-  const existing = await ManagerAccount.findOne({
+  const existing = await Subscription.findOne({
     stripeSubscriptionId: subscriptionId,
     deletedAt: null,
   });
@@ -170,7 +170,7 @@ async function handleCheckoutCompleted(
 
   const paidFields = {
     contactEmail: email,
-    managerUserId: userId,
+    userId: userId,
     planId,
     status: "active" as const,
     amount:
@@ -199,14 +199,14 @@ async function handleCheckoutCompleted(
   //
   // Newest first: if a customer somehow has more than one unclaimed row, the
   // one they just signed up with is the one this payment belongs to.
-  const unclaimed = await ManagerAccount.findOne({
+  const unclaimed = await Subscription.findOne({
     stripeSubscriptionId: null,
     deletedAt: null,
     // Card only. An admin-sold account is recorded as `cash`, and claiming one
     // of those would silently convert a negotiated cash arrangement into a
     // Stripe subscription and lose the record of how that client actually pays.
     paymentMethod: "card",
-    $or: [{ managerUserId: userId }, { contactEmail: email.toLowerCase() }],
+    $or: [{ userId: userId }, { contactEmail: email.toLowerCase() }],
   }).sort({ createdAt: -1 });
 
   if (unclaimed) {
@@ -221,7 +221,7 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  await ManagerAccount.create({ ...paidFields, clientName: name || email });
+  await Subscription.create({ ...paidFields, clientName: name || email });
 
 }
 
@@ -232,7 +232,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       : (invoice as any).subscription?.id;
   if (!subscriptionId) return;
 
-  const account = await ManagerAccount.findOne({
+  const account = await Subscription.findOne({
     stripeSubscriptionId: subscriptionId,
     deletedAt: null,
   });
@@ -251,7 +251,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   // Best-effort: a failure here must not make Stripe retry a payment we have
   // already recorded. The account is on the right plan either way, so this is
   // recoverable by re-running the promotion.
-  if (account.managerUserId) {
+  if (account.userId) {
     try {
       const RoleModel = dbModel("Role");
       const planRole = await RoleModel.findOne({
@@ -261,7 +261,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 
       if (planRole) {
         await dbModel("User").updateOne(
-            { _id: account.managerUserId },
+            { _id: account.userId },
             { $set: { role: account.planId } }
           );
       } else {
@@ -271,7 +271,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       }
     } catch (promotionError) {
       console.error(
-        `[billing] failed to promote user ${account.managerUserId} to ${account.planId}:`,
+        `[billing] failed to promote user ${account.userId} to ${account.planId}:`,
         promotionError
       );
     }
@@ -282,7 +282,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   );
 
   try {
-    await ManagerPayment.create({
+    await Subscription.create({
       accountId: account._id,
       clientName: account.clientName,
       companyName: account.companyName,
@@ -309,7 +309,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 }
 
 async function handleSubscriptionChanged(subscription: Stripe.Subscription) {
-  const account = await ManagerAccount.findOne({
+  const account = await Subscription.findOne({
     stripeSubscriptionId: subscription.id,
     deletedAt: null,
   });
@@ -357,7 +357,7 @@ async function handleSubscriptionChanged(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const account = await ManagerAccount.findOne({
+  const account = await Subscription.findOne({
     stripeSubscriptionId: subscription.id,
     deletedAt: null,
   });
@@ -370,8 +370,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
   // Revoke the login too: a cancelled subscription that leaves a working
   // manager account is the org giving the product away.
-  if (account.managerUserId) {
-    await User.findByIdAndUpdate(account.managerUserId, { isActive: false });
+  if (account.userId) {
+    await User.findByIdAndUpdate(account.userId, { isActive: false });
   }
 }
 
@@ -382,7 +382,7 @@ async function handleInvoiceFailed(invoice: Stripe.Invoice) {
       : (invoice as any).subscription?.id;
   if (!subscriptionId) return;
 
-  await ManagerAccount.findOneAndUpdate(
+  await Subscription.findOneAndUpdate(
     { stripeSubscriptionId: subscriptionId, deletedAt: null },
     { status: "past_due" }
   );

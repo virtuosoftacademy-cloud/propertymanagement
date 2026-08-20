@@ -112,7 +112,12 @@ export default function EditSubscriptionPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="space-y-1">
+      <div className="space-y-1 flex justify-between items-center">
+        <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
+          <Pencil className="h-7 w-7" />
+          Edit subscription
+        </h1>
+
         <Button
           variant="ghost"
           size="sm"
@@ -123,11 +128,6 @@ export default function EditSubscriptionPage({
           Back to Manager Accounts
         </Button>
 
-        <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-          <Pencil className="h-7 w-7" />
-          Edit subscription
-        </h1>
-        <p className="text-muted-foreground">{account.clientName}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

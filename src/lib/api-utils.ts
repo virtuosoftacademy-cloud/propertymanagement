@@ -293,7 +293,23 @@ export function withRoleAndDB(roles: UserRole | UserRole[]) {
         // resolved to the base role it inherits from. Previously this was a
         // bare `as UserRole` cast, so a custom role matched nothing in
         // allowedRoles and was refused by every guarded route.
-        const resolved = await resolveUserRole(session.user.role as string);
+        // Resolve from assignedRole, NOT session.user.role.
+        //
+        // The session callback has already run resolveUserRole() and stored the
+        // EFFECTIVE base role in session.user.role — so re-resolving that value
+        // asked about "manager", a built-in role, and got back
+        // { isCustom: false, permissions: [] }. Every custom role was therefore
+        // flattened to its base before any handler saw it, which made
+        // hasActionPermission() short-circuit to true and turned every
+        // requirePermission() call in the codebase into a no-op. A "free" role
+        // without property_delete could delete properties.
+        //
+        // assignedRole is what the user actually holds; fall back to role for
+        // sessions minted before that field existed.
+        const resolved = await resolveUserRole(
+          ((session.user as any).assignedRole as string) ||
+            (session.user.role as string)
+        );
 
         const user: AuthenticatedUser = {
           id: session.user.id,

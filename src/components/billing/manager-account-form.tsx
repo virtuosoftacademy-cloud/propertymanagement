@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,7 +93,28 @@ export function ManagerAccountForm({
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const { data: usersData, loading: usersLoading } = useSelectableUsers();
-  const selectableUsers = usersData ?? [];
+  const fetchedUsers = usersData ?? [];
+
+  // Keep the account's current client in the list even when the endpoint
+  // would not return them — deactivated, or moved to a role that is no longer
+  // selectable. Without this the Select finds no matching option, silently
+  // renders the placeholder, and saving the form would blank out a link the
+  // admin never intended to touch.
+  const selectableUsers = useMemo(() => {
+    const current = account?.managerUserId;
+    if (!current || fetchedUsers.some((u) => u.id === current)) {
+      return fetchedUsers;
+    }
+    return [
+      {
+        id: current,
+        name: account?.managerName || account?.clientName || "Current client",
+        email: account?.contactEmail || "",
+        company: account?.companyName,
+      },
+      ...fetchedUsers,
+    ];
+  }, [fetchedUsers, account]);
 
   const set = <K extends keyof ManagerAccountFormValues>(
     key: K,

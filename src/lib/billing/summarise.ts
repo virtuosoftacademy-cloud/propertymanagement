@@ -8,10 +8,10 @@
  */
 
 import type {
-  ManagerAccount,
-  ManagerPayment,
-  ManagerPaymentsSummary,
-  ManagerRevenueSummary,
+  Subscription,
+  Subscription,
+  SubscriptionPaymentsSummary,
+  SubscriptionRevenueSummary,
   MonthlyRevenuePoint,
 } from "@/types/billing";
 import { monthlyEquivalent } from "./plans";
@@ -24,10 +24,10 @@ function sameMonth(iso: string, ref: Date): boolean {
   );
 }
 
-export function summariseAccounts(
-  rows: ManagerAccount[],
+export function summariseSubscriptions(
+  rows: Subscription[],
   now: Date = new Date()
-): ManagerRevenueSummary {
+): SubscriptionRevenueSummary {
   const active = rows.filter((r) => r.status === "active");
 
   return {
@@ -47,9 +47,9 @@ export function summariseAccounts(
 }
 
 export function summarisePayments(
-  rows: ManagerPayment[],
+  rows: Subscription[],
   now: Date = new Date()
-): ManagerPaymentsSummary {
+): SubscriptionPaymentsSummary {
   const totalReceived = rows.reduce((sum, p) => sum + p.amount, 0);
 
   return {
@@ -77,8 +77,8 @@ const MONTH_KEY = (d: Date) =>
  * "we have no data".
  */
 export function buildRevenueHistory(
-  accounts: ManagerAccount[],
-  payments: ManagerPayment[],
+  accounts: Subscription[],
+  payments: Subscription[],
   now: Date = new Date(),
   months = 12
 ): MonthlyRevenuePoint[] {

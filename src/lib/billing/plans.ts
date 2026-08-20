@@ -76,7 +76,11 @@ export const MANAGER_PLANS: ManagerPlan[] = [
   },
 ];
 
-export const DEFAULT_PLAN_ID = "starter";
+// Must name a plan that actually exists in MANAGER_PLANS. It was left at
+// "starter" after that plan was retired, so resolvePlan() returned undefined
+// for every fallback — and an unresolved plan reads as "no unit limit", which
+// silently disabled the ceiling for anyone without an explicit plan.
+export const DEFAULT_PLAN_ID = "free";
 
 export function resolvePlan(planId: string): ManagerPlan | undefined {
   return MANAGER_PLANS.find((plan) => plan.id === planId);

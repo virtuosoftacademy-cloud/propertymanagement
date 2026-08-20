@@ -10,6 +10,11 @@ import { Property } from "@/models";
 import { UserRole } from "@/types";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { isPropertyInScope } from "@/lib/auth/property-scope";
+import {
+  getUnitAllowance,
+  unitLimitMessage,
+  UNIT_LIMIT_CODE,
+} from "@/lib/billing/unit-limit";
 
 // GET /api/properties/[id]/units - Get all units for a property
 export async function GET(
@@ -112,6 +117,22 @@ export async function POST(
     // an out-of-scope property is indistinguishable from a missing one.
     if (!isPropertyInScope({ id: session.user.id, role: userRole as any, permissions: (session.user as any).permissions }, property)) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    }
+
+    // Plan ceiling. Checked before validating the unit itself so a Free
+    // account is told to upgrade rather than being walked through a form it
+    // was never going to be allowed to submit.
+    const allowance = await getUnitAllowance(session.user as any, 1);
+    if (!allowance.allowed) {
+      return NextResponse.json(
+        {
+          error: unitLimitMessage(allowance),
+          code: UNIT_LIMIT_CODE,
+          allowance,
+          upgradeUrl: "/pricing",
+        },
+        { status: 403 }
+      );
     }
 
     // Verify this is a multi-unit property

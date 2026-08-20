@@ -44,6 +44,5 @@ export { default as DocumentTemplate } from "./DocumentTemplate";
 export { default as InvitationToken } from "./InvitationToken";
 export { default as Notification } from "./Notification";
 
-// Manager accounts sold by the admin to clients
-export { default as ManagerAccount } from "./ManagerAccount";
-export { default as ManagerPayment } from "./ManagerPayment";
+// Subscriptions sold to clients (payments are embedded on the document)
+export { default as Subscription } from "./Subscription";

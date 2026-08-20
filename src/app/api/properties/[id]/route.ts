@@ -26,6 +26,12 @@ import { calculatePropertyStatusFromUnits } from "@/utils/property-status-calcul
 import mongoose from "mongoose";
 import { deleteFromR2 } from "@/lib/r2-server";
 import { isR2Url, extractObjectKey } from "@/lib/r2";
+import { NextResponse } from "next/server";
+import {
+  getUnitAllowance,
+  unitLimitMessage,
+  UNIT_LIMIT_CODE,
+} from "@/lib/billing/unit-limit";
 
 // ============================================================================
 // GET /api/properties/[id] - Get a specific property
@@ -189,6 +195,29 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // Update the property data
       Object.assign(property, propertyUpdateData);
 
+      // Editing units is a third way to add them, alongside creating a property
+      // and POSTing to the units route. Guarded on the DELTA, not the count: a
+      // property already holding its units must stay editable at the ceiling,
+      // and shrinking it is always allowed.
+      if (units && Array.isArray(units)) {
+        const delta = units.length - (property.totalUnits || 1);
+        if (delta > 0) {
+          const allowance = await getUnitAllowance(user as any, delta);
+          if (!allowance.allowed) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: unitLimitMessage(allowance),
+                code: UNIT_LIMIT_CODE,
+                allowance,
+                upgradeUrl: "/pricing",
+              },
+              { status: 403 }
+            );
+          }
+        }
+      }
+
       // Update units if provided (unified architecture)
       if (units && Array.isArray(units)) {
         property.units = units;
@@ -223,11 +252,6 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
     { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      // Custom roles must hold this permission; built-in roles are
-      // governed by the role list above.
-      const denied = requirePermission(user, "property_delete");
-      if (denied) return denied;
-
       const { id } = await params;
 
       if (!isValidObjectId(id)) {
@@ -249,6 +273,19 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // If already soft-deleted, return appropriate error
       if (rawProperty.deletedAt) {
         return createErrorResponse("Property has already been deleted", 410);
+      }
+
+      // Deleting YOUR OWN property needs no extra permission — ownerId records
+      // who created it (see the POST handler), and every role may remove what
+      // it made. `property_delete` governs the other case: deleting a property
+      // someone else created that you were merely assigned to as manager or
+      // agent. Checked here rather than up front so a caller still gets 404 for
+      // a property outside their scope instead of a 403 that confirms it exists.
+      const isCreator =
+        String(rawProperty.ownerId ?? "") === String(user.id);
+      if (!isCreator) {
+        const denied = requirePermission(user, "property_delete");
+        if (denied) return denied;
       }
 
       // Role-based authorization - only admins and managers can delete properties

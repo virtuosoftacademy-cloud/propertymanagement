@@ -18,6 +18,7 @@ import {
   handleApiError,
   withRoleAndDB,
 } from "@/lib/api-utils";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 // ============================================================================
 // GET /api/analytics - Get comprehensive analytics data
@@ -28,6 +29,11 @@ export const GET = withRoleAndDB([
   UserRole.MANAGER,
   UserRole.MANAGER,
 ])(async (user, request: NextRequest) => {
+  // Reporting is a paid capability; plan roles that lack reports_property must
+  // not reach it. Built-in roles pass through untouched.
+  const denied = requirePermission(user, "reports_property");
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(request.url);
     const reportType = searchParams.get("type") || "overview";

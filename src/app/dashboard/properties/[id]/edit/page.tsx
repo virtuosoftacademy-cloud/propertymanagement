@@ -14,6 +14,11 @@ import {
   parseValidationErrors,
 } from "@/lib/toast-notifications";
 import { EnhancedPropertyForm } from "@/components/properties/PropertyForm";
+import {
+  UpgradePrompt,
+  asUnitLimitError,
+  type UnitLimitError,
+} from "@/components/billing/upgrade-prompt";
 
 export default function EditPropertyPage() {
   const params = useParams();
@@ -22,6 +27,10 @@ export default function EditPropertyPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [propertyData, setPropertyData] = useState<any>(null);
+  // Deliberately NOT the `error` state above: that one replaces the whole page
+  // with "Error Loading Property", which would hide the form the user is trying
+  // to fix and misdescribe a plan ceiling as a load failure.
+  const [limitError, setLimitError] = useState<UnitLimitError | null>(null);
 
   const propertyId = params.id as string;
 
@@ -47,6 +56,7 @@ export default function EditPropertyPage() {
 
   const handlePropertySubmit = async (data: any) => {
     setSaving(true);
+    setLimitError(null);
     try {
       const response = await fetch(`/api/properties/${propertyId}`, {
         method: "PUT",
@@ -57,6 +67,14 @@ export default function EditPropertyPage() {
       });
 
       const result = await response.json();
+
+      // Return, do not throw: a plan ceiling needs an upgrade link rendered
+      // beside the form, not an exception routed into the page-level error.
+      const limit = asUnitLimitError(result);
+      if (limit) {
+        setLimitError(limit);
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -156,6 +174,15 @@ export default function EditPropertyPage() {
 
       <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardContent className="p-6">
+          {limitError && (
+            <UpgradePrompt
+              message={limitError.error}
+              allowance={limitError.allowance}
+              upgradeUrl={limitError.upgradeUrl}
+              className="mb-6"
+            />
+          )}
+
           <EnhancedPropertyForm
             initialData={propertyData}
             onSubmit={handlePropertySubmit}

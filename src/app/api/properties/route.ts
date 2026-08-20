@@ -29,6 +29,12 @@ import {
   canViewAllProperties,
 } from "@/lib/auth/property-scope";
 import mongoose from "mongoose";
+import { NextResponse } from "next/server";
+import {
+  getUnitAllowance,
+  unitLimitMessage,
+  UNIT_LIMIT_CODE,
+} from "@/lib/billing/unit-limit";
 
 // ============================================================================
 // GET /api/properties - Get all properties with pagination and filtering
@@ -258,6 +264,27 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       }
 
       const propertyData = validation.data;
+
+      // A new property brings its own units with it, so this path can breach the
+      // plan ceiling just as surely as adding a unit to an existing property.
+      // Enforcing only on the unit route would let a Free account hold any
+      // number of units by creating a fresh property for each one.
+      const wanted = Array.isArray((propertyData as any).units)
+        ? Math.max(1, (propertyData as any).units.length)
+        : 1;
+      const allowance = await getUnitAllowance(user as any, wanted);
+      if (!allowance.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: unitLimitMessage(allowance),
+            code: UNIT_LIMIT_CODE,
+            allowance,
+            upgradeUrl: "/pricing",
+          },
+          { status: 403 }
+        );
+      }
 
       // Prepare property data with proper ownership
       // Strip deprecated fields that should only exist at unit level

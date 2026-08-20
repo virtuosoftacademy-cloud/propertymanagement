@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { User, ManagerAccount } from "@/models";
+import { User, Subscription } from "@/models";
 import { MANAGER_PLANS } from "@/lib/billing/plans";
 import { UserRole } from "@/types";
 import {
@@ -122,7 +122,7 @@ export const POST = withDatabase(async (request: NextRequest) => {
       // (handleInvoicePaid). Assigning `pro` here would hand out every Pro
       // permission to anyone who typed an email address.
       //
-      // The chosen plan is not lost — it is recorded on the ManagerAccount, so
+      // The chosen plan is not lost — it is recorded on the Subscription, so
       // checkout and the webhook know what was asked for.
       const isPaid = (selectedPlan.monthlyPrice ?? 0) > 0;
       planRole = isPaid ? "free" : selectedPlan.id;
@@ -199,10 +199,10 @@ export const POST = withDatabase(async (request: NextRequest) => {
       // (the email is taken). Logged loudly instead, for an admin to reconcile.
       if (selectedPlan) {
         try {
-          await ManagerAccount.create({
+          await Subscription.create({
             clientName: `${firstName.trim()} ${lastName.trim()}`.trim(),
             contactEmail: email.toLowerCase().trim(),
-            managerUserId: savedUser._id,
+            userId: savedUser._id,
             planId: selectedPlan.id,
             // A paid plan is not active until money arrives; the free tier has
             // nothing to collect, so it starts active.

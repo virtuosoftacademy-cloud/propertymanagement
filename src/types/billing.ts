@@ -14,7 +14,7 @@
 // Manager accounts (what clients pay the admin for)
 // ============================================================================
 
-export type ManagerAccountStatus =
+export type SubscriptionStatus =
   | "pending" // sold, not yet paid or not yet provisioned
   | "active"
   | "past_due" // renewal missed
@@ -27,9 +27,9 @@ export type ManagerAccountStatus =
  * this to a method the app cannot actually process — the value is the record of
  * how the money really moved.
  */
-export type ManagerPaymentMethod = "cash" | "card";
+export type SubscriptionPaymentMethod = "cash" | "card";
 
-export interface ManagerAccount {
+export interface Subscription {
   id: string;
   /** The person the account is sold to — the selected user's name. */
   clientName: string;
@@ -40,18 +40,19 @@ export interface ManagerAccount {
   companyName?: string;
   contactEmail: string;
   contactPhone?: string;
-  /** The provisioned Manager user, once it exists. */
-  managerUserId?: string;
-  managerName?: string;
+  /** The users row this subscription belongs to. */
+  userId?: string;
+  /** Display name of that user, resolved on read. */
+  userName?: string;
   planId: string;
-  status: ManagerAccountStatus;
+  status: SubscriptionStatus;
   /** What this client pays per cycle, in GBP. */
   amount: number;
   billingCycle: "monthly" | "annual";
   startedAt: string; // ISO
   renewsAt?: string; // ISO — next payment due from the client
   lastPaymentAt?: string; // ISO
-  paymentMethod: ManagerPaymentMethod;
+  paymentMethod: SubscriptionPaymentMethod;
   notes?: string;
   /** Present once the account is billed through Stripe rather than by cash. */
   stripeCustomerId?: string;
@@ -71,16 +72,17 @@ export interface ManagerAccount {
  * payment is written by the Stripe webhook, where `recordedBy` is "Stripe" and
  * the invoice id is the authoritative trace.
  */
-export interface ManagerPayment {
+export interface SubscriptionPayment {
   id: string;
-  accountId: string;
+  /** The subscription this payment belongs to; set when flattened for a list. */
+  subscriptionId: string;
   /** Denormalised for display, so the ledger reads without joining. */
   clientName: string;
   companyName?: string;
   planId: string;
   amount: number;
   receivedOn: string; // ISO
-  method: ManagerPaymentMethod;
+  method: SubscriptionPaymentMethod;
   recordedBy: string;
   /** The cycle this payment covered, for reconciling against renewals. */
   periodLabel?: string;
@@ -89,23 +91,23 @@ export interface ManagerPayment {
   stripeInvoiceId?: string;
 }
 
-export interface ManagerPaymentsSummary {
+export interface SubscriptionPaymentsSummary {
   totalReceived: number;
   receivedThisMonth: number;
   paymentCount: number;
   averagePayment: number;
 }
 
-export interface ManagerPaymentsView {
-  summary: ManagerPaymentsSummary;
-  payments: ManagerPayment[];
+export interface SubscriptionPaymentsView {
+  summary: SubscriptionPaymentsSummary;
+  payments: SubscriptionPayment[];
 }
 
 // ============================================================================
 // View model
 // ============================================================================
 
-export interface ManagerRevenueSummary {
+export interface SubscriptionRevenueSummary {
   totalAccounts: number;
   activeAccounts: number;
   /** Sum of active accounts normalised to a monthly figure, in GBP. */
@@ -116,9 +118,9 @@ export interface ManagerRevenueSummary {
   outstanding: number;
 }
 
-export interface ManagerAccountsView {
-  summary: ManagerRevenueSummary;
-  accounts: ManagerAccount[];
+export interface SubscriptionsView {
+  summary: SubscriptionRevenueSummary;
+  accounts: Subscription[];
 }
 
 /**
@@ -137,9 +139,9 @@ export interface MonthlyRevenuePoint {
   cancelledAccounts: number;
 }
 
-export interface ManagerAnalyticsView {
+export interface SubscriptionAnalyticsView {
   history: MonthlyRevenuePoint[];
-  accounts: ManagerAccount[];
+  accounts: Subscription[];
 }
 
 /** A user the admin can attach a manager account to. */
