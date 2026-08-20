@@ -7,6 +7,7 @@ import { MongoClient } from "mongodb";
 import connectDB from "./mongodb";
 import User, { UserDocument } from "@/models/User";
 import { UserRole } from "@/types";
+import { resolveUserRole } from "@/lib/auth/resolve-role";
 import type { Provider } from "next-auth/providers";
 
 // MongoDB client for NextAuth adapter
@@ -89,8 +90,10 @@ providers.push(
       },
     },
     async authorize(credentials, request) {
+      // A missing field is a rejected sign-in, not a server fault — same
+      // reasoning as the credential checks below.
       if (!credentials?.email || !credentials?.password) {
-        throw new Error("Email and password are required");
+        return null;
       }
 
       try {
@@ -101,12 +104,18 @@ providers.push(
           email: (credentials.email as string).toLowerCase(),
         }).select("+password")) as UserDocument | null;
 
+        // Return null, never throw, on a failed credential check. Auth.js v5
+        // turns any non-AuthError thrown from authorize into
+        // `error=Configuration` — a generic "server configuration problem"
+        // page — so a wrong password was indistinguishable from a broken
+        // deployment, both on screen and in the logs. Returning null produces
+        // the correct CredentialsSignin result.
         if (!user) {
-          throw new Error("Invalid email or password");
+          return null;
         }
 
         if (!user?.isActive) {
-          throw new Error("Account is deactivated");
+          return null;
         }
 
         // Check password
@@ -115,7 +124,7 @@ providers.push(
         );
 
         if (!isPasswordValid) {
-          throw new Error("Invalid email or password");
+          return null;
         }
 
         // Update last login
@@ -139,7 +148,6 @@ providers.push(
 );
 
 export const authOptions: NextAuthConfig = {
-  // @ts-expect-error - Type mismatch between @auth/mongodb-adapter and next-auth adapter types
   adapter: MongoDBAdapter(clientPromise),
   providers,
 
@@ -185,7 +193,9 @@ export const authOptions: NextAuthConfig = {
       if (token) {
         session.user.id = (token?.userId as string) ?? "";
 
-        session.user.role = (token?.role as UserRole) ?? UserRole.TENANT;
+        // The role as stored on the user — for an admin-created role this is
+        // its raw name, e.g. "agent", not a UserRole enum member.
+        let rawRole = (token?.role as string) ?? UserRole.TENANT;
         session.user.isActive = (token?.isActive as boolean) ?? false;
 
         // Fetch fresh user data for the session
@@ -193,7 +203,7 @@ export const authOptions: NextAuthConfig = {
           await connectDB();
           const user = await User.findById(token?.userId).select("-password");
           if (user) {
-            session.user.role = (user?.role as UserRole) ?? UserRole.TENANT;
+            rawRole = (user?.role as string) ?? UserRole.TENANT;
 
             session.user.firstName = user?.firstName;
             session.user.lastName = user?.lastName;
@@ -212,6 +222,26 @@ export const authOptions: NextAuthConfig = {
           }
         } catch (error) {
           console.error("Session user fetch error:", error);
+        }
+
+        // Resolve a custom role to the built-in role it inherits from before
+        // exposing it. Every client-side check compares against the three-value
+        // UserRole enum, so without this a user holding "agent" matches nothing
+        // — an empty sidebar and no access anywhere in the UI, even though the
+        // API layer would have let them through.
+        try {
+          const resolved = await resolveUserRole(rawRole);
+          session.user.role = resolved.effectiveRole;
+          session.user.assignedRole = resolved.assignedRole;
+          session.user.isCustomRole = resolved.isCustom;
+          session.user.permissions = resolved.permissions;
+        } catch (error) {
+          // Fail closed: an unresolvable role gets the least access.
+          console.error("Session role resolution error:", error);
+          session.user.role = UserRole.TENANT;
+          session.user.assignedRole = rawRole;
+          session.user.isCustomRole = false;
+          session.user.permissions = [];
         }
       }
 

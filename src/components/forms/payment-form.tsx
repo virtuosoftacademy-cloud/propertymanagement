@@ -273,8 +273,12 @@ function PaymentFormInner({
         return t("payments.new.form.paymentTypeDescriptions.lateFee");
       case PaymentType.INVOICE:
         return t("payments.new.form.paymentTypeDescriptions.invoice");
+      // Kept so existing pet-deposit payments still describe themselves, even
+      // though the type is no longer offered when creating one.
       case PaymentType.PET_DEPOSIT:
         return t("payments.new.form.paymentTypeDescriptions.petDeposit");
+      case PaymentType.COMPLIANCE:
+        return t("payments.new.form.paymentTypeDescriptions.compliance");
       case PaymentType.UTILITY:
         return t("payments.new.form.paymentTypeDescriptions.utility");
       case PaymentType.MAINTENANCE:
@@ -331,7 +335,7 @@ function PaymentFormInner({
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
           {/* Payment Details */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
@@ -379,8 +383,11 @@ function PaymentFormInner({
                           <SelectItem value={PaymentType.LATE_FEE}>
                             {t("payments.new.form.paymentTypes.lateFee")}
                           </SelectItem>
-                          <SelectItem value={PaymentType.PET_DEPOSIT}>
+                          {/* <SelectItem value={PaymentType.PET_DEPOSIT}>
                             {t("payments.new.form.paymentTypes.petDeposit")}
+                          </SelectItem> */}
+                          <SelectItem value={PaymentType.COMPLIANCE}>
+                            {t("payments.new.form.paymentTypes.compliance")}
                           </SelectItem>
                           <SelectItem value={PaymentType.UTILITY}>
                             {t("payments.new.form.paymentTypes.utility")}
@@ -393,9 +400,9 @@ function PaymentFormInner({
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>
+                      {/* <FormDescription>
                         {getPaymentTypeDescription(watchedType)}
-                      </FormDescription>
+                      </FormDescription> */}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -465,11 +472,11 @@ function PaymentFormInner({
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>
+                      {/* <FormDescription>
                         {t(
                           "payments.new.form.paymentDetails.methodDescription"
                         )}
-                      </FormDescription>
+                      </FormDescription> */}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -619,7 +626,7 @@ function PaymentFormInner({
           </Card>
 
           {/* Tenant and Property Selection */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />

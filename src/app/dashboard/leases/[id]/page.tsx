@@ -61,10 +61,16 @@ import {
 } from "@/components/leases/LeaseStatusChanger";
 import { LeaseInvoiceModal } from "@/components/invoices";
 import { LeaseDocuments } from "@/components/leases/LeaseDocuments";
+import {
+  formatLeaseNumber,
+  findLeaseUnitNumber,
+  formatUnitLabel,
+} from "@/lib/leases/lease-number";
 import { leaseService, LeaseResponse } from "@/lib/services/lease.service";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentStatusDashboard } from "@/components/payments/PaymentStatusDashboard";
-import { PaymentManagementSystem } from "@/components/payments/PaymentManagementSystem";
+// Unused while the Invoices tab renders PaymentStatusDashboard instead.
+// import { PaymentManagementSystem } from "@/components/payments/PaymentManagementSystem";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { LoadingSpinner } from "@/components/ui/loading-state";
 
@@ -193,15 +199,30 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
     );
   }
 
+  // Derived, not stored — see lib/leases/lease-number.ts. The unit resolves
+  // only when the property was populated with its `units`, so it degrades to
+  // just the property name rather than showing a blank "Unit".
+  const leaseNumber = formatLeaseNumber(lease as any);
+  const unitLabel = formatUnitLabel(
+    findLeaseUnitNumber(lease),
+    t("leases.labels.unit")
+  );
+
   return (
     <div className="space-y-8 animate-fade-in-up">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 p-4 lg:p-6 rounded-2xl bg-linear-to-r from-card/60 via-card/40 to-transparent backdrop-blur-sm border border-border/15 shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6">
           <div className="space-y-2">
+            {leaseNumber && (
+              <p className="text-sm font-semibold tracking-wide text-foreground">
+                {t("leases.details.header.leaseNumber")}: {leaseNumber}
+              </p>
+            )}
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-linear-to-r from-primary via-primary-light to-primary bg-clip-text text-transparent">
               {lease.propertyId?.name ||
                 t("leases.labels.propertyNotAvailable")}
+              {unitLabel && ` · ${unitLabel}`}
             </h1>
             <p className="text-muted-foreground text-base lg:text-lg font-medium">
               {t("leases.details.header.subtitle")}
@@ -215,12 +236,13 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
           )}
           {/* {!isTenant && <LeaseActions lease={lease} onUpdate={fetchLease} />} */}
 
-          {/* Payment Management Button */}
+          {/* Payment Management Button — the Invoices tab it jumped to is
+              already one click away in the tab bar directly below.
           {!isTenant && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setActiveTab("payments")}
+              onClick={() => setActiveTab("invoices")}
               className="flex items-center gap-2 cursor-pointer"
             >
               <PoundSterling className="h-4 w-4" />
@@ -231,38 +253,8 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
                 {t("leases.details.actions.paymentsShort")}
               </span>
             </Button>
-          )}
+          )} */}
 
-          {/* Invoice Actions */}
-          {!isTenant && (
-            <Button
-              variant="outline"
-              size="sm"
-              // Scope to the tenant on this lease, not the property: a property
-              // with several units returns every other tenant's invoices too,
-              // which is not what "view invoices" from a lease should mean.
-              // Falls back to the property filter only if the tenant ref is
-              // missing, so the button never navigates to an unfiltered list.
-              onClick={() =>
-                router.push(
-                  lease.tenantId?._id
-                    ? `/dashboard/leases/invoices?propertyId=${lease.propertyId?._id}`
-                    : `/dashboard/leases/invoices?propertyId=${
-                        lease.propertyId?._id || ""
-                      }`
-                )
-              }
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {t("leases.details.actions.viewInvoices")}
-              </span>
-              <span className="sm:hidden">
-                {t("leases.details.actions.invoicesShort")}
-              </span>
-            </Button>
-          )}
           {!isTenant && !isActiveLease && (
             <LeaseInvoiceModal
               lease={lease}
@@ -355,10 +347,21 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
             <Home className="h-4 w-4" />
             {t("leases.details.tabs.overview")}
           </TabsTrigger>
+          {/* <TabsTrigger value="payments" className="flex items-center gap-2">
+            <PoundSterling className="h-4 w-4" />
+            {t("leases.details.tabs.payments")}
+          </TabsTrigger> */}
+          {/* Payments tab replaced by Invoices — the panel now lists what was
+              billed rather than payment rows.
           <TabsTrigger value="payments" className="flex items-center gap-2">
             <PoundSterling className="h-4 w-4" />
             {t("leases.details.tabs.payments")}
+          </TabsTrigger> */}
+          <TabsTrigger value="invoices" className="flex items-center gap-2">
+            <PoundSterling className="h-4 w-4" />
+            {t("leases.details.tabs.invoices")}
           </TabsTrigger>
+
           <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             {t("leases.details.tabs.documents")}
@@ -795,9 +798,9 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
           </div>
         </TabsContent>
 
-        <TabsContent value="payments" className="space-y-6">
+        <TabsContent value="invoices" className="space-y-6">
           <div className="grid grid-cols-1 gap-6">
-            {/* Payment Status Dashboard */}
+            {/* Invoice summary + invoice list (invoice-driven totals) */}
             <PaymentStatusDashboard
               leaseId={lease._id}
               lease={lease}
@@ -807,12 +810,12 @@ export default function LeaseDetailsPage({ params }: LeaseDetailsPageProps) {
               }}
             />
 
-            {/* Payment Management System */}
+            {/* Payment Management System — superseded by the invoice list above.
             <PaymentManagementSystem
               leaseId={lease._id}
               lease={lease}
               onPaymentUpdate={fetchLease}
-            />
+            /> */}
           </div>
         </TabsContent>
 

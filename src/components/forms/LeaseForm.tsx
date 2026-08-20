@@ -540,7 +540,7 @@ export function LeaseForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         {/* Basic Information */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -903,7 +903,7 @@ export function LeaseForm({
         </Card>
 
         {/* Financial Terms */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PoundSterling className="h-5 w-5" />
@@ -1007,7 +1007,7 @@ export function LeaseForm({
         </Card>
 
         {/* Payment Configuration */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PoundSterling className="h-5 w-5" />
@@ -1404,7 +1404,7 @@ export function LeaseForm({
         </Card>
 
         {/* Utilities */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -1515,7 +1515,7 @@ export function LeaseForm({
         </Card>
 
         {/* Restrictions */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle>Lease Restrictions</CardTitle>
             <CardDescription>
@@ -1591,7 +1591,7 @@ export function LeaseForm({
         </Card>
 
         {/* Renewal Options */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle>Renewal Options</CardTitle>
             <CardDescription>Configure lease renewal options</CardDescription>
@@ -1643,7 +1643,7 @@ export function LeaseForm({
         </Card>
 
         {/* Documents */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -1733,7 +1733,7 @@ export function LeaseForm({
         </Card>
 
         {/* Notes */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle>Additional Notes</CardTitle>
             <CardDescription>

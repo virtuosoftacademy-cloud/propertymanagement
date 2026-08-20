@@ -14,6 +14,7 @@ import {
   withRoleAndDB,
   isValidObjectId,
 } from "@/lib/api-utils";
+import { invalidateRoleCache } from "@/lib/auth/resolve-role";
 import { z } from "zod";
 import mongoose from "mongoose";
 
@@ -169,6 +170,11 @@ export const PUT = withRoleAndDB([UserRole.ADMIN])(
         return createErrorResponse("Failed to update role", 500);
       }
 
+      // Permissions or inheritsFrom may have changed, so the cached resolution
+      // is stale. Invalidate both names in case the role was renamed.
+      invalidateRoleCache(role.name);
+      invalidateRoleCache(updatedRole.name);
+
       // Get user count for this role
       const userCount = await User.countDocuments({
         role: updatedRole.name,
@@ -251,6 +257,11 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN])(
       // Soft delete the role
       await role.softDelete(new mongoose.Types.ObjectId(user.id));
 
+      // Drop the cached resolution. Without this, anyone still holding this
+      // role keeps resolving against the deleted definition until the 30s TTL
+      // expires, instead of immediately failing closed to tenant.
+      invalidateRoleCache(role.name);
+
       return createSuccessResponse(
         { deletedRoleId: role._id.toString() },
         "Role deleted successfully"
@@ -301,6 +312,10 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN])(
         },
         { new: true }
       );
+
+      // Deactivating a role must take effect immediately — resolveUserRole
+      // fails closed on an inactive role, but only once it re-reads it.
+      invalidateRoleCache(role.name);
 
       if (!updatedRole) {
         return createErrorResponse("Failed to update role", 500);

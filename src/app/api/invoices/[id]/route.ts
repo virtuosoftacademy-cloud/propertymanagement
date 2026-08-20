@@ -355,7 +355,26 @@ export async function PATCH(
 
     return createSuccessResponse(result, "Invoice updated successfully");
   } catch (error) {
-    return handleApiError(error, "Failed to update invoice");
+    // Surface the reason. Every refusal in this handler and in the Payment
+    // model's pre-save hook — "Valid payment amount is required", "Lease not
+    // found", "Cannot create payments for inactive leases", "Payment due date
+    // must be within lease period" — is a bare Error with no statusCode, so
+    // handleApiError fell through to a 500 "Internal server error". Recording
+    // a payment then failed with nothing on screen explaining why.
+    //
+    // These are business rules, not server faults, so they belong in a 400.
+    if (
+      error instanceof Error &&
+      !(error as any).statusCode &&
+      error.name !== "ValidationError" &&
+      error.name !== "CastError" &&
+      (error as any).code !== 11000 &&
+      error.message
+    ) {
+      return createErrorResponse(error.message, 400);
+    }
+
+    return handleApiError(error);
   }
 }
 

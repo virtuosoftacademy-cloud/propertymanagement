@@ -47,6 +47,8 @@
   "analytics.maintenance.analysis.description": "Wartungskosten und Kategorien",
   "analytics.performance.roi.title": "ROI-Analyse",
   "analytics.performance.roi.description": "Jährliche Kapitalrendite",
+  "analytics.performance.margin.title": "Netto-Betriebsmarge",
+  "analytics.performance.margin.description": "Einnahmen nach Wartungskosten",
   "analytics.performance.retention.title": "Mieterbindung",
   "analytics.performance.retention.description": "Mietvertragsverlängerungsrate",
   "analytics.performance.market.title": "Marktposition",

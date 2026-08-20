@@ -12,6 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/utils/formatting";
+import {
+  ENABLED_PAYMENT_METHODS,
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_METHOD_LABELS,
+} from "@/lib/payments/enabled-methods";
 
 import {
   Select,
@@ -96,7 +101,10 @@ export default function PaymentRecordingForm({
     tenantId,
     leaseId,
     amount: 0,
-    paymentMethod: "",
+    // Preselected: with a single enabled method, making the user pick from a
+    // list of one is pure friction, and the field is required to submit.
+    paymentMethod:
+      ENABLED_PAYMENT_METHODS.length === 1 ? DEFAULT_PAYMENT_METHOD : "",
     paymentDate: new Date().toISOString().split("T")[0],
     notes: "",
     specificInvoiceId: "",
@@ -237,7 +245,10 @@ export default function PaymentRecordingForm({
           tenantId,
           leaseId,
           amount: 0,
-          paymentMethod: "",
+          // Preselected: with a single enabled method, making the user pick from a
+    // list of one is pure friction, and the field is required to submit.
+    paymentMethod:
+      ENABLED_PAYMENT_METHODS.length === 1 ? DEFAULT_PAYMENT_METHOD : "",
           paymentDate: new Date().toISOString().split("T")[0],
           notes: "",
           specificInvoiceId: "",
@@ -378,25 +389,17 @@ export default function PaymentRecordingForm({
                       placeholder={t("payments.record.form.methodPlaceholder")}
                     />
                   </SelectTrigger>
+                  {/* Driven by ENABLED_PAYMENT_METHODS rather than a hardcoded
+                      list. Rent is cash-only and the server enforces it, so
+                      offering bank transfer / card / cheque / money order here
+                      only led to a rejected save. Re-enabling a method in
+                      enabled-methods.ts brings it back here automatically. */}
                   <SelectContent>
-                    <SelectItem value="bank_transfer">
-                      {t("payments.record.paymentMethods.bankTransfer")}
-                    </SelectItem>
-                    <SelectItem value="credit_card">
-                      {t("payments.record.paymentMethods.creditCard")}
-                    </SelectItem>
-                    <SelectItem value="debit_card">
-                      {t("payments.record.paymentMethods.debitCard")}
-                    </SelectItem>
-                    <SelectItem value="cash">
-                      {t("payments.record.paymentMethods.cash")}
-                    </SelectItem>
-                    <SelectItem value="check">
-                      {t("payments.record.paymentMethods.check")}
-                    </SelectItem>
-                    <SelectItem value="money_order">
-                      {t("payments.record.paymentMethods.moneyOrder")}
-                    </SelectItem>
+                    {ENABLED_PAYMENT_METHODS.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {PAYMENT_METHOD_LABELS[method] ?? method}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

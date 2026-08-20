@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
 import { UserRole } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -30,6 +31,11 @@ export const GET = withRoleAndDB([
     { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_view");
+      if (denied) return denied;
+
       const { id } = await params;
 
       if (!isValidObjectId(id)) {
@@ -187,6 +193,11 @@ export const POST = withRoleAndDB([
     { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_edit");
+      if (denied) return denied;
+
       const { id } = await params;
 
       if (!isValidObjectId(id)) {

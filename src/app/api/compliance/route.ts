@@ -12,6 +12,8 @@
 import { NextRequest } from "next/server";
 import { ComplianceReport, Property } from "@/models";
 import { UserRole, ComplianceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -34,8 +36,15 @@ import {
 // ============================================================================
 
 export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (_user: any, request: NextRequest) => {
+  // Was `_user` (discarded) — compliance reports hang off a property, so the
+  // caller's scope has to reach the query.
+  async (user: any, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_view");
+      if (denied) return denied;
+
       const { searchParams } = new URL(request.url);
       const paginationParams = parsePaginationParams(searchParams);
 
@@ -61,6 +70,10 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 
       if (propertyId) query.propertyId = propertyId;
       if (category) query.category = category;
+
+      // Restrict to the caller's properties, and validate the propertyId they
+      // supplied (no-op for admins).
+      await applyDerivedPropertyScope(query, user);
 
       // ─── Status / expiry handling ──────────────────────────────────────
       // Build status conditions in a single object so user-supplied status
@@ -169,6 +182,11 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (user: any, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_create");
+      if (denied) return denied;
+
       const { success, data: body, error } = await parseRequestBody(request);
       if (!success) {
         return createErrorResponse(error || "Invalid request body", 400);
@@ -276,8 +294,13 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 // ============================================================================
 
 export const PUT = withRoleAndDB([UserRole.ADMIN])(
-  async (_user: any, request: NextRequest) => {
+  async (user: any, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_edit");
+      if (denied) return denied;
+
       const { success, data: body } = await parseRequestBody(request);
       if (!success) return createErrorResponse("Invalid request body", 400);
 
@@ -332,8 +355,13 @@ export const PUT = withRoleAndDB([UserRole.ADMIN])(
 // ============================================================================
 
 export const DELETE = withRoleAndDB([UserRole.ADMIN])(
-  async (_user: any, request: NextRequest) => {
+  async (user: any, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_delete");
+      if (denied) return denied;
+
       const { searchParams } = new URL(request.url);
       const ids =
         searchParams

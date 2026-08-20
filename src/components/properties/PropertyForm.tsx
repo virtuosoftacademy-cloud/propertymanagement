@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -44,7 +45,12 @@ import {
   Save,
   Loader2,
 } from "lucide-react";
-import { PropertyType, PropertyStatus, PropertyownerType } from "@/types";
+import {
+  PropertyType,
+  PropertyStatus,
+  PropertyownerType,
+  UserRole,
+} from "@/types";
 import { ImageUpload, type UploadedImage } from "@/components/ui/image-upload";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
 import { allowAlphabetsOnly } from "@/lib/utils";
@@ -76,6 +82,9 @@ const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
     description: z.string().max(2000).optional(),
     type: z.nativeEnum(PropertyType),
     assignedAgentId: z.string().optional(),
+    // Admin-only. Decides who can see this property (see property-scope.ts);
+    // the server ignores it from anyone else, so it is never sent by them.
+    managerId: z.string().optional(),
     // HMO compliance licence (UK mandatory licence) — HMO only, optional.
     hmoLicenseNumber: z.string().max(100).optional(),
     hmoLicenseIssueDate: z.string().optional(),
@@ -234,6 +243,19 @@ export function EnhancedPropertyForm({
   // Agents fetched by this form (same source/shape pattern as the maintenance form).
   const [agents, setAgents] = useState<AgentOption[]>([]);
 
+  // Managers assignable as the property's manager. Narrower than `agents`,
+  // which also includes technicians and maintenance users.
+  const [managers, setManagers] = useState<AgentOption[]>([]);
+
+  /**
+   * Assigning a property grants visibility of it, so only an admin may do it.
+   * The server enforces this independently — a non-admin's managerId and
+   * assignedAgentId are stripped on both create and update — this just avoids
+   * showing a control that would silently do nothing.
+   */
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === UserRole.ADMIN;
+
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(() => {
     const amenities =
       initialData?.amenities?.map((a) =>
@@ -348,6 +370,29 @@ export function EnhancedPropertyForm({
           }));
 
         setAgents(mapped);
+
+        // Same response, narrower filter — managers only, for the manager
+        // assignment dropdown. Custom roles resolve to a base role server-side,
+        // but `role` here is the raw assigned name, so match on substring the
+        // same way the agent filter above does.
+        setManagers(
+          usersArray
+            .filter((u: any) => {
+              if (!u || (!u._id && !u.id)) return false;
+              if (u.isActive === false) return false;
+              const role = (u.role || "").toLowerCase();
+              return role.includes("manager") || role === "admin";
+            })
+            .map((u: any) => ({
+              id: u._id || u.id,
+              name:
+                `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
+                u.name ||
+                "",
+              email: u.email || "",
+              specialties: [],
+            }))
+        );
       } catch (err) {
         console.error("Failed to fetch agents:", err);
       }
@@ -377,6 +422,14 @@ export function EnhancedPropertyForm({
 
   const initialAgentEmail = initObj ? initObj.email || "" : "";
 
+  // managerId arrives populated or as a bare id, same as assignedAgentId above.
+  const initialManagerId =
+    initialData?.managerId && typeof initialData.managerId === "object"
+      ? (initialData.managerId as any).id ||
+        (initialData.managerId as any)._id ||
+        ""
+      : (initialData?.managerId as string | undefined) || "";
+
   const form = useForm({
     resolver: zodResolver(enhancedPropertySchema(t)),
     mode: "onChange",
@@ -387,6 +440,7 @@ export function EnhancedPropertyForm({
       description: initialData?.description || "",
       type: initialData?.type || PropertyType.APARTMENT,
       assignedAgentId: initialAgentId,
+      managerId: initialManagerId,
       hmoLicenseNumber: initialData?.hmoLicenseNumber || "",
       hmoLicenseIssueDate: initialData?.hmoLicenseIssueDate
         ? String(initialData.hmoLicenseIssueDate).slice(0, 10)
@@ -507,6 +561,7 @@ export function EnhancedPropertyForm({
       // the API isn't sent an empty string for an optional ObjectId field.
       const {
         assignedAgentId,
+        managerId,
         hmoLicenseNumber,
         hmoLicenseIssueDate,
         hmoLicenseExpiry,
@@ -515,7 +570,11 @@ export function EnhancedPropertyForm({
 
       await onSubmit({
         ...rest,
-        ...(assignedAgentId ? { assignedAgentId } : {}),
+        // Assignment fields are admin-only and the server strips them from
+        // anyone else, so don't send them at all — avoids a confusing silent
+        // no-op if a stale form value lingers.
+        ...(isAdmin && assignedAgentId ? { assignedAgentId } : {}),
+        ...(isAdmin ? { managerId: managerId || null } : {}),
         ...(hmoLicenseNumber ? { hmoLicenseNumber } : {}),
         ...(hmoLicenseIssueDate ? { hmoLicenseIssueDate } : {}),
         ...(hmoLicenseExpiry ? { hmoLicenseExpiry } : {}),
@@ -624,10 +683,54 @@ export function EnhancedPropertyForm({
               </Select>
             </div>
 
-            {/* Assigned agent — only shown for HMO, and optional. Uses the same
+            {/* Assigned manager — admin only, all property types. This is what
+                decides who can see the property (see property-scope.ts): a
+                manager sees properties they created or were assigned. */}
+            {isAdmin && (
+              <div className="space-y-2 md:col-span-1">
+                <Label htmlFor="managerId">
+                  Assigned manager
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </Label>
+                <Select
+                  value={watchedValues.managerId || "UNASSIGNED"}
+                  onValueChange={(value) =>
+                    setValue("managerId", value === "UNASSIGNED" ? "" : value, {
+                      shouldDirty: true,
+                    })
+                  }
+                >
+                  <SelectTrigger id="managerId">
+                    <SelectValue placeholder="Select a manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+                    {managers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <div className="flex flex-col">
+                          <span>{m.name || m.email}</span>
+                          {m.name && m.email && (
+                            <span className="text-xs text-muted-foreground">
+                              {m.email}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Only this manager (and admins) will see this property.
+                </p>
+              </div>
+            )}
+
+            {/* Assigned agent — admin only, and only for HMO. Uses the same
                 "assign to" pattern as the maintenance form (Unassigned option +
                 name/email/specialties rows). */}
-            {isHmo && (
+            {isHmo && isAdmin && (
               <div className="space-y-2 md:col-span-1">
                 <Label htmlFor="assignedAgentId">
                   Assign to agent

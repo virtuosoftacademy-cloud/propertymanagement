@@ -116,7 +116,9 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
 
       // Update users in a transaction
       const session = await mongoose.startSession();
-      let result;
+      // Assigned inside the transaction callback, which TS's flow analysis
+      // can't see — without the annotation every later read is `never`.
+      let result: { matchedCount: number; modifiedCount: number } | undefined;
 
       try {
         await session.withTransaction(async () => {

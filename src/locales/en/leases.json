@@ -124,6 +124,7 @@
   "leases.dialog.bulkDelete.confirm": "Delete Leases",
 
   "leases.details.header.subtitle": "Lease agreement details and management",
+  "leases.details.header.leaseNumber": "Lease Number",
 
   "leases.details.notFound.title": "Lease not found",
   "leases.details.notFound.description": "The lease you're looking for doesn't exist or has been deleted.",
@@ -142,6 +143,7 @@
 
   "leases.details.tabs.overview": "Overview",
   "leases.details.tabs.payments": "Payments",
+  "leases.details.tabs.invoices": "Invoices",
   "leases.details.tabs.documents": "Documents",
   "leases.details.tabs.settings": "Settings",
 

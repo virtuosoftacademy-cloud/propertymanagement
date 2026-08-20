@@ -47,6 +47,8 @@
   "analytics.maintenance.analysis.description": "Costos y categorías de mantenimiento",
   "analytics.performance.roi.title": "Análisis de ROI",
   "analytics.performance.roi.description": "Retorno anual de inversión",
+  "analytics.performance.margin.title": "Margen operativo neto",
+  "analytics.performance.margin.description": "Ingresos tras costes de mantenimiento",
   "analytics.performance.retention.title": "Retención de Inquilinos",
   "analytics.performance.retention.description": "Tasa de renovación de contratos",
   "analytics.performance.market.title": "Posición en el Mercado",

@@ -46,3 +46,5 @@ package-lock.json
 
 .vscode
 .claude
+
+src/app/dashboard/admin/billing

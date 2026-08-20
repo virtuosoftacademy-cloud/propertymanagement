@@ -1,4 +1,5 @@
 import mongoose, { Schema, Model } from "mongoose";
+import { findByIdIncludingDeleted, effectiveRoleOf } from "@/lib/models/lookup";
 import { ITenant, IEmergencyContact } from "@/types";
 
 // Emergency Contact subdocument schema
@@ -321,13 +322,13 @@ TenantSchema.pre("save", async function (next) {
   // Validate user exists and has tenant role
   if (this.isModified("userId")) {
     const User = mongoose.model("User");
-    const user = await User.findById(this.userId);
+    const user = await findByIdIncludingDeleted(User, this.userId);
 
     if (!user) {
       return next(new Error("User not found"));
     }
 
-    if (user.role !== "tenant") {
+    if ((await effectiveRoleOf(user.role)) !== "tenant") {
       return next(new Error("User must have tenant role"));
     }
   }

@@ -5,9 +5,7 @@
   "common.saving": "Saving...",
   "common.cancel": "Cancel",
   "common.dismiss": "Dismiss",
-
   "common.clearFilters": "Clear Filters",
-
   "common.upload.title": "Upload property images",
   "common.upload.titleDisabled": "Upload disabled",
   "common.upload.titleDragActive": "Drop your images here!",
@@ -25,7 +23,6 @@
   "common.upload.imageNumber": "Image {number}",
   "common.upload.readyToUpload": "{count} image{plural} ready to upload",
   "common.upload.reviewDescription": "Review your images above. You can remove individual images or clear all to start over.",
-
   "nav.dashboard": "Dashboard",
   "nav.section.management": "Management",
   "nav.section.operations": "Operations",
@@ -35,18 +32,15 @@
   "nav.section.events": "Events",
   "nav.section.settings": "Settings",
   "nav.section.administration": "Administration",
-
   "nav.properties": "Properties",
   "nav.properties.all": "All Properties",
   "nav.properties.new": "Add Property",
   "nav.properties.available": "Available Units",
   "nav.properties.allUnits": "All Units",
-
   "nav.tenants": "Tenants",
   "nav.tenants.all": "All Tenants",
   "nav.tenants.new": "Add Tenant",
   "nav.tenants.applications": "Applications",
-
   "nav.leases": "Leases",
   "nav.leases.all": "All Leases",
   "nav.leases.new": "Create Lease",
@@ -55,54 +49,50 @@
   "nav.leases.invoices": "Invoices",
   "nav.leases.my": "My Leases",
   "nav.leases.documents": "Documents",
-
   "nav.maintenance": "Maintenance",
   "nav.maintenance.all": "All Requests",
   "nav.maintenance.emergency": "Emergency",
   "nav.maintenance.submit": "Submit Request",
   "nav.maintenance.mine": "My Requests",
-
   "nav.payments": "Payments",
   "nav.payments.all": "All Payments",
   "nav.payments.overdue": "Overdue",
   "nav.payments.payRent": "Pay Rent",
-  "nav.payments.compare":"HMO Comparison",
+  "nav.payments.compare": "HMO Comparison",
   "nav.payments.history": "Payment History",
-
   "nav.analytics": "Analytics",
   "nav.analytics.overview": "Overview",
   "nav.analytics.financial": "Financial Performance",
   "nav.analytics.occupancy": "Occupancy",
   "nav.analytics.maintenance": "Maintenance Analytics",
-
   "nav.messages": "Messages",
   "nav.announcements": "Announcements",
   "nav.calendar": "Calendar",
-
   "nav.settings": "Settings",
   "nav.settings.display": "Display & Appearance",
   "nav.settings.profile": "Profile",
   "nav.settings.notifications": "Notification Settings",
   "nav.settings.billing": "Billing & Plans",
-
   "nav.admin": "Admin",
   "nav.admin.overview": "Overview",
+  "nav.admin.subscriptions": "Subscriptions",
+  "nav.admin.billing": "Manager Accounts",
+  "nav.admin.billingPayments": "Payment History",
+  "nav.admin.plans": "Plans",
+  "nav.admin.billingAnalytics": "Subscription Analytics",
   "nav.admin.users": "All Users",
   "nav.admin.users.new": "Add User",
   "nav.admin.users.roles": "User Roles",
-
+  "nav.admin.users.history": "User History",
   "units.status.available": "Available",
   "units.status.occupied": "Occupied",
   "units.status.maintenance": "Maintenance",
   "units.status.unavailable": "Unavailable",
-
   "properties.allUnits.header.title": "All Units",
   "properties.allUnits.header.subtitle": "Browse every unit across all properties",
-
   "header.menu.profile": "Profile",
   "header.menu.settings": "Settings",
   "header.menu.logout": "Log out",
-
   "common.showing": "Showing",
   "common.previous": "Previous",
   "common.next": "Next",

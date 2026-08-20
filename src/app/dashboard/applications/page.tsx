@@ -300,7 +300,7 @@ export default function ApplicationsPage() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle>Filter Applications</CardTitle>
         </CardHeader>
@@ -342,7 +342,7 @@ export default function ApplicationsPage() {
       )}
 
       {/* Applications Table */}
-      <Card>
+      <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle>Applications ({applications.length})</CardTitle>
           <CardDescription>

@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useUserAvatar } from "@/components/providers/UserAvatarProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  Banknote,
   Building2,
   Users,
   FileText,
@@ -29,6 +30,7 @@ import {
   Bell,
   PoundSterling,
   Key,
+  Layers,
   Shield,
   ChevronLeft,
   ChevronRight,
@@ -40,6 +42,7 @@ import {
   Files,
   FilePlusCorner,
   TrendingDown,
+  TrendingUp,
   GitCompare,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -176,12 +179,12 @@ const navigationSections: NavSection[] = [
             icon: History,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
           },
-          // {
-          //   title: "nav.leases.invoices",
-          //   href: "/dashboard/leases/invoices",
-          //   icon: PoundSterling,
-          //   roles: [UserRole.ADMIN, UserRole.MANAGER],
-          // },
+          {
+            title: "nav.leases.invoices",
+            href: "/dashboard/leases/invoices",
+            icon: PoundSterling,
+            roles: [UserRole.ADMIN, UserRole.MANAGER],
+          },
           {
             title: "nav.leases.my",
             href: "/dashboard/leases/my-leases",
@@ -282,12 +285,12 @@ const navigationSections: NavSection[] = [
             icon: TrendingDown,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
           },
-          {
-            title: "nav.leases.invoices",
-            href: "/dashboard/leases/invoices",
-            icon: PoundSterling,
-            roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
-          },
+          // {
+          //   title: "nav.leases.invoices",
+          //   href: "/dashboard/leases/invoices",
+          //   icon: PoundSterling,
+          //   roles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
+          // },
           // {
           //   title: "nav.payments.compare",
           //   href: "/dashboard/payments/compare",
@@ -394,6 +397,49 @@ const navigationSections: NavSection[] = [
             title: "nav.admin.users.roles",
             href: "/dashboard/admin/users/roles",
             icon: Shield,
+            roles: [UserRole.ADMIN],
+          },
+          {
+            title: "nav.admin.users.history",
+            href: "/dashboard/admin/users/history",
+            icon: History,
+            roles: [UserRole.ADMIN],
+          },
+        ],
+      },
+      // Manager-account revenue belongs to the org owner alone. ADMIN-only
+      // `roles` removes the whole group for other roles — the filters below
+      // drop non-matching items rather than disabling them, and a parent whose
+      // children all filter out renders as a dead toggle, so the parent is
+      // gated too.
+      {
+        title: "nav.admin.subscriptions",
+        href: "/dashboard/admin/billing",
+        icon: CreditCard,
+        roles: [UserRole.ADMIN],
+        children: [
+          {
+            title: "nav.admin.billing",
+            href: "/dashboard/admin/billing",
+            icon: Users,
+            roles: [UserRole.ADMIN],
+          },
+          {
+            title: "nav.admin.billingPayments",
+            href: "/dashboard/admin/billing/payments",
+            icon: Banknote,
+            roles: [UserRole.ADMIN],
+          },
+          {
+            title: "nav.admin.plans",
+            href: "/dashboard/admin/billing/plans",
+            icon: Layers,
+            roles: [UserRole.ADMIN],
+          },
+          {
+            title: "nav.admin.billingAnalytics",
+            href: "/dashboard/admin/billing/analytics",
+            icon: TrendingUp,
             roles: [UserRole.ADMIN],
           },
         ],
@@ -788,7 +834,7 @@ export function Sidebar({ className }: SidebarProps) {
                 {session.user.firstName} {session.user.lastName}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                {userRole?.replace("_", " ")}
+                {(session.user.assignedRole ?? userRole)?.replace("_", " ")}
               </p>
             </div>
           </div>

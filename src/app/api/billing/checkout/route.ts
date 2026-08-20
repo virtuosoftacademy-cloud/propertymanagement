@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       // Stripe collects the email; we never handle the customer's credentials.
-      customer_creation: "always",
+      // No customer_creation here: Stripe rejects it outside `payment` mode,
+      // and in subscription mode a Customer is always created anyway.
       billing_address_collection: "auto",
       allow_promotion_codes: true,
       // The webhook is the only thing that provisions, and it reads these back

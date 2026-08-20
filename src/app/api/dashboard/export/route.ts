@@ -12,9 +12,13 @@ import { UserRole } from "@/types";
 import { NextRequest } from "next/server";
 import { Property, Lease, User, MaintenanceRequest, Payment } from "@/models";
 import { formatCurrency } from "@/lib/utils/formatting";
+import { applyPropertyScope, applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 
 export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (request: NextRequest) => {
+  // The first parameter of a withRoleAndDB handler is the USER, not the
+  // request. This was declared as `(request: NextRequest)`, so `request.json()`
+  // ran against the user object and threw — this endpoint has never worked.
+  async (user, request: NextRequest) => {
     try {
       const {
         format = "json",
@@ -28,18 +32,29 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         : new Date(now.getFullYear(), 0, 1);
       const endDate = dateRange?.end ? new Date(dateRange.end) : now;
 
+      // Scope every collection to the caller's properties before exporting —
+      // this endpoint writes the result to a file, so an unscoped read hands a
+      // manager the entire portfolio.
+      const propertyQuery: any = { deletedAt: null };
+      applyPropertyScope(propertyQuery, user);
+
+      // Shared by every property-derived collection below (leases,
+      // maintenance, payments) — same shape, same scope.
+      const derivedQuery: any = {
+        deletedAt: null,
+        createdAt: { $gte: startDate, $lte: endDate },
+      };
+      await applyDerivedPropertyScope(derivedQuery, user);
+
       // Fetch dashboard data
       const [properties, leases, tenants, maintenance, payments] =
         await Promise.all([
-          Property.find({ deletedAt: null })
+          Property.find(propertyQuery)
             .select(
               includeDetails ? undefined : "name type totalUnits rentAmount"
             )
             .lean(),
-          Lease.find({
-            deletedAt: null,
-            createdAt: { $gte: startDate, $lte: endDate },
-          })
+          Lease.find({ ...derivedQuery })
             .select(
               includeDetails
                 ? undefined
@@ -65,10 +80,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
                 : "firstName lastName email tenantStatus"
             )
             .lean(),
-          MaintenanceRequest.find({
-            deletedAt: null,
-            createdAt: { $gte: startDate, $lte: endDate },
-          })
+          MaintenanceRequest.find({ ...derivedQuery })
             .select(
               includeDetails
                 ? undefined
@@ -78,10 +90,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
               includeDetails ? [{ path: "propertyId", select: "name" }] : []
             )
             .lean(),
-          Payment.find({
-            deletedAt: null,
-            createdAt: { $gte: startDate, $lte: endDate },
-          })
+          Payment.find({ ...derivedQuery })
             .select(
               includeDetails ? undefined : "amount status type paidDate dueDate"
             )

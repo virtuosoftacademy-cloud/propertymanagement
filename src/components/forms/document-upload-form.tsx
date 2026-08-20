@@ -262,7 +262,7 @@ export function DocumentUploadForm({
           className="space-y-6"
         >
           {/* File Upload Area */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
@@ -348,7 +348,7 @@ export function DocumentUploadForm({
           </Card>
 
           {/* Document Details */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />

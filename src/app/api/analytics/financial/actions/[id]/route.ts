@@ -81,9 +81,9 @@ const updateActionSchema = z
   );
 
 export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (_user, request: NextRequest, context: { params: { id: string } }) => {
+  async (_user, request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     try {
-      const { id } = context.params;
+      const { id } = (await context.params);
 
       if (!isValidObjectId(id)) {
         return createErrorResponse("Invalid action id", 400);
@@ -112,9 +112,9 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 );
 
 export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (user, request: NextRequest, context: { params: { id: string } }) => {
+  async (user, request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     try {
-      const { id } = context.params;
+      const { id } = (await context.params);
 
       if (!isValidObjectId(id)) {
         return createErrorResponse("Invalid action id", 400);
@@ -187,9 +187,9 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 );
 
 export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (_user, _request: NextRequest, context: { params: { id: string } }) => {
+  async (_user, _request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     try {
-      const { id } = context.params;
+      const { id } = (await context.params);
 
       if (!isValidObjectId(id)) {
         return createErrorResponse("Invalid action id", 400);

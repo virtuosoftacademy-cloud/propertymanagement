@@ -18,15 +18,14 @@ import { Types } from "mongoose";
 // ============================================================================
 // POST /api/leases/[id]/payment-sync - Setup comprehensive payment system
 // ============================================================================
-export const POST = withRoleAndDB(
-  [UserRole.ADMIN, UserRole.MANAGER],
+export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const leaseId = params.id;
+      const { id: leaseId } = await params;
 
       if (!Types.ObjectId.isValid(leaseId)) {
         return createErrorResponse("Invalid lease ID", 400);
@@ -89,15 +88,14 @@ export const POST = withRoleAndDB(
 // ============================================================================
 // PUT /api/leases/[id]/payment-sync - Update payment status with synchronization
 // ============================================================================
-export const PUT = withRoleAndDB(
-  [UserRole.ADMIN, UserRole.MANAGER],
+export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const leaseId = params.id;
+      const { id: leaseId } = await params;
 
       if (!Types.ObjectId.isValid(leaseId)) {
         return createErrorResponse("Invalid lease ID", 400);
@@ -172,15 +170,14 @@ export const PUT = withRoleAndDB(
 // ============================================================================
 // GET /api/leases/[id]/payment-sync - Get payment synchronization status
 // ============================================================================
-export const GET = withRoleAndDB(
-  [UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT],
+export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT])(
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const leaseId = params.id;
+      const { id: leaseId } = await params;
 
       if (!Types.ObjectId.isValid(leaseId)) {
         return createErrorResponse("Invalid lease ID", 400);
@@ -277,15 +274,14 @@ export const GET = withRoleAndDB(
 // ============================================================================
 // PATCH /api/leases/[id]/payment-sync - Generate and sync invoices
 // ============================================================================
-export const PATCH = withRoleAndDB(
-  [UserRole.ADMIN, UserRole.MANAGER],
+export const PATCH = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const leaseId = params.id;
+      const { id: leaseId } = await params;
 
       if (!Types.ObjectId.isValid(leaseId)) {
         return createErrorResponse("Invalid lease ID", 400);

@@ -8,6 +8,7 @@ import {
   handleApiError,
   withRoleAndDB,
 } from "@/lib/api-utils";
+import { applyPropertyScope } from "@/lib/auth/property-scope";
 import {
   UserRole,
   LeaseStatus,
@@ -46,7 +47,9 @@ const MONTH_LABELS = [
 ];
 
 export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async () => {
+  // Took no parameters at all — every figure below is portfolio-wide, so the
+  // caller is needed to scope it.
+  async (user) => {
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -63,7 +66,13 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // -----------------------------------------------------------------------
       // Core portfolio information (properties, units, rent distribution)
       // -----------------------------------------------------------------------
-      const properties = await Property.find({ deletedAt: null })
+      // Scoped to the caller's properties — every figure on this dashboard is
+      // derived from this list, so an unscoped read here shows a manager the
+      // whole portfolio's totals.
+      const propertyQuery: any = { deletedAt: null };
+      applyPropertyScope(propertyQuery, user);
+
+      const properties = await Property.find(propertyQuery)
         .select("type totalUnits units rentAmount isMultiUnit")
         .lean();
 

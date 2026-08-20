@@ -105,7 +105,7 @@ export default function EditPropertyPage() {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Error Loading Property
@@ -154,7 +154,7 @@ export default function EditPropertyPage() {
         </Alert>
       )}
 
-      <Card className="bg-linear-to-br from-white to-gray-50/50 dark:from-foreground/5 dark:to-background">
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardContent className="p-6">
           <EnhancedPropertyForm
             initialData={propertyData}

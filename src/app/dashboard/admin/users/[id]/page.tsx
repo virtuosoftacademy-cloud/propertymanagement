@@ -44,6 +44,7 @@ import {
   PoundSterling,
 } from "lucide-react";
 import { UserRole, IUser } from "@/types";
+import { userService } from "@/lib/services/user.service";
 import { formatDate } from "@/lib/utils";
 import { UserActivityLog } from "@/components/users/user-activity-log";
 import { UserSessionManagement } from "@/components/users/user-session-management";
@@ -76,8 +77,8 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
-  // const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  // const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -92,7 +93,15 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
     async (id: string) => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/users/${id}`);
+        // Arriving from the history page carries ?deleted=true. Without
+        // forwarding it the API can't see past the soft-delete hook and 404s.
+        const isDeletedView =
+          typeof window !== "undefined" &&
+          new URLSearchParams(window.location.search).get("deleted") === "true";
+
+        const response = await fetch(
+          `/api/users/${id}${isDeletedView ? "?deleted=true" : ""}`
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch user details");
@@ -182,29 +191,56 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
     [user?.role, t]
   );
 
-  // Handle user deletion
-  // DISABLED: Delete functionality temporarily disabled
-  // const handleDeleteUser = async () => {
-  //   try {
-  //     setIsDeleting(true);
-  //     const response = await fetch(`/api/users/${userId}`, {
-  //       method: "DELETE",
-  //     });
+  // Handle user deactivation. The API sets isActive: false and keeps the
+  // record — nothing is actually deleted.
+  const handleDeleteUser = async () => {
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
 
-  //     if (!response.ok) {
-  //       throw new Error("Failed to delete user");
-  //     }
+      const data = await response.json().catch(() => null);
 
-  //     toast.success("User deactivated successfully");
-  //     router.push("/dashboard/admin/users");
-  //   } catch (error) {
-  //     console.error("Error deleting user:", error);
-  //     toast.error("Failed to deactivate user");
-  //   } finally {
-  //     setIsDeleting(false);
-  //     setShowDeleteDialog(false);
-  //   }
-  // };
+      if (!response.ok) {
+        // createErrorResponse puts the text in `error`, not `message`.
+        throw new Error(
+          data?.error || data?.message || "Failed to deactivate user"
+        );
+      }
+
+      toast.success("User deactivated successfully");
+      router.push("/dashboard/admin/users");
+    } catch (error) {
+      console.error("Error deactivating user:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to deactivate user"
+      );
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  // Soft delete — offered once the user is already inactive. Sets deletedAt and
+  // moves them to History, where they can be restored or removed permanently.
+  const handleSoftDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await userService.softDeleteUser(userId);
+
+      toast.success("User deleted — find them under History");
+      router.push("/dashboard/admin/users");
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete user"
+      );
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
 
   // Role badge color
   const getRoleColor = (
@@ -342,14 +378,18 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
                 <Edit className="h-4 w-4 mr-2" />
                 {t("admin.userDetail.editUser")}
               </Button>
-              {/* DISABLED: Delete functionality temporarily disabled */}
-              {/* <Button
-                variant="destructive"
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Deactivate
-              </Button> */}
+              {/* Hidden only on your own record — the API rejects acting on
+                  yourself. An active user can be deactivated; an already
+                  inactive one can be deleted, same as the users list. */}
+              {userId !== session?.user?.id && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {user?.isActive ? "Deactivate" : "Delete"}
+                </Button>
+              )}
             </div>
           )}
           <Button variant="outline" size="sm" onClick={() => router.back()}>
@@ -961,36 +1001,59 @@ export default function UserDetailPage({ params }: UserDetailPageProps) {
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      {/* <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Deactivate / Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+            <AlertDialogTitle>
+              {user?.isActive ? "Deactivate User" : "Delete User"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to deactivate {user?.firstName}{" "}
-              {user?.lastName}? This action will disable their access to the
-              system but preserve their data.
+              {user?.isActive ? (
+                <>
+                  Are you sure you want to deactivate {user?.firstName}{" "}
+                  {user?.lastName}? This action will disable their access to the
+                  system but preserve their data.
+                </>
+              ) : (
+                <>
+                  {user?.firstName} {user?.lastName} will be moved to History,
+                  where you can restore them or remove them permanently. Their
+                  data is preserved for now.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteUser}
+              onClick={(e) => {
+                // Keep the dialog mounted until the request settles so the
+                // pending state is visible.
+                e.preventDefault();
+                if (user?.isActive) {
+                  handleDeleteUser();
+                } else {
+                  handleSoftDelete();
+                }
+              }}
               disabled={isDeleting}
               className="bg-destructive hover:bg-destructive/90"
             >
               {isDeleting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Deactivating...
+                  {user?.isActive ? "Deactivating..." : "Deleting..."}
                 </>
-              ) : (
+              ) : user?.isActive ? (
                 "Deactivate"
+              ) : (
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog> */}
+      </AlertDialog>
     </div>
   );
 }

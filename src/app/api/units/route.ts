@@ -10,10 +10,19 @@ import {
   parsePaginationParams,
 } from "@/lib/api-utils";
 import { UserRole, PropertyStatus, PropertyType } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { applyPropertyScope } from "@/lib/auth/property-scope";
 
 export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (_user, request: NextRequest) => {
+  // `user` was previously discarded as `_user`; units are derived from
+  // properties, so the caller's property scope has to reach the $match below.
+  async (user, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_view");
+      if (denied) return denied;
+
       const { searchParams } = new URL(request.url);
       const { page, limit, sortBy, sortOrder, search } =
         parsePaginationParams(searchParams);
@@ -52,7 +61,11 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       }
 
       // ── Property-level match ──────────────────────────────────────────────
+      // NB: this is an aggregation, which never runs the model's pre(/^find/)
+      // hook — hence the explicit deletedAt, and hence the scope must be merged
+      // in by hand rather than relying on middleware.
       const match: any = { deletedAt: null };
+      applyPropertyScope(match, user);
 
       if (type && Object.values(PropertyType).includes(type as any)) {
         match.type = type;

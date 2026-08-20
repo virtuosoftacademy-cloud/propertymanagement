@@ -266,7 +266,7 @@ export default function EditPaymentPage({
         </div>
 
         {/* Form Skeleton */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <Skeleton className="h-6 w-40" />
             <Skeleton className="h-4 w-64" />

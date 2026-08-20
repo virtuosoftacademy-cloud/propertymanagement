@@ -49,6 +49,7 @@ const paymentTypeLabels = {
   [PaymentType.SECURITY_DEPOSIT]: "Security Deposit",
   [PaymentType.LATE_FEE]: "Late Fee",
   [PaymentType.PET_DEPOSIT]: "Pet Deposit",
+  [PaymentType.COMPLIANCE]: "Compliance",
   [PaymentType.UTILITY]: "Utility",
   [PaymentType.MAINTENANCE]: "Maintenance",
   [PaymentType.INVOICE]: "Invoice",

@@ -366,9 +366,21 @@ const propertyCreateBaseSchema = z.object({
 export const propertyCreateSchema =
   propertyCreateBaseSchema.superRefine(refineHmoLicenceDates);
 
+/**
+ * `managerId` is deliberately NOT omitted any more.
+ *
+ * Omitting it made Zod strip the field before the route's role check ever ran,
+ * so an admin could not reassign a property's manager at all — the guard in
+ * properties/[id]/route.ts was dead code. Authorisation is enforced there
+ * instead: non-admins have `managerId` and `assignedAgentId` stripped from the
+ * payload, because assignment grants visibility.
+ *
+ * `ownerId` stays omitted — it records who created the property and must not
+ * be rewritten by anyone.
+ */
 export const propertyUpdateSchema = propertyCreateBaseSchema
   .partial()
-  .omit({ ownerId: true, managerId: true }) // Regular users can't change ownership or management
+  .omit({ ownerId: true })
   .superRefine(refineHmoLicenceDates);
 
 export const propertyQuerySchema = z.object({

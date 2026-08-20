@@ -385,7 +385,7 @@ export default function InvoiceEditPage() {
   if (!invoice) {
     return (
       <div className="container mx-auto py-6">
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -446,7 +446,7 @@ export default function InvoiceEditPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Invoice Summary */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -589,7 +589,7 @@ export default function InvoiceEditPage() {
           </Card>
 
           {/* Line Items */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -798,7 +798,7 @@ export default function InvoiceEditPage() {
           </Card>
 
           {/* Totals and Tax */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle>{t("leases.invoices.edit.totals.title")}</CardTitle>
               <CardDescription>
@@ -888,7 +888,7 @@ export default function InvoiceEditPage() {
           </Card>
 
           {/* Form Actions */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

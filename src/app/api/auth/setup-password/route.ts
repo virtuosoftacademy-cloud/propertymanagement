@@ -19,6 +19,7 @@ import {
   markTokenAsUsed,
 } from "@/lib/invitation-utils";
 import { emailService } from "@/lib/email-service";
+import { UserRole } from "@/types";
 import { z } from "zod";
 
 // Password setup validation schema

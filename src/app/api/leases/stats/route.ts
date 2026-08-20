@@ -6,6 +6,7 @@
 import { NextRequest } from "next/server";
 import { Lease } from "@/models";
 import { UserRole, LeaseStatus } from "@/types";
+import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 import {
   createSuccessResponse,
   handleApiError,
@@ -32,8 +33,12 @@ export const GET = withRoleAndDB([
     if (user.role === UserRole.TENANT) {
       // For tenant users, filter leases by their user ID directly
       baseQuery.tenantId = user.id;
+    } else {
+      // Restrict to the caller's properties. These are countDocuments calls,
+      // which bypass the model's pre-find hook entirely — the scope has to be
+      // in the query object itself, as deletedAt already is.
+      await applyDerivedPropertyScope(baseQuery, user);
     }
-    // Admin and Manager can see all company leases - no filtering needed
 
     // Get total count by status
     const [

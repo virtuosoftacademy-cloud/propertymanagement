@@ -112,6 +112,7 @@
   "leases.dialog.bulkDelete.confirm": "Supprimer les baux",
 
   "leases.details.header.subtitle": "Détails et gestion du bail",
+  "leases.details.header.leaseNumber": "Numéro de bail",
 
   "leases.details.notFound.title": "Bail introuvable",
   "leases.details.notFound.description": "Le bail que vous recherchez n'existe pas ou a été supprimé.",
@@ -130,6 +131,7 @@
 
   "leases.details.tabs.overview": "Aperçu",
   "leases.details.tabs.payments": "Paiements",
+  "leases.details.tabs.invoices": "Factures",
   "leases.details.tabs.documents": "Documents",
   "leases.details.tabs.settings": "Paramètres",
 
@@ -683,5 +685,34 @@
   "leases.myLeases.toasts.downloadAgreement": "Téléchargement du contrat de location...",
   "leases.myLeases.toasts.viewInvoices": "Navigation vers les factures...",
   "leases.myLeases.toasts.contactManager": "Ouverture du formulaire de contact...",
-  "leases.myLeases.toasts.requestRenewal": "Ouverture du formulaire de demande de renouvellement..."
+  "leases.myLeases.toasts.requestRenewal": "Ouverture du formulaire de demande de renouvellement...",
+  "leases.actions.editLease": "Modifier le bail",
+  "leases.active.empty.description": "Aucun bail actif ne correspond à vos filtres actuels",
+  "leases.details.financial.rent": "Montant du loyer",
+  "leases.details.financial.rentAmount": "Montant du loyer",
+  "leases.details.financial.totalAmount": "Montant total",
+  "leases.details.summary.leasePeriodPresent": "En cours",
+  "leases.empty.noLeasesDescription": "Aucun bail ne correspond à vos filtres actuels.",
+  "leases.expiring.table.rent": "Montant du loyer",
+  "leases.filters.clear": "Effacer",
+  "leases.invoices.actions.downloadInvoice": "Télécharger la facture",
+  "leases.invoices.actions.viewInvoice": "Voir la facture",
+  "leases.invoices.empty.description": "Aucune facture ne correspond à vos filtres actuels.",
+  "leases.invoices.pagination.next": "Suivant",
+  "leases.invoices.pagination.previous": "Précédent",
+  "leases.invoices.pagination.showing": "Affichage",
+  "leases.labels.perNight": "par nuit",
+  "leases.myLeases.filters.selectLease": "Sélectionner un bail",
+  "leases.myLeases.stats.combinedRent": "Total sur tous les baux",
+  "leases.myLeases.stats.currentlyOccupied": "Actuellement occupé",
+  "leases.myLeases.stats.within60Days": "Sous 60 jours",
+  "leases.new.form.sections.propertyTenant.labels.rentPeriod": "Période de loyer",
+  "leases.new.form.sections.propertyTenant.placeholders.rentPeriod": "Période de loyer",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.monthly": "Mois",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.perDay": "Jour",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.weekly": "Semaine",
+  "leases.new.form.validation.lateFeePercentageMax": "Des frais de retard en pourcentage ne peuvent pas dépasser 100 %",
+  "leases.pagination.showing": "Affichage de {from} à {to} sur {total}",
+  "leases.table.leasePeriodPresent": "En cours",
+  "leases.table.totalAmount": "Montant du loyer"
 }

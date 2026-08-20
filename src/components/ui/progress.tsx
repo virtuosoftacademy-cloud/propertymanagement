@@ -5,24 +5,40 @@ import { cn } from "@/lib/utils";
 
 interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: number;
+  /**
+   * Override the indicator colour (e.g. "bg-destructive" when a usage meter is
+   * over its limit). Additive — omitting it keeps the original bg-primary.
+   */
+  indicatorClassName?: string;
 }
 
 const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
-  ({ className, value = 0, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
-        className
-      )}
-      {...props}
-    >
+  ({ className, value = 0, indicatorClassName, ...props }, ref) => {
+    const clamped = Math.min(100, Math.max(0, value));
+
+    return (
       <div
-        className="h-full bg-primary transition-all duration-300 ease-in-out"
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-      />
-    </div>
-  )
+        ref={ref}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(clamped)}
+        className={cn(
+          "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
+          className
+        )}
+        {...props}
+      >
+        <div
+          className={cn(
+            "h-full bg-primary transition-all duration-300 ease-in-out",
+            indicatorClassName
+          )}
+          style={{ width: `${clamped}%` }}
+        />
+      </div>
+    );
+  }
 );
 Progress.displayName = "Progress";
 

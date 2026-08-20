@@ -346,7 +346,7 @@ export default function AdminPage() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.stats.totalUsers")}
@@ -369,7 +369,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.stats.properties")}
@@ -392,7 +392,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.stats.totalRevenue")}
@@ -414,7 +414,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.stats.systemHealth")}
@@ -435,7 +435,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.stats.activeSessions")}
@@ -454,7 +454,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.stats.database")}

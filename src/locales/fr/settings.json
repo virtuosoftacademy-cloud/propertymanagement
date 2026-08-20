@@ -167,5 +167,8 @@
   "settings.display.branding.toast.faviconRemoved": "Favicon supprimé avec succès",
   "settings.display.branding.toast.removeFailed": "Échec de la suppression du logo",
   "settings.display.branding.toast.resetSuccess": "Paramètres de marque réinitialisés aux valeurs par défaut",
-  "settings.display.branding.toast.resetFailed": "Échec de la réinitialisation des paramètres de marque"
+  "settings.display.branding.toast.resetFailed": "Échec de la réinitialisation des paramètres de marque",
+  "settings.profile.validation.emergencyContactNameInvalid": "Le format du contact d'urgence est invalide",
+  "settings.profile.validation.jobTitleInvalid": "Intitulé de poste invalide",
+  "settings.profile.validation.mustBeAtLeast18": "Vous devez avoir au moins 18 ans"
 }

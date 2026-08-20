@@ -24,9 +24,17 @@ import {
   CreditCard,
   Banknote,
   PoundSterling,
+  FileText,
+  Send,
 } from "lucide-react";
-import { PaymentStatus, PaymentMethod, IPayment, ILease } from "@/types";
+import { PaymentStatus, PaymentMethod, IPayment, ILease, UserRole } from "@/types";
+import { useSession } from "next-auth/react";
+import {
+  AnalyticsCard,
+  AnalyticsCardGrid,
+} from "@/components/analytics/AnalyticsCard";
 import { LeaseResponse } from "@/lib/services/lease.service";
+import { findLeaseUnitNumber } from "@/lib/leases/lease-number";
 import { toast } from "sonner";
 import {
   showErrorToast,
@@ -91,6 +99,81 @@ export function PaymentStatusDashboard({
   // Auto-update payment list when real-time updates arrive
   usePaymentListUpdates(payments, setPayments, { leaseId });
 
+  const { data: session } = useSession();
+  const isTenant = session?.user?.role === UserRole.TENANT;
+
+  // Both the stat cards and the list below are driven by INVOICES — what was
+  // actually billed — rather than by payment rows.
+  const [invoices, setInvoices] = useState<any[]>([]);
+
+  // Counts by invoice status, mirroring the invoices page's stat cards.
+  // "Overdue" is derived rather than read from status: an issued invoice past
+  // its due date is overdue whether or not a job has restamped it.
+  const invoiceStats = React.useMemo(() => {
+    const now = new Date();
+    const count = (fn: (i: any) => boolean) => invoices.filter(fn).length;
+
+    return {
+      total: invoices.length,
+      paid: count(
+        (i) => (i.balanceRemaining ?? 0) <= 0 && i.status !== "cancelled"
+      ),
+      issued: count((i) => i.status === "issued" || i.status === "sent"),
+      overdue: count(
+        (i) =>
+          (i.balanceRemaining ?? 0) > 0 &&
+          i.dueDate &&
+          new Date(i.dueDate) < now
+      ),
+      partial: count(
+        (i) => (i.amountPaid ?? 0) > 0 && (i.balanceRemaining ?? 0) > 0
+      ),
+      totalAmount: invoices.reduce((sum, i) => sum + (i.totalAmount ?? 0), 0),
+    };
+  }, [invoices]);
+
+  // Scope to the unit this lease covers, so a multi-unit property does not show
+  // every unit's invoices here. Only used when the reference actually resolves
+  // to a unit on the property — a dangling unitId would match nothing and empty
+  // the list, so those leases fall back to the lease itself (the same set for a
+  // single-unit tenancy). See scripts/fix-orphaned-unit-ids.js for why some
+  // existing leases have no resolvable unit.
+  const unitId = React.useMemo(() => {
+    if (!findLeaseUnitNumber(lease)) return null;
+    const raw: any = (lease as any)?.unitId;
+    return raw?._id?.toString?.() ?? raw?.toString?.() ?? null;
+  }, [lease]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const scope = unitId ? `unitId=${unitId}` : `leaseId=${leaseId}`;
+        // includePaid: the cards total what was billed and collected, so a
+        // settled invoice has to be in the response — without it Total Paid
+        // silently drops every invoice that has been paid off.
+        const res = await fetch(
+          `/api/invoices?${scope}&limit=50&includePaid=true`
+        );
+        const json = await res.json();
+        if (cancelled) return;
+        const list = res.ok && Array.isArray(json?.data) ? json.data : [];
+        setInvoices(list);
+        calculateSummary(list);
+      } catch {
+        if (!cancelled) {
+          setInvoices([]);
+          calculateSummary([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [leaseId, unitId, payments]);
+
   useEffect(() => {
     fetchPaymentData();
   }, [leaseId]);
@@ -101,7 +184,13 @@ export function PaymentStatusDashboard({
 
       const data = await retryWithBackoff(
         async () => {
-          const response = await fetch(`/api/payments?leaseId=${leaseId}`);
+          // limit=100 (the API maximum) because calculateSummary() below totals
+          // whatever comes back — with the default page size of 12 the
+          // "Total Due / Paid / Overdue / Upcoming" figures were computed from
+          // the first 12 rows only and under-reported the rest.
+          const response = await fetch(
+            `/api/payments?leaseId=${leaseId}&limit=100`
+          );
 
           if (!response.ok) {
             const errorData = await response.json();
@@ -124,7 +213,8 @@ export function PaymentStatusDashboard({
 
       if (data?.success) {
         setPayments(data?.data ?? []);
-        calculateSummary(data?.data ?? []);
+        // Summary now derives from invoices — see the invoice effect above.
+        // calculateSummary(data?.data ?? []);
       } else {
         throw new PropertyProError(
           ErrorType.DATABASE,
@@ -140,32 +230,39 @@ export function PaymentStatusDashboard({
     }
   };
 
-  const calculateSummary = (paymentData: IPayment[]) => {
+  // Totals come from INVOICES — what was actually billed — rather than from
+  // payment rows. Overdue/upcoming are split on the invoice's own outstanding
+  // balance and due date rather than on a status enum, so a partly paid or
+  // cancelled invoice counts for exactly what is still owed on it.
+  const calculateSummary = (invoiceData: any[]) => {
     const now = new Date();
 
     let totalDue = 0;
     let totalPaid = 0;
     let totalOverdue = 0;
     let totalUpcoming = 0;
-    let nextPayment: IPayment | null = null;
+    let nextInvoice: any = null;
 
-    paymentData?.forEach((payment) => {
-      const dueDate = new Date(payment?.dueDate ?? new Date());
+    invoiceData?.forEach((invoice) => {
+      const dueDate = new Date(invoice?.dueDate ?? new Date());
       const isPastDue = dueDate < now;
+      const outstanding = invoice?.balanceRemaining ?? 0;
 
-      totalDue += payment?.amount ?? 0;
-      totalPaid += payment?.amountPaid ?? 0;
+      totalDue += invoice?.totalAmount ?? 0;
+      totalPaid += invoice?.amountPaid ?? 0;
 
-      if (payment?.status === PaymentStatus.OVERDUE) {
-        totalOverdue += (payment?.amount ?? 0) - (payment?.amountPaid ?? 0);
-      } else if (payment?.status === PaymentStatus.PENDING && !isPastDue) {
-        totalUpcoming += (payment?.amount ?? 0) - (payment?.amountPaid ?? 0);
+      if (outstanding > 0) {
+        if (isPastDue) {
+          totalOverdue += outstanding;
+        } else {
+          totalUpcoming += outstanding;
 
-        if (
-          !nextPayment ||
-          dueDate < new Date(nextPayment?.dueDate ?? new Date())
-        ) {
-          nextPayment = payment;
+          if (
+            !nextInvoice ||
+            dueDate < new Date(nextInvoice?.dueDate ?? new Date())
+          ) {
+            nextInvoice = invoice;
+          }
         }
       }
     });
@@ -178,8 +275,9 @@ export function PaymentStatusDashboard({
       totalOverdue,
       totalUpcoming,
       paymentProgress,
-      nextPaymentDate: nextPayment?.dueDate || null,
-      nextPaymentAmount: nextPayment?.amount || 0,
+      nextPaymentDate: nextInvoice?.dueDate || null,
+      // The amount still owed on that invoice, not its headline total.
+      nextPaymentAmount: nextInvoice?.balanceRemaining || 0,
     });
   };
 
@@ -213,22 +311,24 @@ export function PaymentStatusDashboard({
           dueDate: (() => {
             const now = new Date();
             const leaseStart = new Date(lease?.startDate ?? new Date());
-            const leaseEnd = new Date(lease?.endDate ?? new Date());
+            // Open-ended leases (month tenancies) have no endDate. Defaulting
+            // it to `new Date()` treated "no end" as "ends today", which is not
+            // the same thing — null means the lease runs indefinitely.
+            const leaseEnd = lease?.endDate ? new Date(lease.endDate) : null;
 
-            // If current date is within lease period, use it
-            if (now >= leaseStart && now <= leaseEnd) {
-              return now.toISOString();
-            }
+            // Before the lease starts: bill on the start date.
+            if (now < leaseStart) return leaseStart.toISOString();
 
-            // If current date is before lease start, use lease start date
-            if (now < leaseStart) {
-              return leaseStart.toISOString();
-            }
+            // Within the lease (or open-ended): bill today.
+            if (!leaseEnd || now <= leaseEnd) return now.toISOString();
 
-            // If current date is after lease end, use a date 30 days before lease end
-            const thirtyDaysBeforeEnd = new Date(leaseEnd);
-            thirtyDaysBeforeEnd.setDate(thirtyDaysBeforeEnd.getDate() - 30);
-            return thirtyDaysBeforeEnd.toISOString();
+            // After the lease ended: bill on the last day of the lease.
+            //
+            // This used to be "30 days before the end", which lands BEFORE the
+            // start date on any lease shorter than a month — the API then
+            // rejected it with "Payment due date must be within lease period".
+            // The end date is always inside the period by definition.
+            return leaseEnd.toISOString();
           })(),
           description: t("leases.details.payments.defaultDescription"),
         }),
@@ -240,7 +340,14 @@ export function PaymentStatusDashboard({
         toast.success(t("leases.details.payments.toasts.createSuccess"));
         fetchPaymentData();
       } else {
-        toast.error(t("leases.details.payments.toasts.createError"));
+        // Show the server's reason. createErrorResponse puts the text in
+        // `error`, so reading only the generic string hid messages like
+        // "Cannot create payments for inactive leases".
+        toast.error(
+          data?.error ||
+            data?.message ||
+            t("leases.details.payments.toasts.createError")
+        );
       }
     } catch (error) {
       console.error("Error creating payment:", error);
@@ -470,6 +577,50 @@ export function PaymentStatusDashboard({
         </Alert>
       )}
 
+      {/* Invoice stats — the same AnalyticsCard set the invoices page shows,
+          counted over this lease's invoices rather than the whole portfolio.
+          Hidden for tenants there, so hidden here too. */}
+      {!isTenant && (
+        <AnalyticsCardGrid className="lg:grid-cols-6">
+          <AnalyticsCard
+            title={t("leases.invoices.stats.total")}
+            value={invoiceStats.total}
+            icon={FileText}
+            iconColor="primary"
+          />
+          <AnalyticsCard
+            title={t("leases.invoices.stats.paid")}
+            value={invoiceStats.paid}
+            icon={CheckCircle}
+            iconColor="success"
+          />
+          <AnalyticsCard
+            title={t("leases.invoices.stats.issued")}
+            value={invoiceStats.issued}
+            icon={Send}
+            iconColor="info"
+          />
+          <AnalyticsCard
+            title={t("leases.invoices.stats.overdue")}
+            value={invoiceStats.overdue}
+            icon={AlertTriangle}
+            iconColor="error"
+          />
+          <AnalyticsCard
+            title={t("leases.invoices.stats.partial")}
+            value={invoiceStats.partial}
+            icon={Clock}
+            iconColor="warning"
+          />
+          <AnalyticsCard
+            title={t("leases.invoices.stats.totalValue")}
+            value={formatCurrency(invoiceStats.totalAmount)}
+            icon={PoundSterling}
+            iconColor="primary"
+          />
+        </AnalyticsCardGrid>
+      )}
+
       {/* Recent Payments */}
       <Card>
         <CardHeader>
@@ -481,7 +632,7 @@ export function PaymentStatusDashboard({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {payments.length === 0 ? (
+          {invoices.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
                 {t("leases.details.payments.noPaymentsMessage")}
@@ -492,51 +643,57 @@ export function PaymentStatusDashboard({
             </div>
           ) : (
             <div className="space-y-4">
-              {payments.slice(0, 5).map((payment) => (
+              {invoices.slice(0, 5).map((invoice: any) => (
                 <div
-                  key={payment._id.toString()}
+                  key={invoice._id?.toString()}
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
                   <div className="flex items-center gap-4">
                     <div className="p-2 bg-muted rounded-lg">
-                      {payment.paymentMethod === PaymentMethod.CREDIT_CARD ? (
-                        <CreditCard className="h-4 w-4" />
-                      ) : (
-                        <Banknote className="h-4 w-4" />
-                      )}
+                      <FileText className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="font-medium">{payment.type}</p>
+                      <p className="font-medium">
+                        {invoice.lineItems?.[0]?.description ||
+                          invoice.invoiceNumber ||
+                          "Invoice"}
+                      </p>
                       <p className="text-sm text-muted-foreground">
+                        {invoice.invoiceNumber ? `${invoice.invoiceNumber} · ` : ""}
                         {t("leases.details.payments.dueOnLabel", {
-                          values: { date: formatDate(payment.dueDate) },
+                          values: { date: formatDate(invoice.dueDate) },
                         })}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
-                      {formatCurrency(payment.amount)}
+                      {formatCurrency(invoice.totalAmount ?? 0)}
+                    </p>
+                    {/* Outstanding, not the headline total — a partly paid
+                        invoice otherwise looks untouched. */}
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(invoice.balanceRemaining ?? 0)} due
                     </p>
                     <Badge
                       variant={
-                        payment.status === PaymentStatus.COMPLETED
+                        (invoice.balanceRemaining ?? 0) <= 0
                           ? "default"
                           : "secondary"
                       }
-                      className={getStatusColor(payment.status)}
+                      className="capitalize"
                     >
-                      {getStatusLabel(payment.status)}
+                      {invoice.status ?? "unknown"}
                     </Badge>
                   </div>
                 </div>
               ))}
 
-              {payments.length > 5 && (
+              {invoices.length > 5 && (
                 <div className="text-center pt-4">
                   <Button variant="outline" size="sm">
                     {t("leases.details.payments.viewAllButton")} (
-                    {payments.length})
+                    {invoices.length})
                   </Button>
                 </div>
               )}

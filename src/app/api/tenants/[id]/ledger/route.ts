@@ -18,12 +18,12 @@ import { Types } from "mongoose";
 // ============================================================================
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const { id: tenantId } = params;
+    const { id: tenantId } = await params;
     const { searchParams } = new URL(request.url);
 
     if (!Types.ObjectId.isValid(tenantId)) {
@@ -92,12 +92,12 @@ export async function GET(
 // ============================================================================
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const { id: tenantId } = params;
+    const { id: tenantId } = await params;
     const body = await request.json();
 
     if (!Types.ObjectId.isValid(tenantId)) {
@@ -225,12 +225,12 @@ export async function POST(
 // ============================================================================
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const { id: tenantId } = params;
+    const { id: tenantId } = await params;
     const { searchParams } = new URL(request.url);
     const leaseId = searchParams.get("leaseId");
 

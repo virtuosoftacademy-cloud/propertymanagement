@@ -702,6 +702,12 @@ export default function PaymentHistoryPage() {
                   <SelectItem value="maintenance">
                     {t("payments.filters.maintenance")}
                   </SelectItem>
+                  <SelectItem value="compliance">
+                    {t("payments.filters.compliance")}
+                  </SelectItem>
+                  {/* Kept as a filter although the type is no longer offered
+                      when creating a payment — existing records still carry it
+                      and would otherwise be unfilterable. */}
                   <SelectItem value="pet_deposit">
                     {t("payments.filters.petDeposit")}
                   </SelectItem>

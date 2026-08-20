@@ -13,10 +13,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const paymentMethodId = params.id;
+    const paymentMethodId = (await params).id;
     const body = await request.json();
     const { customer } = body;
 

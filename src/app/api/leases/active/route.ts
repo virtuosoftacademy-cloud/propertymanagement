@@ -6,6 +6,7 @@
 import { NextRequest } from "next/server";
 import { Lease } from "@/models";
 import { UserRole, LeaseStatus } from "@/types";
+import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -60,6 +61,11 @@ export const GET = withRoleAndDB([
     // Apply filters
     if (filters.propertyId) query.propertyId = filters.propertyId;
     if (filters.tenantId) query.tenantId = filters.tenantId;
+
+    // Restrict to the caller's properties (no-op for admins).
+    if (user.role !== UserRole.TENANT) {
+      await applyDerivedPropertyScope(query, user);
+    }
 
     // Handle search - we need to filter after populate since propertyId and tenantId are references
     // Create a regex for searching if search term is provided

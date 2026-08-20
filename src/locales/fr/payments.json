@@ -337,7 +337,6 @@
   "payments.new.form.validation.dueDateRequired": "La date d'échéance est obligatoire",
   "payments.new.form.validation.descriptionMax": "Description trop longue",
   "payments.new.form.validation.notesMax": "Notes trop longues",
-
   "payments.receipt.header.backButton": "Retour au Paiement",
   "payments.receipt.header.title": "Reçu de Paiement",
   "payments.receipt.header.subtitle": "Reçu pour le paiement #{{receiptId}}",
@@ -488,5 +487,16 @@
   "payments.edit.notFound.button": "Retour aux Paiements",
   "payments.edit.toasts.loadFailed": "Échec du chargement des données du paiement. Veuillez réessayer.",
   "payments.edit.toasts.updateSuccess": "Paiement mis à jour avec succès.",
-  "payments.edit.toasts.updateFailed": "Échec de la mise à jour du paiement. Veuillez réessayer."
+  "payments.edit.toasts.updateFailed": "Échec de la mise à jour du paiement. Veuillez réessayer.",
+  "payments.detail.additional.openEnded": "Sans date de fin",
+  "payments.actions.edit": "Modifier",
+  "payments.actions.recordPayment": "Enregistrer le paiement",
+  "payments.actions.refund": "Remboursement",
+  "payments.actions.sendReminder": "Envoyer un rappel",
+  "payments.actions.title": "Actions",
+  "payments.detail.additional.nodate": "Aucune date",
+  "payments.filters.clearAll": "Tout effacer",
+  "payments.new.form.paymentTypes.compliance": "Conformité",
+  "payments.new.form.paymentTypeDescriptions.compliance": "Frais pour un certificat de conformité ou une inspection",
+  "payments.filters.compliance": "Conformité"
 }

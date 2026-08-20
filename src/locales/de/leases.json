@@ -111,6 +111,7 @@
   "leases.dialog.bulkDelete.confirm": "Mietverträge löschen",
 
   "leases.details.header.subtitle": "Mietvertragsdetails und -verwaltung",
+  "leases.details.header.leaseNumber": "Mietvertragsnummer",
 
   "leases.details.notFound.title": "Mietvertrag nicht gefunden",
   "leases.details.notFound.description": "Der gesuchte Mietvertrag existiert nicht oder wurde gelöscht.",
@@ -129,6 +130,7 @@
 
   "leases.details.tabs.overview": "Übersicht",
   "leases.details.tabs.payments": "Zahlungen",
+  "leases.details.tabs.invoices": "Rechnungen",
   "leases.details.tabs.documents": "Dokumente",
   "leases.details.tabs.settings": "Einstellungen",
 
@@ -679,5 +681,35 @@
   "leases.myLeases.toasts.downloadAgreement": "Mietvertrag wird heruntergeladen...",
   "leases.myLeases.toasts.viewInvoices": "Navigation zu Rechnungen...",
   "leases.myLeases.toasts.contactManager": "Kontaktformular wird geöffnet...",
-  "leases.myLeases.toasts.requestRenewal": "Verlängerungsantragsformular wird geöffnet..."
+  "leases.myLeases.toasts.requestRenewal": "Verlängerungsantragsformular wird geöffnet...",
+  "leases.actions.editLease": "Mietvertrag bearbeiten",
+  "leases.active.empty.description": "Keine aktiven Mietverträge entsprechen Ihren aktuellen Filtern",
+  "leases.active.urgency.critical": "Kritisch",
+  "leases.details.financial.rent": "Mietbetrag",
+  "leases.details.financial.rentAmount": "Mietbetrag",
+  "leases.details.financial.totalAmount": "Gesamtbetrag",
+  "leases.details.summary.leasePeriodPresent": "Laufend",
+  "leases.empty.noLeasesDescription": "Keine Mietverträge entsprechen Ihren aktuellen Filtern.",
+  "leases.expiring.table.rent": "Mietbetrag",
+  "leases.filters.clear": "Zurücksetzen",
+  "leases.invoices.actions.downloadInvoice": "Rechnung herunterladen",
+  "leases.invoices.actions.viewInvoice": "Rechnung anzeigen",
+  "leases.invoices.empty.description": "Keine Rechnungen entsprechen Ihren aktuellen Filtern.",
+  "leases.invoices.pagination.next": "Weiter",
+  "leases.invoices.pagination.previous": "Zurück",
+  "leases.invoices.pagination.showing": "Zeige",
+  "leases.labels.perNight": "pro Nacht",
+  "leases.myLeases.filters.selectLease": "Mietvertrag auswählen",
+  "leases.myLeases.stats.combinedRent": "Gesamt über alle Mietverträge",
+  "leases.myLeases.stats.currentlyOccupied": "Derzeit bewohnt",
+  "leases.myLeases.stats.within60Days": "Innerhalb von 60 Tagen",
+  "leases.new.form.sections.propertyTenant.labels.rentPeriod": "Mietzeitraum",
+  "leases.new.form.sections.propertyTenant.placeholders.rentPeriod": "Mietzeitraum",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.monthly": "Monat",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.perDay": "Tag",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.weekly": "Woche",
+  "leases.new.form.validation.lateFeePercentageMax": "Eine prozentuale Mahngebühr darf nicht mehr als 100 % betragen",
+  "leases.pagination.showing": "Zeige {from} bis {to} von {total}",
+  "leases.table.leasePeriodPresent": "Laufend",
+  "leases.table.totalAmount": "Mietbetrag"
 }

@@ -337,7 +337,6 @@
   "payments.new.form.validation.dueDateRequired": "La fecha de vencimiento es obligatoria",
   "payments.new.form.validation.descriptionMax": "Descripción demasiado larga",
   "payments.new.form.validation.notesMax": "Notas demasiado largas",
-
   "payments.receipt.header.backButton": "Volver al Pago",
   "payments.receipt.header.title": "Recibo de Pago",
   "payments.receipt.header.subtitle": "Recibo del pago #{{receiptId}}",
@@ -488,5 +487,16 @@
   "payments.edit.notFound.button": "Volver a Pagos",
   "payments.edit.toasts.loadFailed": "Error al cargar los datos del pago. Por favor intente nuevamente.",
   "payments.edit.toasts.updateSuccess": "Pago actualizado exitosamente.",
-  "payments.edit.toasts.updateFailed": "Error al actualizar el pago. Por favor intente nuevamente."
+  "payments.edit.toasts.updateFailed": "Error al actualizar el pago. Por favor intente nuevamente.",
+  "payments.detail.additional.openEnded": "Sin fecha de fin",
+  "payments.actions.edit": "Editar",
+  "payments.actions.recordPayment": "Registrar pago",
+  "payments.actions.refund": "Reembolso",
+  "payments.actions.sendReminder": "Enviar recordatorio",
+  "payments.actions.title": "Acciones",
+  "payments.detail.additional.nodate": "Sin fecha",
+  "payments.filters.clearAll": "Borrar todo",
+  "payments.new.form.paymentTypes.compliance": "Cumplimiento",
+  "payments.new.form.paymentTypeDescriptions.compliance": "Cargo por un certificado de cumplimiento o una inspección",
+  "payments.filters.compliance": "Cumplimiento"
 }

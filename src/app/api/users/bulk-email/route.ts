@@ -65,7 +65,7 @@ export const POST = withRoleAndDB([
       // Property managers can only email non-admin users
       const hasAdminUsers = targetUsers.some((targetUser) =>
         [UserRole.ADMIN, UserRole.MANAGER].includes(
-          targetUser.role
+          targetUser.role as UserRole
         )
       );
 

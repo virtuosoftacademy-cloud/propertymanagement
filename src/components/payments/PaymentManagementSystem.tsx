@@ -53,6 +53,11 @@ import {
   ILease,
 } from "@/types";
 import { LeaseResponse } from "@/lib/services/lease.service";
+import {
+  ENABLED_PAYMENT_METHODS,
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_METHOD_LABELS,
+} from "@/lib/payments/enabled-methods";
 import { toast } from "sonner";
 
 interface PaymentManagementSystemProps {
@@ -87,14 +92,14 @@ export function PaymentManagementSystem({
   const [formData, setFormData] = useState<PaymentFormData>({
     amount: lease.terms?.rentAmount || 0,
     type: PaymentType.RENT,
-    paymentMethod: PaymentMethod.CREDIT_CARD,
+    paymentMethod: DEFAULT_PAYMENT_METHOD,
     dueDate: new Date().toISOString().split("T")[0],
     description: "Monthly rent payment",
     notes: "",
   });
   const [processData, setProcessData] = useState({
     amount: 0,
-    paymentMethod: PaymentMethod.CREDIT_CARD,
+    paymentMethod: DEFAULT_PAYMENT_METHOD,
     transactionId: "",
     notes: "",
   });
@@ -133,6 +138,10 @@ export function PaymentManagementSystem({
           leaseId: leaseId,
           amount: formData.amount,
           type: formData.type,
+          // The form collects a payment method but the payload never sent it,
+          // so the user's choice was silently discarded and the payment was
+          // stored with none.
+          paymentMethod: formData.paymentMethod,
           dueDate: new Date(formData.dueDate).toISOString(),
           description: formData.description,
           notes: formData.notes,
@@ -151,13 +160,15 @@ export function PaymentManagementSystem({
         setFormData({
           amount: lease.terms?.rentAmount || 0,
           type: PaymentType.RENT,
-          paymentMethod: PaymentMethod.CREDIT_CARD,
+          paymentMethod: DEFAULT_PAYMENT_METHOD,
           dueDate: new Date().toISOString().split("T")[0],
           description: "Monthly rent payment",
           notes: "",
         });
       } else {
-        toast.error(data.message || "Failed to create payment");
+        toast.error(
+          data.error || data.message || "Failed to create payment"
+        );
       }
     } catch (error) {
       console.error("Error creating payment:", error);
@@ -197,12 +208,14 @@ export function PaymentManagementSystem({
         // Reset process data
         setProcessData({
           amount: 0,
-          paymentMethod: PaymentMethod.CREDIT_CARD,
+          paymentMethod: DEFAULT_PAYMENT_METHOD,
           transactionId: "",
           notes: "",
         });
       } else {
-        toast.error(data.message || "Failed to process payment");
+        toast.error(
+          data.error || data.message || "Failed to process payment"
+        );
       }
     } catch {
       toast.error("Failed to process payment");
@@ -213,7 +226,7 @@ export function PaymentManagementSystem({
     setSelectedPayment(payment);
     setProcessData({
       amount: payment.amount - (payment.amountPaid || 0),
-      paymentMethod: PaymentMethod.CREDIT_CARD,
+      paymentMethod: DEFAULT_PAYMENT_METHOD,
       transactionId: "",
       notes: "",
     });
@@ -574,18 +587,16 @@ export function PaymentManagementSystem({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
+                  {/* Driven by ENABLED_PAYMENT_METHODS rather than a hardcoded
+                      list. Rent is cash-only, and the API now rejects anything
+                      else — offering Credit Card here produced a payment the
+                      server refused. */}
                   <SelectContent>
-                    <SelectItem value={PaymentMethod.CREDIT_CARD}>
-                      Credit Card
-                    </SelectItem>
-                    <SelectItem value={PaymentMethod.DEBIT_CARD}>
-                      Debit Card
-                    </SelectItem>
-                    <SelectItem value={PaymentMethod.BANK_TRANSFER}>
-                      Bank Transfer
-                    </SelectItem>
-                    <SelectItem value={PaymentMethod.CASH}>Cash</SelectItem>
-                    <SelectItem value={PaymentMethod.CHECK}>Check</SelectItem>
+                    {ENABLED_PAYMENT_METHODS.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {PAYMENT_METHOD_LABELS[method]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

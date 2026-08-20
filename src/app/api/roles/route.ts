@@ -41,6 +41,12 @@ const createRoleSchema = z.object({
   permissions: z
     .array(z.string())
     .min(1, "At least one permission is required"),
+  /**
+   * The built-in role this custom role is authorised as. Every API guard
+   * compares against the three-value UserRole enum, so without this a custom
+   * role matches nothing and its holders are refused everywhere.
+   */
+  inheritsFrom: z.enum(["admin", "manager", "tenant"]).default("tenant"),
   color: z
     .enum(["default", "destructive", "outline", "secondary"])
     .default("outline"),
@@ -117,6 +123,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         label: role.label,
         description: role.description,
         permissions: role.permissions,
+        inheritsFrom: role.inheritsFrom,
         isSystem: role.isSystem,
         isActive: role.isActive,
         color: role.color,
@@ -231,6 +238,9 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
         label: savedRole.label,
         description: savedRole.description,
         permissions: savedRole.permissions,
+        // Was omitted, so a newly created role came back without the access
+        // level it had just been given.
+        inheritsFrom: savedRole.inheritsFrom,
         isSystem: savedRole.isSystem,
         isActive: savedRole.isActive,
         color: savedRole.color,

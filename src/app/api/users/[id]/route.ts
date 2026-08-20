@@ -16,6 +16,7 @@ import {
 import connectDB from "@/lib/mongodb";
 import { auditService } from "@/lib/audit-service";
 import { AuditCategory, AuditAction, AuditSeverity } from "@/models/AuditLog";
+import { getUserDeletionImpact } from "@/lib/users/deletion-impact";
 
 // ============================================================================
 // GET /api/users/[id] - Get a specific user
@@ -50,8 +51,19 @@ export async function GET(
       return createErrorResponse("Invalid user ID", 400);
     }
 
-    // Find the user
-    const targetUser = await User.findById(id).select("-password -__v").lean();
+    // Find the user. `?deleted=true` opts into a soft-deleted record, which
+    // the schema's pre-find hook otherwise filters out — the history page needs
+    // this to open a deleted user's detail.
+    const includeDeleted =
+      new URL(request.url).searchParams.get("deleted") === "true";
+
+    const targetUser = await User.findOne(
+      includeDeleted
+        ? { _id: id, deletedAt: { $ne: null } }
+        : { _id: id, deletedAt: null }
+    )
+      .select("-password -__v")
+      .lean();
 
     if (!targetUser) {
       return createErrorResponse("User not found", 404);
@@ -70,7 +82,7 @@ export async function GET(
 
     return createSuccessResponse(targetUser);
   } catch (error) {
-    return handleApiError(error, "Failed to fetch user");
+    return handleApiError(error);
   }
 }
 
@@ -205,7 +217,7 @@ export async function PUT(
 
     return createSuccessResponse(updatedUser, "User updated successfully");
   } catch (error) {
-    return handleApiError(error, "Failed to update user");
+    return handleApiError(error);
   }
 }
 
@@ -245,6 +257,62 @@ export async function DELETE(
 
     const context = auditService.extractContextFromRequest(request, session.user);
 
+    // ---- Permanent delete -------------------------------------------------
+    // Irreversible, so it is gated three ways: the user must already be soft
+    // deleted, nothing may still reference them, and the caller has to ask for
+    // it explicitly.
+    const permanent =
+      new URL(request.url).searchParams.get("permanent") === "true";
+
+    if (permanent) {
+      const victim = await User.findOne({ _id: id, deletedAt: { $ne: null } })
+        .select("-password -__v")
+        .lean();
+
+      if (!victim) {
+        return createErrorResponse(
+          "User not found, or not deleted yet. Delete the user first, then remove them permanently from the history page.",
+          404
+        );
+      }
+
+      const impact = await getUserDeletionImpact(id);
+      if (impact.hasReferences) {
+        return createErrorResponse(
+          `Cannot permanently delete: ${impact.blockingTotal} record(s) still reference this user (${impact.entries
+            .filter((e) => e.blocking)
+            .map((e) => `${e.count} ${e.label.toLowerCase()}`)
+            .join(", ")}). Reassign or remove them first.`,
+          409
+        );
+      }
+
+      await User.deleteOne({ _id: id });
+
+      await auditService.logEvent(
+        {
+          category: AuditCategory.USER_MANAGEMENT,
+          action: AuditAction.DELETE,
+          severity: AuditSeverity.CRITICAL,
+          description: `Permanently deleted user: ${(victim as any).firstName} ${
+            (victim as any).lastName
+          }`,
+          resourceType: "user",
+          resourceId: id,
+          resourceName: `${(victim as any).firstName} ${(victim as any).lastName}`,
+          oldValues: { email: (victim as any).email },
+          tags: ["user", "permanent_delete"],
+        },
+        context
+      );
+
+      return createSuccessResponse(
+        { deletedUserId: id },
+        "User permanently deleted"
+      );
+    }
+
+    // ---- Deactivate (default, reversible) ---------------------------------
     const updatedUser = await User.findByIdAndUpdate(
       id,
       { $set: { isActive: false } },
@@ -273,6 +341,119 @@ export async function DELETE(
 
     return createSuccessResponse(updatedUser, "User deactivated successfully");
   } catch (error) {
-    return handleApiError(error, "Failed to deactivate user");
+    return handleApiError(error);
+  }
+}
+
+// ============================================================================
+// PATCH /api/users/[id] - Soft delete or restore a user
+// ============================================================================
+//
+// Soft delete sets deletedAt and clears isActive, moving the user off the main
+// list and onto the history page, where they can be restored or (once nothing
+// references them) removed permanently.
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+
+    const session = await auth();
+    if (!session?.user) {
+      return createErrorResponse("Unauthorized", 401);
+    }
+
+    if (session.user.role !== UserRole.ADMIN) {
+      return createErrorResponse("Insufficient permissions", 403);
+    }
+
+    const { id } = await params;
+
+    if (!isValidObjectId(id)) {
+      return createErrorResponse("Invalid user ID", 400);
+    }
+
+    if (id === session.user.id) {
+      return createErrorResponse("You cannot delete yourself", 400);
+    }
+
+    const body = await request.json().catch(() => null);
+    const action = body?.action;
+
+    if (action !== "soft-delete" && action !== "restore") {
+      return createErrorResponse(
+        'Invalid action. Expected "soft-delete" or "restore".',
+        400
+      );
+    }
+
+    // Look the user up regardless of delete state. Both queries name deletedAt
+    // at the top level, which is what escapes the schema's pre-find hook — an
+    // $or wrapper would not, since the hook only inspects top-level keys.
+    const user =
+      (await User.findOne({ _id: id, deletedAt: null })) ??
+      (await User.findOne({ _id: id, deletedAt: { $ne: null } }));
+
+    if (!user) {
+      return createErrorResponse("User not found", 404);
+    }
+
+    const context = auditService.extractContextFromRequest(
+      request,
+      session.user
+    );
+
+    if (action === "soft-delete") {
+      if (user.deletedAt) {
+        return createErrorResponse("User is already deleted", 409);
+      }
+
+      await user.softDelete();
+
+      await auditService.logEvent(
+        {
+          category: AuditCategory.USER_MANAGEMENT,
+          action: AuditAction.DELETE,
+          severity: AuditSeverity.HIGH,
+          description: `Deleted user: ${user.firstName} ${user.lastName}`,
+          resourceType: "user",
+          resourceId: id,
+          resourceName: `${user.firstName} ${user.lastName}`,
+          newValues: { deletedAt: new Date() },
+          tags: ["user", "soft_delete"],
+        },
+        context
+      );
+
+      return createSuccessResponse({ id }, "User deleted successfully");
+    }
+
+    // restore
+    if (!user.deletedAt) {
+      return createErrorResponse("User is not deleted", 409);
+    }
+
+    await user.restore();
+
+    await auditService.logEvent(
+      {
+        category: AuditCategory.USER_MANAGEMENT,
+        action: AuditAction.UPDATE,
+        severity: AuditSeverity.MEDIUM,
+        description: `Restored user: ${user.firstName} ${user.lastName}`,
+        resourceType: "user",
+        resourceId: id,
+        resourceName: `${user.firstName} ${user.lastName}`,
+        newValues: { deletedAt: null, isActive: true },
+        tags: ["user", "restore"],
+      },
+      context
+    );
+
+    return createSuccessResponse({ id }, "User restored successfully");
+  } catch (error) {
+    return handleApiError(error);
   }
 }

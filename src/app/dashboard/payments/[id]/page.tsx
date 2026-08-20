@@ -365,7 +365,7 @@ export default function PaymentDetailsPage({
             </p>
           </CardContent>
         </Card>
-
+        {/* Payment Method */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -377,8 +377,8 @@ export default function PaymentDetailsPage({
             <div className="text-sm font-medium">
               {payment.paymentMethod
                 ? payment.paymentMethod
-                    .replace("_", " ")
-                    .replace(/\b\w/g, (l) => l.toUpperCase())
+                  .replace("_", " ")
+                  .replace(/\b\w/g, (l) => l.toUpperCase())
                 : t("payments.detail.overview.notSpecified")}
             </div>
             {payment.paidDate && (
@@ -536,7 +536,14 @@ export default function PaymentDetailsPage({
                 </label>
                 <p className="text-sm">
                   {formatDate(payment.leaseId.startDate)} -{" "}
-                  {formatDate(payment.leaseId.endDate)}
+                  {/* Guard BEFORE formatting. `formatDate(x) || "No Date"`
+                      never fell through: formatDate returns a string either
+                      way, so the fallback was unreachable and an open-ended
+                      lease (endDate null) rendered "1 Jan 1970" — Intl formats
+                      null as the epoch, and undefined as today's date. */}
+                  {payment.leaseId.endDate
+                    ? formatDate(payment.leaseId.endDate)
+                    : t("payments.detail.additional.nodate")}
                 </p>
               </div>
             )}

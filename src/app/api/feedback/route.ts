@@ -155,17 +155,18 @@ export async function POST(request: NextRequest) {
         return createErrorResponse("Rating must be between 1 and 5", 400);
       }
 
-      // Map user role
-      let mappedUserRole: UserRole.MANAGER | UserRole.TENANT | UserRole.ADMIN;
+      // Map user role to the feedback service's own vocabulary — it stores
+      // and aggregates "property_manager", not the UserRole enum's "manager".
+      let mappedUserRole: "admin" | "property_manager" | "tenant";
       switch (userRole) {
         case UserRole.ADMIN:
-          mappedUserRole = UserRole.ADMIN;
+          mappedUserRole = "admin";
           break;
         case UserRole.MANAGER:
-          mappedUserRole = UserRole.MANAGER;
+          mappedUserRole = "property_manager";
           break;
         default:
-          mappedUserRole = UserRole.TENANT;
+          mappedUserRole = "tenant";
       }
 
       const feedback = await userFeedbackService.submitFeedback({

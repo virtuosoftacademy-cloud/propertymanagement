@@ -23,6 +23,10 @@ interface UseSidebarCountsReturn {
 }
 
 const defaultCounts: SidebarCounts = {
+  // complianceReports and complianceMaintenance were missing, so the object did
+  // not satisfy SidebarCounts and any consumer reading them got undefined.
+  complianceReports: 0,
+  complianceMaintenance: 0,
   applications: 0,
   expiringLeases: 0,
   emergencyMaintenance: 0,
@@ -43,12 +47,18 @@ export function useSidebarCounts(
   const [error, setError] = useState<string | null>(null);
   const initialFetchDoneRef = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  /**
+   * Set when the server says this user may not have counts. Sidebar badges are
+   * decorative, so that is an answer rather than a failure — and it will not
+   * change on a retry, so polling stops.
+   */
+  const forbiddenRef = useRef(false);
 
   // Use stable reference for session check
   const isAuthenticated = status === "authenticated" && !!session?.user;
 
   const fetchCounts = useCallback(async () => {
-    if (!isAuthenticated || !enabled) {
+    if (!isAuthenticated || !enabled || forbiddenRef.current) {
       return;
     }
 
@@ -63,6 +73,20 @@ export function useSidebarCounts(
         },
       });
 
+      // 403 means the account is deactivated or its role is not permitted —
+      // a settled answer, not a transient fault. Retrying every 30s only
+      // reprinted the same console error forever, so stop and show no badges.
+      if (response.status === 403) {
+        forbiddenRef.current = true;
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        setCounts(defaultCounts);
+        setError(null);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(
           `Failed to fetch sidebar counts: ${response.statusText}`
@@ -74,7 +98,10 @@ export function useSidebarCounts(
       if (data.success && data.data) {
         setCounts(data.data);
       } else {
-        throw new Error(data.message || "Failed to fetch sidebar counts");
+        // createErrorResponse puts the explanation in `error`, not `message`.
+        throw new Error(
+          data.error || data.message || "Failed to fetch sidebar counts"
+        );
       }
     } catch (err) {
       console.error("Error fetching sidebar counts:", err);

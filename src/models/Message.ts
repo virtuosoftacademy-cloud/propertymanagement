@@ -1,4 +1,5 @@
 import mongoose, { Schema, Model } from "mongoose";
+import { findByIdIncludingDeleted, findByIdsIncludingDeleted } from "@/lib/models/lookup";
 
 export interface IMessage {
   _id: string;
@@ -582,7 +583,7 @@ MessageSchema.pre("save", async function (next) {
   // Validate sender exists
   if (this.isModified("senderId")) {
     const User = mongoose.model("User");
-    const sender = await User.findById(this.senderId);
+    const sender = await findByIdIncludingDeleted(User, this.senderId);
     if (!sender) {
       return next(new Error("Sender not found"));
     }
@@ -591,7 +592,7 @@ MessageSchema.pre("save", async function (next) {
   // Validate recipient exists (if provided - not required for group messages)
   if (this.isModified("recipientId") && this.recipientId) {
     const User = mongoose.model("User");
-    const recipient = await User.findById(this.recipientId);
+    const recipient = await findByIdIncludingDeleted(User, this.recipientId);
     if (!recipient) {
       return next(new Error("Recipient not found"));
     }
@@ -637,7 +638,7 @@ MessageSchema.pre("save", async function (next) {
     this.mentions.length > 0
   ) {
     const User = mongoose.model("User");
-    const mentionedUsers = await User.find({ _id: { $in: this.mentions } });
+    const mentionedUsers = await findByIdsIncludingDeleted(User, this.mentions);
     if (mentionedUsers.length !== this.mentions.length) {
       return next(new Error("One or more mentioned users not found"));
     }

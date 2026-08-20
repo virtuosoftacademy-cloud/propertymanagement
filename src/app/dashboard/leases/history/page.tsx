@@ -222,7 +222,10 @@ export default function LeaseHistoryPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("leases.table.property")}</TableHead>
+                    {/* propertyUnit, not property — the latter key does not
+                        exist, so the header rendered as the literal
+                        "leases.table.property". */}
+                    <TableHead>{t("leases.table.propertyUnit")}</TableHead>
                     <TableHead>{t("leases.table.tenant")}</TableHead>
                     <TableHead>{t("leases.table.status")}</TableHead>
                     <TableHead>Rent</TableHead>

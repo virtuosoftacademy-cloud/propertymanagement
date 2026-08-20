@@ -4,7 +4,9 @@
  */
 
 import { NextRequest } from "next/server";
-import { User } from "@/models";
+import mongoose from "mongoose";
+import { User, ManagerAccount } from "@/models";
+import { MANAGER_PLANS } from "@/lib/billing/plans";
 import { UserRole } from "@/types";
 import {
   createSuccessResponse,
@@ -35,6 +37,7 @@ export const POST = withDatabase(async (request: NextRequest) => {
       password,
       role = UserRole.TENANT,
       avatar,
+      plan,
     } = body;
 
     // Validate required fields
@@ -82,10 +85,72 @@ export const POST = withDatabase(async (request: NextRequest) => {
       "Leasing Agent": UserRole.MANAGER,
     };
 
-    const mappedRole = roleMapping[role] || role;
+    // A self-registration carries a plan id, and the account's role IS that
+    // plan. The id is checked against MANAGER_PLANS rather than trusted: it
+    // arrives from the client, and without this check `plan: "admin"` would
+    // become the user's role.
+    let planRole: string | null = null;
+    let selectedPlan: (typeof MANAGER_PLANS)[number] | null = null;
 
-    // Validate role
-    if (!Object.values(UserRole).includes(mappedRole)) {
+    if (plan) {
+      selectedPlan = MANAGER_PLANS.find((p) => p.id === plan) ?? null;
+      if (!selectedPlan) {
+        return createErrorResponse(`Unknown plan: ${plan}`, 400);
+      }
+
+      // resolveUserRole() falls back to `tenant` for a role name it cannot
+      // find, so a missing Role document would silently hand a paying customer
+      // a tenant's permissions. Refuse rather than mis-authorise — run
+      // scripts/seed-plan-roles.js if this fires.
+      const RoleModel = mongoose.model("Role");
+      const roleDoc = await RoleModel.findOne({
+        name: selectedPlan.id,
+        isActive: true,
+      });
+
+      if (!roleDoc) {
+        console.error(`No role document for plan "${selectedPlan.id}"`);
+        return createErrorResponse(
+          "This plan is not available for sign-up yet",
+          503
+        );
+      }
+
+      // A PAID plan does not grant its role at sign-up. The account is created
+      // on `free` and the subscription on `pending`; the Stripe webhook
+      // promotes the role when an invoice is actually paid
+      // (handleInvoicePaid). Assigning `pro` here would hand out every Pro
+      // permission to anyone who typed an email address.
+      //
+      // The chosen plan is not lost — it is recorded on the ManagerAccount, so
+      // checkout and the webhook know what was asked for.
+      const isPaid = (selectedPlan.monthlyPrice ?? 0) > 0;
+      planRole = isPaid ? "free" : selectedPlan.id;
+
+      if (isPaid) {
+        const freeRole = await RoleModel.findOne({
+          name: "free",
+          isActive: true,
+        });
+        if (!freeRole) {
+          console.error("No active `free` role to hold a pending paid sign-up");
+          return createErrorResponse(
+            "Sign-up is not available yet",
+            503
+          );
+        }
+      }
+    }
+
+    const mappedRole = planRole ?? roleMapping[role] ?? role;
+
+    // Validate role. A plan role is already validated above — against the plan
+    // list and against an existing Role document — so it skips the enum check,
+    // which only knows the three built-ins.
+    if (
+      !planRole &&
+      !Object.values(UserRole).includes(mappedRole as UserRole)
+    ) {
       console.error(
         "Invalid role specified:",
         role,
@@ -124,6 +189,39 @@ export const POST = withDatabase(async (request: NextRequest) => {
 
       // Save user (password will be hashed by pre-save middleware)
       const savedUser = await newUser.save();
+
+      // Open the subscription for a self-registration. Mirrors what the Stripe
+      // webhook creates on checkout, minus the Stripe ids — those are attached
+      // later if and when the account actually pays.
+      //
+      // Deliberately not fatal: the user exists and can sign in, so failing the
+      // whole request here would leave an account they could not re-create
+      // (the email is taken). Logged loudly instead, for an admin to reconcile.
+      if (selectedPlan) {
+        try {
+          await ManagerAccount.create({
+            clientName: `${firstName.trim()} ${lastName.trim()}`.trim(),
+            contactEmail: email.toLowerCase().trim(),
+            managerUserId: savedUser._id,
+            planId: selectedPlan.id,
+            // A paid plan is not active until money arrives; the free tier has
+            // nothing to collect, so it starts active.
+            // monthlyPrice is null on the per-client "custom" plan, which is
+            // treated as nothing-to-collect here rather than crashing.
+            status: (selectedPlan.monthlyPrice ?? 0) > 0 ? "pending" : "active",
+            amount: selectedPlan.monthlyPrice ?? 0,
+            billingCycle: "monthly",
+            startedAt: new Date(),
+            renewsAt: null,
+            paymentMethod: "card",
+          });
+        } catch (subscriptionError) {
+          console.error(
+            `Registered ${email} on plan "${selectedPlan.id}" but the subscription record failed:`,
+            subscriptionError
+          );
+        }
+      }
 
       // Remove password from response
       const userResponse = savedUser.toJSON();

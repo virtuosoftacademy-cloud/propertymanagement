@@ -26,6 +26,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   Users,
@@ -42,6 +52,8 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
+  Trash2,
+  History,
 } from "lucide-react";
 import { UserRole, IUser } from "@/types";
 import { formatDate } from "@/lib/utils";
@@ -77,9 +89,18 @@ export default function UserListPage() {
   const viewMode = useViewPreferencesStore((state) => state.usersView);
   const setViewMode = useViewPreferencesStore((state) => state.setUsersView);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  // const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  // const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  // const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  /**
+   * The one dialog serves three actions:
+   *  - "deactivate": active user -> isActive:false (reversible, via DELETE)
+   *  - "delete":     inactive user -> soft delete, moves to the history page
+   *  - "bulk":       deactivate every selected user
+   */
+  const [dialogMode, setDialogMode] = useState<
+    "deactivate" | "delete" | "bulk"
+  >("deactivate");
   const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [stats, setStats] = useState<UserStats>({
     total: 0,
@@ -298,52 +319,104 @@ export default function UserListPage() {
     if (canViewUsers) loadRoles();
   }, [canViewUsers, t]);
 
-  // Handle user deletion
-  // DISABLED: Delete functionality temporarily disabled
-  // const handleDeleteUser = async () => {
-  //   if (!userToDelete) return;
+  // Handle user deletion.
+  // The API deactivates rather than deletes — it sets isActive: false and keeps
+  // the record, so the wording here says "deactivate" throughout.
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
 
-  //   try {
-  //     setIsDeleting(true);
-  //     const response = await fetch(`/api/users/${userToDelete}`, {
-  //       method: "DELETE",
-  //     });
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/users/${userToDelete}`, {
+        method: "DELETE",
+      });
 
-  //     if (!response.ok) {
-  //       throw new Error("Failed to delete user");
-  //     }
+      const data = await response.json().catch(() => null);
 
-  //     toast.success("User deactivated successfully");
-  //     fetchUsers(); // Refresh the list
-  //   } catch (error) {
-  //     toast.error("Failed to deactivate user");
-  //   } finally {
-  //     setIsDeleting(false);
-  //     setUserToDelete(null);
-  //   }
-  // };
+      if (!response.ok) {
+        // createErrorResponse puts the text in `error`, not `message`.
+        throw new Error(
+          data?.error || data?.message || "Failed to deactivate user"
+        );
+      }
+
+      toast.success("User deactivated successfully");
+      fetchUsers(); // Refresh the list
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to deactivate user"
+      );
+    } finally {
+      setIsDeleting(false);
+      setUserToDelete(null);
+    }
+  };
+
+  // Soft delete: only offered for users who are already inactive. This sets
+  // deletedAt, moving them off this list and onto the history page, where they
+  // can be restored or permanently removed.
+  const handleSoftDelete = async () => {
+    if (!userToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/users/${userToDelete}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "soft-delete" }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || data?.message || "Failed to delete user"
+        );
+      }
+
+      toast.success("User deleted — find them under History");
+      fetchUsers();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete user"
+      );
+    } finally {
+      setIsDeleting(false);
+      setUserToDelete(null);
+    }
+  };
 
   // Handle bulk operations
-  // const handleBulkDelete = async () => {
-  //   try {
-  //     const response = await fetch(
-  //       `/api/users?ids=${selectedUsers.join(",")}`,
-  //       {
-  //         method: "DELETE",
-  //       }
-  //     );
+  const handleBulkDelete = async () => {
+    const count = selectedUsers.length;
+    try {
+      setIsDeleting(true);
+      const response = await fetch(
+        `/api/users?ids=${selectedUsers.join(",")}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-  //     if (!response.ok) {
-  //       throw new Error("Failed to delete users");
-  //     }
+      const data = await response.json().catch(() => null);
 
-  //     toast.success(`${selectedUsers.length} users deactivated successfully`);
-  //     setSelectedUsers([]);
-  //     fetchUsers();
-  //   } catch (error) {
-  //     toast.error("Failed to deactivate users");
-  //   }
-  // };
+      if (!response.ok) {
+        throw new Error(
+          data?.error || data?.message || "Failed to deactivate users"
+        );
+      }
+
+      toast.success(`${count} users deactivated successfully`);
+      setSelectedUsers([]);
+      fetchUsers();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to deactivate users"
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Access control check
   if (!canViewUsers) {
@@ -472,6 +545,22 @@ export default function UserListPage() {
                   {t("admin.usersPage.table.editUser")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                {/* Hidden only on your own row — the API rejects acting on
+                    yourself. An active user can be deactivated; an already
+                    inactive one can be deleted. */}
+                {user._id?.toString() !== session?.user?.id && (
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onClick={() => {
+                      setUserToDelete(user._id.toString());
+                      setDialogMode(user.isActive ? "deactivate" : "delete");
+                      setShowDeleteDialog(true);
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {user.isActive ? "Deactivate" : "Delete"}
+                  </DropdownMenuItem>
+                )}
               </>
             )}
           </DropdownMenuContent>
@@ -512,7 +601,7 @@ export default function UserListPage() {
                   size="sm"
                   onClick={() => setShowBulkDialog(true)}
                 >
-                  <Users className="h-4 w-4 mr-2" />
+                  <Users className="h-4 w-4 mr-2 text-primary" />
                   {t("admin.usersPage.bulkActions")} ({selectedUsers.length})
                 </Button>
               )}
@@ -523,6 +612,14 @@ export default function UserListPage() {
               >
                 <Shield className="h-4 w-4 mr-2" />
                 {t("admin.usersPage.manageRoles")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/dashboard/admin/users/history")}
+              >
+                <History className="mr-2 h-4 w-4" />
+                History
               </Button>
               <Button size="sm" onClick={() => router.push("/dashboard/admin/users/new")}>
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -535,12 +632,12 @@ export default function UserListPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.usersPage.stats.totalUsers")}
             </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -549,7 +646,7 @@ export default function UserListPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.usersPage.stats.activeUsers")}
@@ -565,7 +662,7 @@ export default function UserListPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.usersPage.stats.inactiveUsers")}
@@ -581,7 +678,7 @@ export default function UserListPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="gap-2">
+        <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {t("admin.usersPage.stats.admins")}
@@ -600,13 +697,13 @@ export default function UserListPage() {
       </div>
 
       {/* User List with Integrated Header and Filters */}
-      <Card className="gap-2">
+      <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           {/* Main Header */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-2">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
-                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-primary/5 dark:bg-primary/10 rounded-lg border border-primary/30 dark:border-primary">
+                <Users className="h-5 w-5 text-primary dark:text-primary" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -751,6 +848,28 @@ export default function UserListPage() {
                   >
                     {t("admin.usersPage.selection.clearSelection")}
                   </Button>
+                  {canManageUsers && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setDialogMode("bulk");
+                        setUserToDelete(null);
+                        setShowDeleteDialog(true);
+                      }}
+                      // The API rejects the whole batch if it contains the
+                      // caller, so block it here rather than letting it 400.
+                      disabled={
+                        isDeleting ||
+                        (session?.user?.id
+                          ? selectedUsers.includes(session.user.id)
+                          : false)
+                      }
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Deactivate
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -923,16 +1042,38 @@ export default function UserListPage() {
                               {t("admin.usersPage.table.viewDetails")}
                             </DropdownMenuItem>
                             {canManageUsers && (
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  router.push(
-                                    `/dashboard/admin/users/${user._id}/edit`
-                                  )
-                                }
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                {t("admin.usersPage.table.editUser")}
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    router.push(
+                                      `/dashboard/admin/users/${user._id}/edit`
+                                    )
+                                  }
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  {t("admin.usersPage.table.editUser")}
+                                </DropdownMenuItem>
+                                {user._id?.toString() !== session?.user?.id && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-red-600 focus:text-red-600"
+                                      onClick={() => {
+                                        setUserToDelete(user._id.toString());
+                                        setDialogMode(
+                                          user.isActive
+                                            ? "deactivate"
+                                            : "delete"
+                                        );
+                                        setShowDeleteDialog(true);
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      {user.isActive ? "Deactivate" : "Delete"}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -1058,33 +1199,59 @@ export default function UserListPage() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
-      {/* <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Deactivate Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+            <AlertDialogTitle>
+              {dialogMode === "bulk"
+                ? "Deactivate Users"
+                : dialogMode === "delete"
+                ? "Delete User"
+                : "Deactivate User"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to deactivate this user? This action will
-              disable their access to the system but preserve their data.
+              {dialogMode === "bulk"
+                ? `Are you sure you want to deactivate ${selectedUsers.length} selected user(s)? This will disable their access to the system but preserve their data.`
+                : dialogMode === "delete"
+                ? "This user will be moved to History, where you can restore them or remove them permanently. Their data is preserved for now."
+                : "Are you sure you want to deactivate this user? This action will disable their access to the system but preserve their data."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (userToDelete) {
-                  handleDeleteUser();
+              onClick={(e) => {
+                // Keep the dialog mounted until the request settles so the
+                // "Deactivating..." state is actually visible.
+                e.preventDefault();
+                const run =
+                  dialogMode === "bulk"
+                    ? handleBulkDelete()
+                    : !userToDelete
+                    ? Promise.resolve()
+                    : dialogMode === "delete"
+                    ? handleSoftDelete()
+                    : handleDeleteUser();
+                run.finally(() => {
                   setShowDeleteDialog(false);
-                }
+                  setDialogMode("deactivate");
+                });
               }}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isDeleting ? "Deactivating..." : "Deactivate"}
+              {isDeleting
+                ? dialogMode === "delete"
+                  ? "Deleting..."
+                  : "Deactivating..."
+                : dialogMode === "delete"
+                ? "Delete"
+                : "Deactivate"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog> */}
+      </AlertDialog>
 
       {/* Bulk Operations Dialog */}
       <BulkOperations

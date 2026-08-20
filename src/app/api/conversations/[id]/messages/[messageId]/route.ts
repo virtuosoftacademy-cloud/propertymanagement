@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { Message, Conversation } from "@/models";
+import { UserRole } from "@/types";
 import { ObjectId } from "mongodb";
 
 // GET /api/conversations/[id]/messages/[messageId] - Get specific message

@@ -47,8 +47,10 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.TEN
         query
           .populate({
             path: "propertyId",
+            // `units` is needed to resolve the lease's unitId for display: units
+            // are subdocuments of Property, so they cannot be populated directly.
             select:
-              "name address type bedrooms bathrooms squareFootage ownerId managerId",
+              "name address type bedrooms bathrooms squareFootage ownerId managerId units",
             populate: [
               { path: "ownerId", select: "firstName lastName email" },
               { path: "managerId", select: "firstName lastName email" },

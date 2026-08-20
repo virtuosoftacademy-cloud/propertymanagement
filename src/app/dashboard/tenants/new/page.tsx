@@ -687,7 +687,7 @@ export default function NewTenantPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Avatar Upload */}
               <div className="lg:col-span-4">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader className="text-center pb-4">
                     <CardTitle className="flex items-center justify-center gap-2 text-xl">
                       <User className="h-6 w-6 text-primary" />
@@ -714,7 +714,7 @@ export default function NewTenantPage() {
 
               {/* Personal Information */}
               <div className="lg:col-span-8">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <User className="h-6 w-6 text-primary" />
@@ -876,7 +876,7 @@ export default function NewTenantPage() {
 
               {/* Account Setup */}
               <div className="lg:col-span-6">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <Key className="h-6 w-6 text-primary" />
@@ -995,7 +995,7 @@ export default function NewTenantPage() {
 
               {/* Employment Information */}
               <div className="lg:col-span-6">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <Briefcase className="h-6 w-6 text-primary" />
@@ -1123,7 +1123,7 @@ export default function NewTenantPage() {
 
               {/* Emergency Contact */}
               <div className="lg:col-span-7">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <Phone className="h-6 w-6 text-primary" />
@@ -1247,7 +1247,7 @@ export default function NewTenantPage() {
 
               {/* Additional Information */}
               <div className="lg:col-span-5">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <FileText className="h-6 w-6 text-primary" />
@@ -1340,7 +1340,7 @@ export default function NewTenantPage() {
 
               {/* Documents */}
               <div className="lg:col-span-12">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <FileText className="h-6 w-6 text-primary" />
@@ -1481,7 +1481,7 @@ export default function NewTenantPage() {
 
               {/* Notes */}
               <div className="lg:col-span-12">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <FileText className="h-6 w-6 text-primary" />

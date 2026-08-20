@@ -1,4 +1,5 @@
 import mongoose, { Schema, Model } from "mongoose";
+import { findByIdIncludingDeleted, effectiveRoleOf } from "@/lib/models/lookup";
 import {
   IProperty,
   PropertyType,
@@ -473,26 +474,33 @@ PropertySchema.pre("save", async function (next) {
   // Validate owner
   if (this.isModified("ownerId")) {
     const User = mongoose.model("User");
-    const owner = await User.findById(this.ownerId);
+    const owner = await findByIdIncludingDeleted(User, this.ownerId);
     if (!owner) return next(new Error("Property owner not found"));
-    if (!["admin", "manager"].includes(owner.role)) return next(new Error("Invalid owner role"));
+    // Compare the RESOLVED role: owner.role holds the raw assigned name, so a
+    // custom role inheriting from manager would otherwise be refused.
+    if (!["admin", "manager"].includes(await effectiveRoleOf(owner.role)))
+      return next(new Error("Invalid owner role"));
   }
 
   // Validate manager if provided
   if (this.isModified("managerId") && this.managerId) {
     const User = mongoose.model("User");
-    const manager = await User.findById(this.managerId);
+    const manager = await findByIdIncludingDeleted(User, this.managerId);
     if (!manager) return next(new Error("Property manager not found"));
-    if (!["admin", "manager"].includes(manager.role)) return next(new Error("Invalid manager role"));
+    if (!["admin", "manager"].includes(await effectiveRoleOf(manager.role)))
+      return next(new Error("Invalid manager role"));
   }
 
   // CHANGE 7: validate assignedAgent when type is HMO
   // Ensures the referenced user exists and has an appropriate role
   if (this.isModified("assignedAgentId") && this.assignedAgentId && this.type === PropertyType.HMO) {
     const User = mongoose.model("User");
-    const agent = await User.findById(this.assignedAgentId);
+    const agent = await findByIdIncludingDeleted(User, this.assignedAgentId);
     if (!agent) return next(new Error("Assigned agent not found"));
-    if (agent.role === "tenant") return next(new Error("Tenant cannot be assigned as an HMO agent"));
+    // Resolved, so a custom role that inherits from tenant is also refused —
+    // the raw comparison only caught the literal built-in "tenant".
+    if ((await effectiveRoleOf(agent.role)) === "tenant")
+      return next(new Error("Tenant cannot be assigned as an HMO agent"));
   }
 
   next();

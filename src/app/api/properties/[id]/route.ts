@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { Property } from "@/models";
 import { UserRole, PropertyStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -17,6 +18,10 @@ import {
   isValidObjectId,
 } from "@/lib/api-utils";
 import { propertyUpdateSchema, validateSchema } from "@/lib/validations";
+import {
+  canViewAllProperties,
+  isPropertyInScope,
+} from "@/lib/auth/property-scope";
 import { calculatePropertyStatusFromUnits } from "@/utils/property-status-calculator";
 import mongoose from "mongoose";
 import { deleteFromR2 } from "@/lib/r2-server";
@@ -37,6 +42,11 @@ export const GET = withRoleAndDB([
     { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_view");
+      if (denied) return denied;
+
       const { id } = await params;
 
       if (!isValidObjectId(id)) {
@@ -49,6 +59,12 @@ export const GET = withRoleAndDB([
         .populate("managerId", "firstName lastName email");
 
       if (!property) {
+        return createErrorResponse("Property not found", 404);
+      }
+
+      // 404 rather than 403: a property outside your scope should not be
+      // distinguishable from one that doesn't exist.
+      if (user.role !== UserRole.TENANT && !isPropertyInScope(user, property)) {
         return createErrorResponse("Property not found", 404);
       }
 
@@ -104,6 +120,11 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
     { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_edit");
+      if (denied) return denied;
+
       const { id } = await params;
 
       if (!isValidObjectId(id)) {
@@ -121,6 +142,12 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         return createErrorResponse("Property not found", 404);
       }
 
+      // Out of scope reads as not-found, so the endpoint never confirms that a
+      // property you cannot manage exists.
+      if (!isPropertyInScope(user, property)) {
+        return createErrorResponse("Property not found", 404);
+      }
+
       // Role-based authorization
       // Managers can update all properties (single company architecture)
       // Only admins can change ownership and manager assignments
@@ -133,12 +160,18 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 
       const updateData = validation.data;
 
-      // Prevent certain fields from being updated by non-admins
-      if (user.role !== UserRole.ADMIN) {
-        delete updateData.ownerId;
-        if (user.role === UserRole.MANAGER) {
-          delete updateData.managerId;
-        }
+      // Assignment is an admin privilege: both managerId and assignedAgentId
+      // grant visibility of the property, so letting a non-admin set them would
+      // let them hand access to themselves or anyone else.
+      //
+      // This guard used to be dead code — propertyUpdateSchema omitted
+      // ownerId/managerId, so Zod stripped them for EVERYONE (admins included)
+      // before this ran. The schema now keeps managerId and authorisation
+      // happens here.
+      if (!canViewAllProperties(user)) {
+        delete (updateData as any).ownerId;
+        delete (updateData as any).managerId;
+        delete (updateData as any).assignedAgentId;
       }
 
       // Handle units in unified architecture
@@ -190,6 +223,11 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
     { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_delete");
+      if (denied) return denied;
+
       const { id } = await params;
 
       if (!isValidObjectId(id)) {
@@ -201,6 +239,11 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         _id: new mongoose.Types.ObjectId(id),
       });
       if (!rawProperty) {
+        return createErrorResponse("Property not found", 404);
+      }
+      // Scope check before deleting — this path uses the raw driver to bypass
+      // the soft-delete hook, so it gets no filtering of its own.
+      if (!isPropertyInScope(user, rawProperty)) {
         return createErrorResponse("Property not found", 404);
       }
       // If already soft-deleted, return appropriate error
@@ -296,6 +339,11 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
     { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_edit");
+      if (denied) return denied;
+
       const { id } = await params;
 
       if (!isValidObjectId(id)) {
@@ -310,6 +358,12 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // Find the property
       const property = await Property.findById(id);
       if (!property) {
+        return createErrorResponse("Property not found", 404);
+      }
+
+      // Out of scope reads as not-found, so the endpoint never confirms that a
+      // property you cannot manage exists.
+      if (!isPropertyInScope(user, property)) {
         return createErrorResponse("Property not found", 404);
       }
 

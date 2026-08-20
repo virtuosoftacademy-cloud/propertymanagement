@@ -467,6 +467,13 @@ const PaymentSchema = new Schema<IPayment>(
 // ============================================================================
 
 // Compound indexes for data integrity and performance
+// NOTE: this also catches settlements. A payment recorded against an invoice
+// inherits that invoice's dueDate, so collecting one invoice in two
+// instalments yields two rows with the same (leaseId, type, dueDate) and the
+// second is rejected with E11000. Excluding settlements via
+// `invoiceId: { $exists: false }` is not possible — MongoDB rejects $exists:
+// false in a partial index filter — so it needs a stored discriminator field
+// plus a backfill. Left as-is rather than half-migrated.
 PaymentSchema.index(
   { leaseId: 1, type: 1, dueDate: 1 },
   {
@@ -823,40 +830,43 @@ PaymentSchema.pre("save", async function (next) {
         );
       }
 
-      // Validate payment due date is within lease period
-      // Allow security deposit payments (or invoices tagged as security_deposit) to be due before lease start
-      let isSecurityDeposit = this.type === PaymentType.SECURITY_DEPOSIT;
-      if (!isSecurityDeposit && this.invoiceId) {
-        try {
-          const InvoiceModel = mongoose.model("Invoice");
-          const inv: any = await InvoiceModel.findById(this.invoiceId).select(
-            "invoiceNumber lineItems"
-          );
-          if (inv) {
-            const hasSecDep = Array.isArray(inv.lineItems)
-              ? inv.lineItems.some((li: any) => li?.type === "security_deposit")
-              : false;
-            const sdPrefix =
-              typeof inv.invoiceNumber === "string" &&
-              inv.invoiceNumber.startsWith("SD-");
-            isSecurityDeposit = hasSecDep || sdPrefix;
+      // A payment carrying an invoiceId is SETTLING a charge that already
+      // exists — it records money received, it does not create new liability.
+      // Both rules below exist to stop new charges appearing on a lease that
+      // should not accrue any, so neither applies to a settlement. Enforcing
+      // them here meant arrears could never be collected once a lease ended,
+      // and any invoice due outside the lease window was permanently unpayable.
+      //
+      // This also subsumes the old security-deposit carve-out, which inspected
+      // the invoice's line items and "SD-" number prefix to re-permit deposits
+      // due before the lease starts: every payment it rescued had an invoiceId.
+      const settlesInvoice = !!this.invoiceId;
+
+      if (!settlesInvoice) {
+        // Validate payment due date is within lease period.
+        // Security deposits are legitimately due before the lease starts.
+        const isSecurityDeposit = this.type === PaymentType.SECURITY_DEPOSIT;
+
+        if (!isSecurityDeposit) {
+          // An open-ended lease (a month tenancy) has endDate null, and
+          // `someDate > null` is TRUE — null coerces to epoch 0, so every due
+          // date counted as "after the lease ended" and no payment could ever
+          // be created against an active open-ended lease. Only apply the
+          // upper bound when there actually is an end date.
+          const beforeStart = this.dueDate < lease.startDate;
+          const afterEnd = lease.endDate ? this.dueDate > lease.endDate : false;
+
+          if (beforeStart || afterEnd) {
+            return next(
+              new Error("Payment due date must be within lease period")
+            );
           }
-        } catch (e) {
-          // ignore invoice lookup failures for validation; fall back to existing rules
         }
-      }
 
-      if (!isSecurityDeposit) {
-        if (this.dueDate < lease.startDate || this.dueDate > lease.endDate) {
-          return next(
-            new Error("Payment due date must be within lease period")
-          );
+        // Validate lease is active for new payments
+        if (this.isNew && !["active", "pending"].includes(lease.status)) {
+          return next(new Error("Cannot create payments for inactive leases"));
         }
-      }
-
-      // Validate lease is active for new payments
-      if (this.isNew && !["active", "pending"].includes(lease.status)) {
-        return next(new Error("Cannot create payments for inactive leases"));
       }
     }
 

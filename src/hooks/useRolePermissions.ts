@@ -41,6 +41,10 @@ const SYSTEM_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "tenant_management",
     "lease_management",
     "maintenance_management",
+    // Both built-in staff roles can already reach every compliance endpoint
+    // (/api/compliance guards on [ADMIN, MANAGER]); without this a permission
+    // check would disagree with what the API actually allows.
+    "compliance_management",
     "financial_management",
     "system_settings",
     "audit_logs",
@@ -56,6 +60,10 @@ const SYSTEM_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "tenant_management",
     "lease_management",
     "maintenance_management",
+    // Both built-in staff roles can already reach every compliance endpoint
+    // (/api/compliance guards on [ADMIN, MANAGER]); without this a permission
+    // check would disagree with what the API actually allows.
+    "compliance_management",
     "financial_management",
     "reports_all",
     "bulk_operations",

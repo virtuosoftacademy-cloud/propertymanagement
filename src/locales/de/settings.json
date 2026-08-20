@@ -301,5 +301,8 @@
   "settings.display.branding.toast.faviconRemoved": "Favicon erfolgreich entfernt",
   "settings.display.branding.toast.removeFailed": "Logo konnte nicht entfernt werden",
   "settings.display.branding.toast.resetSuccess": "Branding-Einstellungen auf Standard zurückgesetzt",
-  "settings.display.branding.toast.resetFailed": "Branding-Einstellungen konnten nicht zurückgesetzt werden"
+  "settings.display.branding.toast.resetFailed": "Branding-Einstellungen konnten nicht zurückgesetzt werden",
+  "settings.profile.validation.emergencyContactNameInvalid": "Das Format des Notfallkontakts ist ungültig",
+  "settings.profile.validation.jobTitleInvalid": "Ungültige Berufsbezeichnung",
+  "settings.profile.validation.mustBeAtLeast18": "Sie müssen mindestens 18 Jahre alt sein"
 }

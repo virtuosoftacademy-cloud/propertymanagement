@@ -19,12 +19,12 @@ import { Types } from "mongoose";
 // ============================================================================
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const { id: leaseId } = params;
+    const { id: leaseId } = await params;
 
     if (!Types.ObjectId.isValid(leaseId)) {
       return createErrorResponse("Invalid lease ID", 400);
@@ -92,12 +92,12 @@ export async function POST(
 // ============================================================================
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const { id: leaseId } = params;
+    const { id: leaseId } = await params;
 
     if (!Types.ObjectId.isValid(leaseId)) {
       return createErrorResponse("Invalid lease ID", 400);

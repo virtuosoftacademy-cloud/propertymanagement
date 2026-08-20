@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { showSimpleError, showSimpleSuccess } from "@/lib/toast-notifications";
 import { UserRole } from "@/types";
+import PaymentRecordDialog from "@/components/invoice/PaymentRecordDialog";
 import {
   downloadInvoiceAsPDF,
   generateInvoiceHTML,
@@ -151,6 +152,7 @@ export default function InvoiceDetailsPage() {
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const isTenant = session?.user?.role === UserRole.TENANT;
@@ -440,6 +442,16 @@ export default function InvoiceDetailsPage() {
               {t(`leases.invoices.status.${invoice.status.toLowerCase()}`)}
             </span>
           </Badge>
+
+          {/* Collect a payment against this invoice. Hidden for tenants (they
+              cannot record collections) and once the invoice is settled, since
+              the dialog would open with nothing remaining. */}
+          {!isTenant && invoice.balanceRemaining > 0 && (
+            <Button size="sm" onClick={() => setPaymentDialogOpen(true)}>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Create Payment
+            </Button>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1078,6 +1090,32 @@ export default function InvoiceDetailsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Collect a payment against this invoice. Shares the dialog used by the
+          invoices list so both entry points behave identically. */}
+      <PaymentRecordDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        invoice={
+          invoice && invoice.tenantId
+            ? {
+                _id: invoice._id,
+                invoiceNumber: invoice.invoiceNumber,
+                totalAmount: invoice.totalAmount,
+                amountPaid: invoice.amountPaid,
+                balanceRemaining: invoice.balanceRemaining,
+                tenantId: {
+                  firstName: invoice.tenantId.firstName,
+                  lastName: invoice.tenantId.lastName,
+                },
+              }
+            : null
+        }
+        onPaymentRecorded={() => {
+          setPaymentDialogOpen(false);
+          fetchInvoiceDetails();
+        }}
+      />
     </div>
   );
 }

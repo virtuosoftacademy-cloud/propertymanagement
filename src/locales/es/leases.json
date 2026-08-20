@@ -112,6 +112,7 @@
   "leases.dialog.bulkDelete.confirm": "Eliminar contratos",
 
   "leases.details.header.subtitle": "Detalles y gestión del contrato de arrendamiento",
+  "leases.details.header.leaseNumber": "Número de contrato",
 
   "leases.details.notFound.title": "Contrato no encontrado",
   "leases.details.notFound.description": "El contrato que buscas no existe o ha sido eliminado.",
@@ -130,6 +131,7 @@
 
   "leases.details.tabs.overview": "Resumen",
   "leases.details.tabs.payments": "Pagos",
+  "leases.details.tabs.invoices": "Facturas",
   "leases.details.tabs.documents": "Documentos",
   "leases.details.tabs.settings": "Configuración",
 
@@ -683,5 +685,34 @@
   "leases.myLeases.toasts.downloadAgreement": "Descargando contrato de arrendamiento...",
   "leases.myLeases.toasts.viewInvoices": "Navegando a facturas...",
   "leases.myLeases.toasts.contactManager": "Abriendo formulario de contacto...",
-  "leases.myLeases.toasts.requestRenewal": "Abriendo formulario de solicitud de renovación..."
+  "leases.myLeases.toasts.requestRenewal": "Abriendo formulario de solicitud de renovación...",
+  "leases.actions.editLease": "Editar contrato",
+  "leases.active.empty.description": "Ningún contrato activo coincide con los filtros actuales",
+  "leases.details.financial.rent": "Importe del alquiler",
+  "leases.details.financial.rentAmount": "Importe del alquiler",
+  "leases.details.financial.totalAmount": "Importe total",
+  "leases.details.summary.leasePeriodPresent": "Actualidad",
+  "leases.empty.noLeasesDescription": "Ningún contrato coincide con los filtros actuales.",
+  "leases.expiring.table.rent": "Importe del alquiler",
+  "leases.filters.clear": "Borrar",
+  "leases.invoices.actions.downloadInvoice": "Descargar factura",
+  "leases.invoices.actions.viewInvoice": "Ver factura",
+  "leases.invoices.empty.description": "Ninguna factura coincide con los filtros actuales.",
+  "leases.invoices.pagination.next": "Siguiente",
+  "leases.invoices.pagination.previous": "Anterior",
+  "leases.invoices.pagination.showing": "Mostrando",
+  "leases.labels.perNight": "por noche",
+  "leases.myLeases.filters.selectLease": "Seleccionar un contrato",
+  "leases.myLeases.stats.combinedRent": "Total de todos los contratos",
+  "leases.myLeases.stats.currentlyOccupied": "Actualmente ocupado",
+  "leases.myLeases.stats.within60Days": "En los próximos 60 días",
+  "leases.new.form.sections.propertyTenant.labels.rentPeriod": "Periodo de alquiler",
+  "leases.new.form.sections.propertyTenant.placeholders.rentPeriod": "Periodo de alquiler",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.monthly": "Mes",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.perDay": "Día",
+  "leases.new.form.sections.propertyTenant.rentPeriodOptions.weekly": "Semana",
+  "leases.new.form.validation.lateFeePercentageMax": "Un recargo por mora porcentual no puede superar el 100 %",
+  "leases.pagination.showing": "Mostrando {from} a {to} de {total}",
+  "leases.table.leasePeriodPresent": "Actualidad",
+  "leases.table.totalAmount": "Importe del alquiler"
 }

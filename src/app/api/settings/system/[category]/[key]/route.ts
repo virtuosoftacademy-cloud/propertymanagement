@@ -18,10 +18,10 @@ import {
 } from "@/lib/api-utils";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     category: string;
     key: string;
-  };
+  }>;
 }
 
 const MANAGER_ALLOWED_CATEGORIES = new Set([
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { isAdmin, isManager } = authContext;
-    const { category, key } = params;
+    const { category, key } = await params;
 
     // Find the setting
     const setting = await SystemSettings.getSetting(category, key);
@@ -125,7 +125,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return createErrorResponse("Insufficient permissions", 403);
     }
 
-    const { category, key } = params;
+    const { category, key } = await params;
     const body = await parseRequestBody(request);
     const { value } = body;
 
@@ -193,7 +193,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return createErrorResponse("Insufficient permissions", 403);
     }
 
-    const { category, key } = params;
+    const { category, key } = await params;
 
     // Find the setting
     const setting = await SystemSettings.getSetting(category, key);

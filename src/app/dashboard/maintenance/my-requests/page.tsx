@@ -248,7 +248,7 @@ export default function TenantMaintenanceRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="gap-2">
+      <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-2">
             <div className="flex items-center gap-3">

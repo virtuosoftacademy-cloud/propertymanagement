@@ -222,11 +222,22 @@ ComplianceReportSchema.pre("save", async function (next) {
     if (!property) return next(new Error("Property not found"));
   }
 
-  // Validate creator exists
+  // Validate creator exists.
+  //
+  // `createdBy` is provenance — it records WHO filed the report. It must not
+  // require the creator to still be active: User has a pre(/^find/) soft-delete
+  // hook, so a plain findById() cannot see a soft-deleted user and the save
+  // failed with the misleading "Creator user not found" even though the record
+  // was right there. Naming deletedAt in the filter escapes that hook; two
+  // queries cover both states without relying on the field being present.
   if (this.isModified("createdBy") && this.createdBy) {
     const User = mongoose.model("User");
-    const user = await User.findById(this.createdBy);
-    if (!user) return next(new Error("Creator user not found"));
+    const user =
+      (await User.findOne({ _id: this.createdBy, deletedAt: null })) ??
+      (await User.findOne({ _id: this.createdBy, deletedAt: { $ne: null } }));
+    if (!user) {
+      return next(new Error("Creator user not found"));
+    }
   }
 
   next();

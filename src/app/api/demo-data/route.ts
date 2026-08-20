@@ -96,7 +96,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
 // ============================================================================
 // DELETE /api/demo-data - Clear demo data
 // ============================================================================
-export const DELETE = withRoleAndDB([UserRole.Uadmin])(
+export const DELETE = withRoleAndDB([UserRole.ADMIN])(
   async (user, request: NextRequest) => {
     try {
       const result = await demoDataService.clearDemoData();

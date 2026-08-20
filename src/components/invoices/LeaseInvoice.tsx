@@ -52,11 +52,11 @@ export interface LeaseInvoiceProps {
 export function LeaseInvoice({
   lease,
   companyInfo = {
-    name: "Tenure Property Management",
+    name: "PropertyPro Property Management",
     address: "123 Business Ave, Suite 100, City, State 12345",
     phone: "+44 20 7946 0123",
-    email: "info@Tenure.com",
-    website: "www.Tenure.co.uk",
+    email: "info@PropertyPro.com",
+    website: "www.PropertyPro.com",
   },
   invoiceNumber,
   issueDate,
@@ -579,7 +579,7 @@ export function LeaseInvoice({
             <div className="footer text-center text-gray-500 text-sm mt-12 pt-6 border-t border-gray-200">
               <p className="mb-2">
                 This invoice was generated on {formatDate(new Date())} by
-                Tenure Property Management System
+                PropertyPro Property Management System
               </p>
               <p className="mb-2">
                 For questions regarding this invoice, please contact us at{" "}

@@ -58,10 +58,10 @@ export const GET = withRoleAndDB([
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const conversationId = params.id;
+      const conversationId = (await params).id;
 
       if (!isValidObjectId(conversationId)) {
         return createErrorResponse("Invalid conversation ID", 400);
@@ -114,10 +114,10 @@ export const POST = withRoleAndDB([
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const conversationId = params.id;
+      const conversationId = (await params).id;
 
       if (!isValidObjectId(conversationId)) {
         return createErrorResponse("Invalid conversation ID", 400);
@@ -240,10 +240,10 @@ export const PATCH = withRoleAndDB([
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const conversationId = params.id;
+      const conversationId = (await params).id;
       const { searchParams } = new URL(request.url);
       const targetUserId = searchParams.get("userId");
 
@@ -368,10 +368,10 @@ export const DELETE = withRoleAndDB([
   async (
     user,
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
-      const conversationId = params.id;
+      const conversationId = (await params).id;
       const { searchParams } = new URL(request.url);
       const targetUserId = searchParams.get("userId");
 

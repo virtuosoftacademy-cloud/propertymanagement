@@ -343,7 +343,6 @@
   "payments.new.form.validation.dueDateRequired": "Due date is required",
   "payments.new.form.validation.descriptionMax": "Description too long",
   "payments.new.form.validation.notesMax": "Notes too long",
-
   "payments.receipt.header.backButton": "Back to Payment",
   "payments.receipt.header.title": "Payment Receipt",
   "payments.receipt.header.subtitle": "Receipt for payment #{{receiptId}}",
@@ -494,5 +493,9 @@
   "payments.edit.notFound.button": "Back to Payments",
   "payments.edit.toasts.loadFailed": "Failed to load payment data. Please try again.",
   "payments.edit.toasts.updateSuccess": "Payment updated successfully.",
-  "payments.edit.toasts.updateFailed": "Failed to update payment. Please try again."
+  "payments.edit.toasts.updateFailed": "Failed to update payment. Please try again.",
+  "payments.detail.additional.nodate": "No Date",
+  "payments.new.form.paymentTypes.compliance": "Compliance",
+  "payments.new.form.paymentTypeDescriptions.compliance": "Charge for a compliance certificate or inspection",
+  "payments.filters.compliance": "Compliance"
 }

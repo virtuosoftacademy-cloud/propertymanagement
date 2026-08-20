@@ -497,11 +497,39 @@ export default function DashboardPage() {
     ? (vacantUnits / overview.totalUnits) * 100
     : 0;
 
-  const latestTrendPoint =
-    revenueTrend.length > 0 ? revenueTrend[revenueTrend.length - 1] : null;
-  const currentRevenueValue =
-    latestTrendPoint?.totalRevenue ?? overview?.monthlyRevenue ?? 0;
-  const currentExpenseValue = latestTrendPoint?.totalExpenses ?? 0;
+  // The legend is labelled "Total Revenue"/"Total Expenses" beside a 12-month
+  // chart, so it sums the series. It previously showed only the last point,
+  // which made a "total" that was really just the current month.
+  const currentRevenueValue = revenueTrend.reduce(
+    (sum, point) => sum + (point.totalRevenue ?? 0),
+    0
+  );
+  const currentExpenseValue = revenueTrend.reduce(
+    (sum, point) => sum + (point.totalExpenses ?? 0),
+    0
+  );
+
+  /**
+   * Every point at zero means there is nothing to plot — two flat lines on the
+   * axis read as a broken chart rather than as "no data".
+   */
+  const hasTrendData =
+    revenueTrend.length > 0 &&
+    revenueTrend.some(
+      (point) => (point.totalRevenue ?? 0) > 0 || (point.totalExpenses ?? 0) > 0
+    );
+
+  /**
+   * Thousands only once the value is actually in thousands. The previous
+   * formatter divided unconditionally, so a £375 tick rendered as "£0.375k".
+   */
+  const formatAxisCurrency = (value: number) => {
+    if (Math.abs(value) >= 1000) {
+      const thousands = value / 1000;
+      return `£${Number.isInteger(thousands) ? thousands : thousands.toFixed(1)}k`;
+    }
+    return `£${Math.round(value)}`;
+  };
 
   const urgentActivityCount = recentActivities.filter(
     (activity) => activity.priority === "high" || activity.priority === "urgent"
@@ -623,8 +651,8 @@ export default function DashboardPage() {
       )}
 
       {/* Alerts Section - Always show the main 3 alerts */}
-      <div className="grid gap-4  md:grid-cols-3">
-        {alerts?.slice(1, 4).map((alert) => {
+      {/* <div className="grid gap-4  md:grid-cols-3">
+        {alerts?.slice(0, 3).map((alert) => {
           const styles = getAlertStyles(alert.type);
           return (
             <div
@@ -656,7 +684,7 @@ export default function DashboardPage() {
             </div>
           );
         })}
-      </div>
+      </div> */}
 
       {/* Main KPI Cards */}
       <AnalyticsCardGrid>
@@ -762,13 +790,14 @@ export default function DashboardPage() {
                     {t("dashboard.charts.revenueExpenses.description")}
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
-                  <select className="text-sm border rounded px-2 py-1 bg-background">
-                    <option>2026</option>
-                    <option>2027</option>
-                    <option>2028</option>
-                  </select>
-                </div>
+                {/* A year <select> used to sit here with hardcoded 2026/2027/
+                    2028 options, no value and no onChange — it could not filter
+                    anything, because the API returns a fixed rolling 12 months
+                    with no year parameter. Removed rather than left as a
+                    control that does nothing. */}
+                <span className="text-muted-foreground text-sm">
+                  Last 12 months
+                </span>
               </div>
             </CardHeader>
             <CardContent>
@@ -794,6 +823,14 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {!hasTrendData ? (
+                <div className="flex h-[300px] flex-col items-center justify-center text-center">
+                  <LineChart className="text-muted-foreground mb-3 h-10 w-10" />
+                  <p className="text-muted-foreground text-sm">
+                    {t("dashboard.charts.revenueExpenses.empty")}
+                  </p>
+                </div>
+              ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={revenueTrend}>
                   <defs>
@@ -826,24 +863,33 @@ export default function DashboardPage() {
                       />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  {/* Grid was a hardcoded #f1f5f9, invisible on dark. The
+                      class picks up the theme's muted colour instead. */}
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-muted"
+                  />
                   <XAxis
                     dataKey="month"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    tick={{ fontSize: 12, fill: "currentColor" }}
+                    className="text-muted-foreground"
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: "#64748b" }}
-                    tickFormatter={(value) => `£${value / 1000}k`}
+                    tick={{ fontSize: 12, fill: "currentColor" }}
+                    className="text-muted-foreground"
+                    tickFormatter={formatAxisCurrency}
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="bg-white p-3 border rounded-lg shadow-lg">
+                          // bg-white was hardcoded — a white box with muted
+                          // text is unreadable in dark mode.
+                          <div className="bg-popover text-popover-foreground rounded-lg border p-3 shadow-lg">
                             <p className="text-sm font-medium mb-2">{label}</p>
                             {payload.map((entry, index) => (
                               <div
@@ -888,6 +934,7 @@ export default function DashboardPage() {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -932,7 +979,9 @@ export default function DashboardPage() {
                               )
                               : 0;
                             return (
-                              <div className="bg-white p-2 border rounded shadow-lg">
+                              // Same fix as the Revenue & Expenses tooltip —
+                              // bg-white was unreadable in dark mode.
+                              <div className="bg-popover text-popover-foreground rounded border p-2 shadow-lg">
                                 <p className="text-sm font-medium">
                                   {data.name}: {data.value} ({percentage}%)
                                 </p>

@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Main Content */}
           <div className="flex flex-1 flex-col min-w-0">
             {/* Top Header with Glass Effect */}
-            <header className="flex h-16 items-center justify-between border-b border-border/30 glass-md px-4 lg:px-6 flex-shrink-0 relative z-10">
+            <header className="flex h-16 items-center justify-between border-b border-border/30 bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background px-4 lg:px-6 shrink-0 relative z-10">
               {/* Mobile Menu Button & Search */}
               <div className="flex items-center gap-3 lg:gap-4">
                 {/* Mobile Menu Button */}
@@ -158,7 +158,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           {user?.email}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground capitalize">
-                          {user?.role?.replace("_", " ")}
+                          {(user?.assignedRole ?? user?.role)?.replace("_", " ")}
                         </p>
                       </div>
                     </DropdownMenuLabel>

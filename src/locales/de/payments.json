@@ -337,7 +337,6 @@
   "payments.new.form.validation.dueDateRequired": "Fälligkeitsdatum ist erforderlich",
   "payments.new.form.validation.descriptionMax": "Beschreibung zu lang",
   "payments.new.form.validation.notesMax": "Notizen zu lang",
-
   "payments.receipt.header.backButton": "Zurück zur Zahlung",
   "payments.receipt.header.title": "Zahlungsquittung",
   "payments.receipt.header.subtitle": "Quittung für Zahlung #{{receiptId}}",
@@ -488,5 +487,16 @@
   "payments.edit.notFound.button": "Zurück zu Zahlungen",
   "payments.edit.toasts.loadFailed": "Zahlungsdaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
   "payments.edit.toasts.updateSuccess": "Zahlung erfolgreich aktualisiert.",
-  "payments.edit.toasts.updateFailed": "Zahlung konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+  "payments.edit.toasts.updateFailed": "Zahlung konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+  "payments.detail.additional.openEnded": "Unbefristet",
+  "payments.actions.edit": "Bearbeiten",
+  "payments.actions.recordPayment": "Zahlung erfassen",
+  "payments.actions.refund": "Erstattung",
+  "payments.actions.sendReminder": "Erinnerung senden",
+  "payments.actions.title": "Aktionen",
+  "payments.detail.additional.nodate": "Kein Datum",
+  "payments.filters.clearAll": "Alle zurücksetzen",
+  "payments.new.form.paymentTypes.compliance": "Compliance",
+  "payments.new.form.paymentTypeDescriptions.compliance": "Gebühr für ein Compliance-Zertifikat oder eine Prüfung",
+  "payments.filters.compliance": "Compliance"
 }

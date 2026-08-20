@@ -1,4 +1,5 @@
 import mongoose, { Schema, Model } from "mongoose";
+import { findByIdIncludingDeleted, effectiveRoleOf } from "@/lib/models/lookup";
 import { IInspection, IInspectionItem, InspectionType } from "@/types";
 
 // Inspection Item Schema
@@ -276,7 +277,7 @@ InspectionSchema.pre("save", async function (next) {
   // Validate tenant exists if provided
   if (this.isModified("tenantId") && this.tenantId) {
     const Tenant = mongoose.model("Tenant");
-    const tenant = await Tenant.findById(this.tenantId);
+    const tenant = await findByIdIncludingDeleted(Tenant, this.tenantId);
 
     if (!tenant) {
       return next(new Error("Tenant not found"));
@@ -296,16 +297,17 @@ InspectionSchema.pre("save", async function (next) {
   // Validate inspector exists and has appropriate role
   if (this.isModified("inspectorId")) {
     const User = mongoose.model("User");
-    const inspector = await User.findById(this.inspectorId);
+    const inspector = await findByIdIncludingDeleted(User, this.inspectorId);
 
     if (!inspector) {
       return next(new Error("Inspector not found"));
     }
 
     if (
-      !["property_manager", "maintenance_staff", "super_admin"].includes(
-        inspector.role
-      )
+      // Every name in the old list (property_manager, maintenance_staff,
+      // super_admin) was removed from UserRole, so this check could never
+      // pass — no user could be assigned as an inspector at all.
+      !["admin", "manager"].includes(await effectiveRoleOf(inspector.role))
     ) {
       return next(new Error("Invalid inspector role"));
     }

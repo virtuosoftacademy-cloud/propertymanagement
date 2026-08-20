@@ -32,6 +32,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { CreditCard, PoundSterling } from "lucide-react";
 import { format } from "date-fns";
+import {
+  ENABLED_PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+  DEFAULT_PAYMENT_METHOD,
+} from "@/lib/payments/enabled-methods";
 import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
@@ -110,8 +115,8 @@ export default function PaymentRecordDialog({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
       amount: invoice?.balanceRemaining || 0,
-      paymentMethod: "credit_card",
-      paidDate: format(new Date(), "yyyy-MM-dd"),
+      paymentMethod: DEFAULT_PAYMENT_METHOD as PaymentForm["paymentMethod"],
+      paidDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       transactionId: "",
       notes: "",
     },
@@ -137,7 +142,7 @@ export default function PaymentRecordDialog({
       setShowStripeElements(true);
       setStripeClientSecret(null);
       stripeIntentAmountRef.current = null;
-      form.setValue("paymentMethod", "credit_card");
+      form.setValue("paymentMethod", DEFAULT_PAYMENT_METHOD as PaymentForm["paymentMethod"]);
       setStripeInitError(null);
     }
   }, [open, form]);
@@ -289,8 +294,8 @@ export default function PaymentRecordDialog({
         onOpenChange(false);
         form.reset({
           amount: invoice.balanceRemaining,
-          paymentMethod: "credit_card",
-          paidDate: format(new Date(), "yyyy-MM-dd"),
+          paymentMethod: DEFAULT_PAYMENT_METHOD as PaymentForm["paymentMethod"],
+          paidDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
           transactionId: "",
           notes: "",
         });
@@ -347,8 +352,8 @@ export default function PaymentRecordDialog({
         setStripeInitError(null);
         form.reset({
           amount: invoice ? invoice.balanceRemaining : 0,
-          paymentMethod: "credit_card",
-          paidDate: format(new Date(), "yyyy-MM-dd"),
+          paymentMethod: DEFAULT_PAYMENT_METHOD as PaymentForm["paymentMethod"],
+          paidDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
           transactionId: "",
           notes: "",
         });
@@ -404,26 +409,28 @@ export default function PaymentRecordDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-1">
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-600">Total Amount</p>
-                <p className="font-semibold">
-                  {formatCurrency(invoice.totalAmount)}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-600">Amount Paid</p>
-                <p className="font-semibold text-green-600">
-                  {formatCurrency(invoice.amountPaid)}
-                </p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-gray-600">Balance Remaining</p>
-                <p className="text-lg font-bold text-red-600">
-                  {formatCurrency(invoice.balanceRemaining)}
-                </p>
-              </div>
+          {/* Three summary cards. Remaining is emphasised because it is the
+              number the collector is acting on — it prefills Amount below. */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="rounded-lg border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">Invoice total</p>
+              <p className="text-xl font-semibold tabular-nums">
+                {formatCurrency(invoice.totalAmount)}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">Already paid</p>
+              <p className="text-xl font-semibold tabular-nums text-green-600 dark:text-green-500">
+                {formatCurrency(invoice.amountPaid)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 dark:border-amber-500/60 dark:bg-amber-500/10">
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Remaining
+              </p>
+              <p className="text-xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
+                {formatCurrency(invoice.balanceRemaining)}
+              </p>
             </div>
           </div>
 
@@ -435,7 +442,7 @@ export default function PaymentRecordDialog({
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Amount</FormLabel>
+                      <FormLabel>Amount</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -477,7 +484,7 @@ export default function PaymentRecordDialog({
                   name="paymentMethod"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Method</FormLabel>
+                      <FormLabel>Method</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
@@ -487,18 +494,15 @@ export default function PaymentRecordDialog({
                             <SelectValue placeholder="Select method" />
                           </SelectTrigger>
                         </FormControl>
+                        {/* Driven by ENABLED_PAYMENT_METHODS. The hardcoded
+                            list offered cards and "Manual Entry", all of which
+                            the API now rejects under cash-only. */}
                         <SelectContent>
-                          <SelectItem value="cash">Cash</SelectItem>
-                          <SelectItem value="check">Check</SelectItem>
-                          <SelectItem value="bank_transfer">
-                            Bank Transfer
-                          </SelectItem>
-                          <SelectItem value="credit_card">
-                            Credit Card
-                          </SelectItem>
-                          <SelectItem value="debit_card">Debit Card</SelectItem>
-                          <SelectItem value="online">Online Payment</SelectItem>
-                          <SelectItem value="manual">Manual Entry</SelectItem>
+                          {ENABLED_PAYMENT_METHODS.map((m) => (
+                            <SelectItem key={m} value={m}>
+                              {PAYMENT_METHOD_LABELS[m]}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -511,9 +515,9 @@ export default function PaymentRecordDialog({
                   name="paidDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Date</FormLabel>
+                      <FormLabel>Collected at</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input type="datetime-local" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -577,10 +581,10 @@ export default function PaymentRecordDialog({
                   name="transactionId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Transaction ID (Optional)</FormLabel>
+                      <FormLabel>Reference</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter transaction ID or reference"
+                          placeholder="Receipt / txn ID"
                           {...field}
                         />
                       </FormControl>
@@ -595,10 +599,10 @@ export default function PaymentRecordDialog({
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormLabel>Notes (optional)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Add any notes about this payment..."
+                        placeholder="Collection notes"
                         className="min-h-[80px]"
                         {...field}
                       />
@@ -625,7 +629,7 @@ export default function PaymentRecordDialog({
                     className="w-full sm:w-auto order-1 sm:order-2"
                     size="lg"
                   >
-                    {submitting ? "Processing..." : "Record Payment"}
+                    {submitting ? "Saving..." : "Save Payment"}
                   </Button>
                 )}
               </DialogFooter>

@@ -8,6 +8,8 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Property, Lease } from "@/models";
 import { UserRole, LeaseStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { isPropertyInScope } from "@/lib/auth/property-scope";
 import { deleteFromR2 } from "@/lib/r2-server";
 import { isR2Url, extractObjectKey } from "@/lib/r2";
 
@@ -45,6 +47,17 @@ export async function GET(
       // Tenants can only access units they are associated with
       // For now, we'll restrict tenant access to individual units
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Custom roles must hold this permission; built-in roles are governed
+    // by the role check above. Unit mutations edit the parent property.
+    const denied = requirePermission(session.user as any, "property_view");
+    if (denied) return denied;
+
+    // Units inherit the parent property's visibility scope. 404, not 403, so
+    // an out-of-scope property is indistinguishable from a missing one.
+    if (!isPropertyInScope({ id: session.user.id, role: userRole as any, permissions: (session.user as any).permissions }, property)) {
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
     // Get the specific unit from embedded units array
@@ -94,6 +107,17 @@ export async function PUT(
     // Single company architecture - Admin and Manager can update units for all properties
     if (![UserRole.ADMIN, UserRole.MANAGER].includes(userRole as UserRole)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Custom roles must hold this permission; built-in roles are governed
+    // by the role check above. Unit mutations edit the parent property.
+    const denied = requirePermission(session.user as any, "property_edit");
+    if (denied) return denied;
+
+    // Units inherit the parent property's visibility scope. 404, not 403, so
+    // an out-of-scope property is indistinguishable from a missing one.
+    if (!isPropertyInScope({ id: session.user.id, role: userRole as any, permissions: (session.user as any).permissions }, property)) {
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
     // Find the existing unit in the embedded units array
@@ -272,6 +296,17 @@ export async function DELETE(
     // Single company architecture - Admin and Manager can delete units for all properties
     if (![UserRole.ADMIN, UserRole.MANAGER].includes(userRole as UserRole)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Custom roles must hold this permission; built-in roles are governed
+    // by the role check above. Unit mutations edit the parent property.
+    const denied = requirePermission(session.user as any, "property_edit");
+    if (denied) return denied;
+
+    // Units inherit the parent property's visibility scope. 404, not 403, so
+    // an out-of-scope property is indistinguishable from a missing one.
+    if (!isPropertyInScope({ id: session.user.id, role: userRole as any, permissions: (session.user as any).permissions }, property)) {
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
     // Find the existing unit in the embedded units array

@@ -10,6 +10,7 @@ import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { Application, Property, User } from "@/models";
 import { UserRole, ApplicationStatus } from "@/types";
+import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -74,6 +75,11 @@ export async function GET(request: NextRequest) {
     const propertyId = searchParams.get("propertyId");
     if (propertyId) {
       query.propertyId = propertyId;
+    }
+
+    // Restrict to the caller's properties (no-op for admins).
+    if (user.role !== UserRole.TENANT) {
+      await applyDerivedPropertyScope(query, user as any);
     }
 
     const applicantId = searchParams.get("applicantId");

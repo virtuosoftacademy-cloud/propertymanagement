@@ -167,5 +167,8 @@
   "settings.display.branding.toast.faviconRemoved": "Favicon eliminado exitosamente",
   "settings.display.branding.toast.removeFailed": "Error al eliminar el logotipo",
   "settings.display.branding.toast.resetSuccess": "Configuración de marca restablecida a valores predeterminados",
-  "settings.display.branding.toast.resetFailed": "Error al restablecer la configuración de marca"
+  "settings.display.branding.toast.resetFailed": "Error al restablecer la configuración de marca",
+  "settings.profile.validation.emergencyContactNameInvalid": "El formato del contacto de emergencia no es válido",
+  "settings.profile.validation.jobTitleInvalid": "Puesto de trabajo no válido",
+  "settings.profile.validation.mustBeAtLeast18": "Debes tener al menos 18 años"
 }

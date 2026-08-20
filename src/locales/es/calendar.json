@@ -275,5 +275,9 @@
   "calendar.platform.other": "Otro",
   "calendar.confirm.deleteTitle": "Eliminar evento",
   "calendar.confirm.deleteDescription": "¿Seguro que quieres eliminar \"{title}\"? Esta acción no se puede deshacer.",
-  "calendar.word.at": "a las"
+  "calendar.word.at": "a las",
+  "calendar.analytics.status.description": "Estado actual de todos los eventos",
+  "calendar.analytics.status.title": "Eventos por estado",
+  "calendar.analytics.types.description": "Distribución de eventos por categoría",
+  "calendar.analytics.types.title": "Eventos por tipo"
 }

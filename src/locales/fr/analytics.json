@@ -47,6 +47,8 @@
   "analytics.maintenance.analysis.description": "Coûts et catégories de maintenance",
   "analytics.performance.roi.title": "Analyse du ROI",
   "analytics.performance.roi.description": "Retour sur investissement annuel",
+  "analytics.performance.margin.title": "Marge opérationnelle nette",
+  "analytics.performance.margin.description": "Revenus après coûts de maintenance",
   "analytics.performance.retention.title": "Rétention des Locataires",
   "analytics.performance.retention.description": "Taux de renouvellement des baux",
   "analytics.performance.market.title": "Position sur le Marché",

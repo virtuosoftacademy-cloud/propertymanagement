@@ -199,7 +199,7 @@ export default function UnitEditPage({ params }: UnitEditPageProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Basic Information */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
               <CardDescription>
@@ -280,7 +280,7 @@ export default function UnitEditPage({ params }: UnitEditPageProps) {
           </Card>
 
           {/* Unit Details */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle>Unit Details</CardTitle>
               <CardDescription>
@@ -333,7 +333,7 @@ export default function UnitEditPage({ params }: UnitEditPageProps) {
         </div>
 
         {/* Financial Information */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle>Financial Information</CardTitle>
             <CardDescription>
@@ -380,7 +380,7 @@ export default function UnitEditPage({ params }: UnitEditPageProps) {
         </Card>
 
         {/* Unit Features */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle>Unit Features</CardTitle>
             <CardDescription>
@@ -448,7 +448,7 @@ export default function UnitEditPage({ params }: UnitEditPageProps) {
         </Card>
 
         {/* Notes */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle>Additional Notes</CardTitle>
             <CardDescription>

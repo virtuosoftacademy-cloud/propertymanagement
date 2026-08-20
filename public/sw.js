@@ -1,11 +1,11 @@
 /**
- * tenure - Service Worker
+ * PropertyPro - Service Worker
  * Provides offline functionality and caching for PWA
  */
 
-const CACHE_NAME = "tenure-v1.0.0";
-const STATIC_CACHE_NAME = "tenure-static-v1.0.0";
-const DYNAMIC_CACHE_NAME = "tenure-dynamic-v1.0.0";
+const CACHE_NAME = "propertypro-v1.0.0";
+const STATIC_CACHE_NAME = "propertypro-static-v1.0.0";
+const DYNAMIC_CACHE_NAME = "propertypro-dynamic-v1.0.0";
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -217,7 +217,7 @@ async function handlePageRequest(request) {
         `<!DOCTYPE html>
       <html>
         <head>
-          <title>tenure - Offline</title>
+          <title>PropertyPro - Offline</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
             body { 
@@ -253,7 +253,7 @@ async function handlePageRequest(request) {
           <div class="container">
             <div class="icon">📱</div>
             <h1>You're Offline</h1>
-            <p>Tenure is not available right now. Please check your internet connection and try again.</p>
+            <p>PropertyPro is not available right now. Please check your internet connection and try again.</p>
             <button onclick="window.location.reload()">Try Again</button>
           </div>
         </body>
@@ -296,7 +296,7 @@ self.addEventListener("push", (event) => {
   console.log("Service Worker: Push notification received");
 
   const options = {
-    body: event.data ? event.data.text() : "New notification from tenure",
+    body: event.data ? event.data.text() : "New notification from PropertyPro",
     icon: "/icons/icon-192x192.png",
     badge: "/icons/badge-72x72.png",
     vibrate: [100, 50, 100],
@@ -318,7 +318,7 @@ self.addEventListener("push", (event) => {
     ],
   };
 
-  event.waitUntil(self.registration.showNotification("tenure", options));
+  event.waitUntil(self.registration.showNotification("PropertyPro", options));
 });
 
 // Notification click handling

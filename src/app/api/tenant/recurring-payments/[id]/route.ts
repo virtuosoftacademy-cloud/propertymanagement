@@ -24,7 +24,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -52,7 +52,7 @@ export async function PUT(
 
     // Find the recurring payment setup
     const recurringPayment = await RecurringPayment.findOne({
-      _id: params.id,
+      _id: (await params).id,
       tenantId: session.user.id,
     });
 
@@ -240,7 +240,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -265,7 +265,7 @@ export async function DELETE(
 
     // Find the recurring payment setup
     const recurringPayment = await RecurringPayment.findOne({
-      _id: params.id,
+      _id: (await params).id,
       tenantId: session.user.id,
     });
 
@@ -295,7 +295,7 @@ export async function DELETE(
     }
 
     // Delete the recurring payment setup
-    await RecurringPayment.findByIdAndDelete(params.id);
+    await RecurringPayment.findByIdAndDelete((await params).id);
 
     const response = createApiSuccessResponse<null>(
       null,

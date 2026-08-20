@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import { ComplianceReport } from "@/models";
 import { UserRole } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -42,8 +43,13 @@ const isValidId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 // ============================================================================
 
 export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (_user: any, request: NextRequest, context: { params: { id: string } }) => {
+  async (user: any, request: NextRequest, context: { params: { id: string } }) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_view");
+      if (denied) return denied;
+
       const { id } = await context.params;
 
       if (!isValidId(id)) {

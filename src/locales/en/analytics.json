@@ -47,6 +47,8 @@
   "analytics.maintenance.analysis.description": "Maintenance costs and categories",
   "analytics.performance.roi.title": "ROI Analysis",
   "analytics.performance.roi.description": "Annual return on investment",
+  "analytics.performance.margin.title": "Net Operating Margin",
+  "analytics.performance.margin.description": "Revenue kept after maintenance costs",
   "analytics.performance.retention.title": "Tenant Retention",
   "analytics.performance.retention.description": "Lease renewal rate",
   "analytics.performance.market.title": "Market Position",

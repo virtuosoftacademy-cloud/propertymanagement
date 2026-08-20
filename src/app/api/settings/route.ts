@@ -11,6 +11,7 @@ import connectDB from "@/lib/mongodb";
 import Settings, { SettingsType, SettingsCategory } from "@/models/Settings";
 import SystemSettings from "@/models/SystemSettings";
 import { User } from "@/models";
+import { UserRole } from "@/types";
 import {
   auditSettingsChange,
   AuditAction,
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
     // Handle system settings
     else if (type === SettingsType.SYSTEM) {
       // Check if user has admin privileges for system settings
-      if (session.user.role !== "SUPER_ADMIN") {
+      if (session.user.role !== UserRole.ADMIN) {
         return createErrorResponse("Insufficient permissions", 403);
       }
 
@@ -158,7 +159,7 @@ export async function GET(request: NextRequest) {
       // If requesting branding settings and none exist, create defaults
       if (category === "branding" && systemSettings.length === 0) {
         // Find an admin user to use as the creator
-        const adminUser = await User.findOne({ role: "SUPER_ADMIN" });
+        const adminUser = await User.findOne({ role: UserRole.ADMIN });
         if (adminUser) {
           await createDefaultBrandingSettings(adminUser._id.toString());
           // Refetch the settings
@@ -216,7 +217,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check permissions for system settings
-    if (type === SettingsType.SYSTEM && session.user.role !== "SUPER_ADMIN") {
+    if (type === SettingsType.SYSTEM && session.user.role !== UserRole.ADMIN) {
       return createErrorResponse("Insufficient permissions", 403);
     }
 
@@ -302,7 +303,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Check permissions for system settings
-    if (type === SettingsType.SYSTEM && session.user.role !== "SUPER_ADMIN") {
+    if (type === SettingsType.SYSTEM && session.user.role !== UserRole.ADMIN) {
       return createErrorResponse("Insufficient permissions", 403);
     }
 
@@ -403,7 +404,7 @@ export async function DELETE(request: NextRequest) {
       (searchParams.get("type") as SettingsType) || SettingsType.USER;
 
     // Check permissions for system settings
-    if (type === SettingsType.SYSTEM && session.user.role !== "SUPER_ADMIN") {
+    if (type === SettingsType.SYSTEM && session.user.role !== UserRole.ADMIN) {
       return createErrorResponse("Insufficient permissions", 403);
     }
 

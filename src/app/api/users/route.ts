@@ -12,6 +12,7 @@ import {
   createErrorResponse,
   handleApiError,
   withRoleAndDB,
+  isValidObjectId,
 } from "@/lib/api-utils";
 import connectDB from "@/lib/mongodb";
 import { auditService } from "@/lib/audit-service";
@@ -57,11 +58,14 @@ export const GET = async (request: NextRequest) => {
     const role = searchParams.get("role") || "";
     const isActive = searchParams.get("isActive");
     const excludeTenant = searchParams.get("excludeTenant") === "true";
+    /** Opt in to the soft-deleted users, for the history page. */
+    const deleted = searchParams.get("deleted") === "true";
 
     // Build filter query
     const filter: any = {
-      // Exclude soft-deleted users
-      deletedAt: null,
+      // Soft-deleted users are excluded unless explicitly asked for. Naming the
+      // field either way also escapes the schema's pre-find hook.
+      deletedAt: deleted ? { $ne: null } : null,
     };
 
     // Search filter
@@ -112,11 +116,26 @@ export const GET = async (request: NextRequest) => {
     // Calculate pagination
     const skip = (page - 1) * limit;
 
+    // Sorting. Whitelisted so a query string can't sort by an arbitrary path;
+    // the history page relies on this to show the most recently deleted first.
+    const SORTABLE = [
+      "createdAt",
+      "updatedAt",
+      "deletedAt",
+      "firstName",
+      "lastName",
+      "email",
+      "role",
+    ];
+    const sortByParam = searchParams.get("sortBy") || "";
+    const sortField = SORTABLE.includes(sortByParam) ? sortByParam : "createdAt";
+    const sortDir = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+
     // Get users with pagination
     const [users, total] = await Promise.all([
       User.find(filter)
         .select("-password -__v") // Exclude sensitive fields
-        .sort({ createdAt: -1 })
+        .sort({ [sortField]: sortDir } as any)
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -309,7 +328,31 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN])(
         return createErrorResponse("User IDs are required", 400);
       }
 
-      const userIds = idsParam.split(",");
+      const userIds = idsParam
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+
+      if (userIds.length === 0) {
+        return createErrorResponse("User IDs are required", 400);
+      }
+
+      // Reject malformed ids rather than letting updateMany silently match
+      // nothing and report success.
+      const invalidIds = userIds.filter((id) => !isValidObjectId(id));
+      if (invalidIds.length > 0) {
+        return createErrorResponse(
+          `Invalid user ID(s): ${invalidIds.join(", ")}`,
+          400
+        );
+      }
+
+      // The single-user route blocks self-deactivation; without the same guard
+      // here an admin could include their own id in the bulk list and lock
+      // themselves out.
+      if (userIds.includes(_user.id)) {
+        return createErrorResponse("You cannot deactivate yourself", 400);
+      }
 
       // Deactivate users instead of deleting them
       const result = await User.updateMany(

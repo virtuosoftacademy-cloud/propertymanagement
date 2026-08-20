@@ -33,6 +33,12 @@ export async function GET(request: NextRequest) {
     const tenantId = searchParams.get("tenantId");
     const propertyId = searchParams.get("propertyId");
     const leaseId = searchParams.get("leaseId");
+    const unitId = searchParams.get("unitId");
+
+    // Settled invoices are excluded by default so only actionable items appear
+    // in the working lists. Callers that show a lease's billing history or
+    // total it up need the opposite: a paid invoice must still be counted.
+    const includePaid = searchParams.get("includePaid") === "true";
     const status = searchParams.get("status");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
@@ -53,6 +59,17 @@ export async function GET(request: NextRequest) {
     if (propertyId) filter.propertyId = new Types.ObjectId(propertyId);
     if (leaseId) filter.leaseId = new Types.ObjectId(leaseId);
 
+    // Invoices carry a unitId but nothing could query on it, so a multi-unit
+    // property's invoices could only ever be listed all together. Validated
+    // rather than cast blindly: `new Types.ObjectId("nonsense")` throws, which
+    // would surface as a 500 rather than a bad request.
+    if (unitId) {
+      if (!Types.ObjectId.isValid(unitId)) {
+        return createErrorResponse("Invalid unit ID", 400);
+      }
+      filter.unitId = new Types.ObjectId(unitId);
+    }
+
     // A tenant sees only their own invoices — overriding, not merging, any
     // tenantId they supplied. Staff are restricted to their own properties.
     if (user.role === UserRole.TENANT) {
@@ -62,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
     if (status) {
       filter.status = status;
-    } else if (!deleted) {
+    } else if (!deleted && !includePaid) {
       // Exclude fully paid invoices by default so only actionable items appear.
       // The history view must not apply this: a deleted invoice is usually
       // cancelled or settled, and would be filtered straight back out.

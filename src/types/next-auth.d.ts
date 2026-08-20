@@ -20,7 +20,16 @@ declare module "next-auth" {
       image?: string;
       firstName?: string;
       lastName?: string;
+      /**
+       * The RESOLVED base role. A custom role reports the role it inherits
+       * from, so every existing `role === UserRole.X` check keeps working.
+       */
       role: UserRole;
+      /** What the user actually holds, e.g. "agent" — use this for display. */
+      assignedRole?: string;
+      isCustomRole?: boolean;
+      /** The custom role's permission list; empty for built-in roles. */
+      permissions?: string[];
       avatar?: string;
       bio?: string;
       location?: string;

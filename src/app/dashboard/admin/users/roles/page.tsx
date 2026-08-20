@@ -50,13 +50,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-// import { DeleteConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { DeleteConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   ArrowLeft,
   Shield,
   Users,
   Plus,
-  // Trash2,
+  Trash2,
   Settings,
   UserCheck,
   Search,
@@ -80,6 +80,8 @@ interface RoleConfig {
   label: string;
   description: string;
   permissions: string[];
+  /** Built-in role this custom role is authorised as. See resolve-role.ts. */
+  inheritsFrom?: "admin" | "manager" | "tenant";
   userCount: number;
   color: string;
   isSystem: boolean;
@@ -180,6 +182,16 @@ export default function RoleManagementPage() {
         name: t("admin.roles.permissions.property_view.name"),
         description: t("admin.roles.permissions.property_view.description"),
         category: t("admin.roles.permissions.property_view.category"),
+      },
+      {
+        // Added to SYSTEM_PERMISSIONS with the property-scope work but never
+        // surfaced here, so it could not actually be granted to a role.
+        id: "property_view_all",
+        name: t("admin.roles.permissions.property_view_all.name"),
+        description: t(
+          "admin.roles.permissions.property_view_all.description"
+        ),
+        category: t("admin.roles.permissions.property_view_all.category"),
       },
       {
         id: "property_create",
@@ -301,6 +313,39 @@ export default function RoleManagementPage() {
           "admin.roles.permissions.maintenance_history.description"
         ),
         category: t("admin.roles.permissions.maintenance_history.category"),
+      },
+      // Compliance Management
+      {
+        id: "compliance_management",
+        name: t("admin.roles.permissions.compliance_management.name"),
+        description: t(
+          "admin.roles.permissions.compliance_management.description"
+        ),
+        category: t("admin.roles.permissions.compliance_management.category"),
+      },
+      {
+        id: "compliance_view",
+        name: t("admin.roles.permissions.compliance_view.name"),
+        description: t("admin.roles.permissions.compliance_view.description"),
+        category: t("admin.roles.permissions.compliance_view.category"),
+      },
+      {
+        id: "compliance_create",
+        name: t("admin.roles.permissions.compliance_create.name"),
+        description: t("admin.roles.permissions.compliance_create.description"),
+        category: t("admin.roles.permissions.compliance_create.category"),
+      },
+      {
+        id: "compliance_edit",
+        name: t("admin.roles.permissions.compliance_edit.name"),
+        description: t("admin.roles.permissions.compliance_edit.description"),
+        category: t("admin.roles.permissions.compliance_edit.category"),
+      },
+      {
+        id: "compliance_delete",
+        name: t("admin.roles.permissions.compliance_delete.name"),
+        description: t("admin.roles.permissions.compliance_delete.description"),
+        category: t("admin.roles.permissions.compliance_delete.category"),
       },
       // Financial Management
       {
@@ -539,6 +584,14 @@ export default function RoleManagementPage() {
   const [editingRole, setEditingRole] = useState<RoleConfig | null>(null);
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
+  /**
+   * Which built-in role this custom role is authorised as. Every API guard
+   * compares against admin/manager/tenant, so a role without this is refused
+   * everywhere. Defaults to tenant — least access, not most.
+   */
+  const [newRoleInheritsFrom, setNewRoleInheritsFrom] = useState<
+    "admin" | "manager" | "tenant"
+  >("tenant");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   // Check if all permissions are selected
@@ -549,51 +602,56 @@ export default function RoleManagementPage() {
   const [showUserAssignDialog, setShowUserAssignDialog] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [targetRole, setTargetRole] = useState<string | null>(null);
-  // const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   // Check permissions
   const canManageRoles = session?.user?.role === UserRole.ADMIN;
 
-  // Delete role function
-  // DISABLED: Delete functionality temporarily disabled
-  // const handleDeleteRole = async (roleConfig: RoleConfig) => {
-  //   try {
-  //     setDeleteLoading(roleConfig.name);
+  // Delete role. The API soft-deletes (sets deletedAt) and enforces the same
+  // two rules checked here, so these are a fast local guard, not the authority.
+  const handleDeleteRole = async (roleConfig: RoleConfig) => {
+    try {
+      setDeleteLoading(roleConfig.name);
 
-  //     if (roleConfig.isSystem) {
-  //       toast.error("System roles cannot be deleted");
-  //       return;
-  //     }
+      if (roleConfig.isSystem) {
+        toast.error("System roles cannot be deleted");
+        return;
+      }
 
-  //     if (roleConfig.userCount > 0) {
-  //       toast.error(
-  //         `Cannot delete role with ${roleConfig.userCount} assigned users. Please reassign users first.`
-  //       );
-  //       return;
-  //     }
+      if (roleConfig.userCount > 0) {
+        toast.error(
+          `Cannot delete role with ${roleConfig.userCount} assigned users. Please reassign users first.`
+        );
+        return;
+      }
 
-  //     // Call the delete API
-  //     const response = await fetch(`/api/roles/${roleConfig.name}`, {
-  //       method: "DELETE",
-  //     });
+      // The endpoint resolves by ObjectId or by name, so the name is valid here.
+      const response = await fetch(`/api/roles/${roleConfig.name}`, {
+        method: "DELETE",
+      });
 
-  //     if (!response.ok) {
-  //       const error = await response.json();
-  //       throw new Error(error.message || "Failed to delete role");
-  //     }
+      const data = await response.json().catch(() => null);
 
-  //     toast.success("Role deleted successfully");
+      if (!response.ok) {
+        // createErrorResponse puts the text in `error`, not `message` — reading
+        // only `message` swallowed the server's reason (e.g. the 409 telling
+        // you how many users are still assigned).
+        throw new Error(
+          data?.error || data?.message || "Failed to delete role"
+        );
+      }
 
-  //     // Refresh data
-  //     await fetchRolesAndUsers();
-  //   } catch (error) {
-  //     toast.error(
-  //       error instanceof Error ? error.message : "Failed to delete role"
-  //     );
-  //   } finally {
-  //     setDeleteLoading(null);
-  //   }
-  // };
+      toast.success("Role deleted successfully");
+
+      await fetchRolesAndUsers();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete role"
+      );
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
 
   // Fetch roles and users
   const fetchRolesAndUsers = async () => {
@@ -707,6 +765,9 @@ export default function RoleManagementPage() {
             label: role.label,
             description: role.description,
             permissions: role.permissions || [],
+            // Carried through so the edit dialog prefills the stored access
+            // level; without it every edit would silently reset to tenant.
+            inheritsFrom: role.inheritsFrom,
             userCount: 0,
             color: role.color || existing?.color || "outline",
             isSystem: Boolean(role.isSystem),
@@ -788,6 +849,7 @@ export default function RoleManagementPage() {
         label: newRoleName,
         description: newRoleDescription,
         permissions: selectedPermissions,
+        inheritsFrom: newRoleInheritsFrom,
         color: "outline" as const,
         isActive: true,
       };
@@ -801,6 +863,7 @@ export default function RoleManagementPage() {
             label: newRoleName,
             description: newRoleDescription,
             permissions: selectedPermissions,
+            inheritsFrom: newRoleInheritsFrom,
             color: "outline",
           }),
         });
@@ -832,6 +895,7 @@ export default function RoleManagementPage() {
       setEditingRole(null);
       setNewRoleName("");
       setNewRoleDescription("");
+      setNewRoleInheritsFrom("tenant");
       setSelectedPermissions([]);
 
       // Refresh roles and users
@@ -984,6 +1048,8 @@ export default function RoleManagementPage() {
               setEditingRole(null);
               setNewRoleName("");
               setNewRoleDescription("");
+              setNewRoleInheritsFrom("tenant");
+      setNewRoleInheritsFrom("tenant");
               setSelectedPermissions([]);
               setShowRoleDialog(true);
             }}
@@ -1100,6 +1166,9 @@ export default function RoleManagementPage() {
                           setNewRoleName(config.label);
                           setNewRoleDescription(config.description);
                           setSelectedPermissions(config.permissions);
+                          setNewRoleInheritsFrom(
+                            config.inheritsFrom ?? "tenant"
+                          );
                           setShowRoleDialog(true);
                         }}
                         disabled={!config.canEdit}
@@ -1109,8 +1178,9 @@ export default function RoleManagementPage() {
                           ? t("admin.roles.manage.edit")
                           : t("admin.roles.manage.view")}
                       </Button>
-                      {/* DISABLED: Delete functionality temporarily disabled */}
-                      {/* {config.canDelete && (
+                      {/* canDelete is false for system roles and for any role
+                          with users still assigned. */}
+                      {config.canDelete && (
                         <DeleteConfirmationDialog
                           itemName={config.name}
                           itemType="role"
@@ -1126,7 +1196,7 @@ export default function RoleManagementPage() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </DeleteConfirmationDialog>
-                      )} */}
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1439,6 +1509,42 @@ export default function RoleManagementPage() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Without this the role is created but its holders are refused by
+                every API route — the guards compare against the built-in roles,
+                so a custom role has to say which one it acts as. */}
+            <div className="space-y-2">
+              <Label htmlFor="roleInheritsFrom">
+                Access level <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={newRoleInheritsFrom}
+                onValueChange={(value) =>
+                  setNewRoleInheritsFrom(value as "admin" | "manager" | "tenant")
+                }
+                disabled={editingRole?.isSystem}
+              >
+                <SelectTrigger id="roleInheritsFrom">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tenant">
+                    Tenant — own records only
+                  </SelectItem>
+                  <SelectItem value="manager">
+                    Manager — properties, tenants, leases, maintenance
+                  </SelectItem>
+                  <SelectItem value="admin">
+                    Admin — full access, including users and roles
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Which built-in role this behaves as for route access. The
+                permissions below refine what the role can do; they cannot grant
+                more than the level chosen here.
+              </p>
             </div>
 
             <div className="space-y-4">

@@ -6,7 +6,7 @@ import { UserRole } from "@/types";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -29,7 +29,7 @@ export async function GET(
 
     // Find the receipt
     const receipt = await PaymentReceipt.findOne({
-      _id: params.id,
+      _id: (await params).id,
     }).populate({
       path: "paymentId",
       select:

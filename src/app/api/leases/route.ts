@@ -25,6 +25,7 @@
 import { NextRequest } from "next/server";
 import { Lease, Property, User } from "@/models";
 import { UserRole, LeaseStatus } from "@/types";
+import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -87,6 +88,12 @@ export const GET = withRoleAndDB([
     if (propertyId) query.propertyId = propertyId;
     if (tenantId)   query.tenantId = tenantId;
     if (rentPeriod) query.rentPeriod = rentPeriod;
+
+    // Restrict to the caller's properties, and validate any propertyId they
+    // supplied. Tenants are scoped by tenantId above, not by property.
+    if (user.role !== UserRole.TENANT) {
+      await applyDerivedPropertyScope(query, user);
+    }
 
     // Expiring soon filter — only ever matches bounded leases (endDate set);
     // open-ended Month leases have no endDate and are correctly excluded.

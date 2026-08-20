@@ -25,6 +25,8 @@ export interface IRoleConfig {
   label: string;
   description: string;
   permissions: string[];
+  /** Built-in role this custom role is authorised as. See resolve-role.ts. */
+  inheritsFrom?: "admin" | "manager" | "tenant";
   isSystem: boolean;
   isActive: boolean;
   color: "default" | "destructive" | "outline" | "secondary";
@@ -744,7 +746,11 @@ export enum PaymentType {
   RENT = "rent",
   SECURITY_DEPOSIT = "security_deposit",
   LATE_FEE = "late_fee",
+  // Retained even though the "new payment" form no longer offers it: existing
+  // payments carry this value, and the Payment model validates `type` against
+  // Object.values(PaymentType), so removing it would make those rows unsavable.
   PET_DEPOSIT = "pet_deposit",
+  COMPLIANCE = "compliance",
   UTILITY = "utility",
   MAINTENANCE = "maintenance",
   INVOICE = "invoice",

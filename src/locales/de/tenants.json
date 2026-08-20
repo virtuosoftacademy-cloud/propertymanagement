@@ -664,5 +664,14 @@
   "tenants.applicationForm.preferredContact.email": "E-Mail",
   "tenants.applicationForm.preferredContact.phone": "Telefon",
   "tenants.applicationForm.preferredContact.text": "SMS",
-  "tenants.applicationForm.preferredContact.app": "App"
+  "tenants.applicationForm.preferredContact.app": "App",
+  "tenants.form.fields.nino.label": "NINO (optional)",
+  "tenants.form.fields.nino.placeholder": "qq 12 34 56 c",
+  "tenants.form.personalInfo.nino.label": "NINO (optional)",
+  "tenants.form.personalInfo.nino.placeholder": "XXXXXXXXX",
+  "tenants.form.validation.contactEmailRequired": "E-Mail des Kontakts ist erforderlich",
+  "tenants.form.validation.contactNameRequired": "Name des Kontakts ist erforderlich",
+  "tenants.form.validation.contactPhoneRequired": "Telefonnummer ist erforderlich",
+  "tenants.form.validation.contactRelationshipRequired": "Beziehung ist erforderlich",
+  "tenants.form.validation.ninoInvalid": "Ungültiges NINO-Format"
 }

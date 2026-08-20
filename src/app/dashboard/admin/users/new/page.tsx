@@ -319,7 +319,7 @@ export default function CreateUserPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Avatar Upload - Enhanced Card */}
               <div className="lg:col-span-4">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader className="text-center pb-4">
                     <CardTitle className="flex items-center justify-center gap-2 text-xl">
                       <User className="h-6 w-6 text-primary" />
@@ -347,7 +347,7 @@ export default function CreateUserPage() {
 
               {/* Personal Information - Enhanced Large Card */}
               <div className="lg:col-span-8">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader className="pb-6">
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <User className="h-6 w-6 text-primary" />
@@ -451,7 +451,7 @@ export default function CreateUserPage() {
 
               {/* Account Setup - Enhanced Medium Card */}
               <div className="lg:col-span-6">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader className="pb-6">
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <Key className="h-6 w-6 text-primary" />
@@ -594,7 +594,7 @@ export default function CreateUserPage() {
 
               {/* User Settings - Enhanced Medium Card */}
               <div className="lg:col-span-6">
-                <Card className="h-fit border-2 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 bg-card/95 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                   <CardHeader className="pb-6">
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <Shield className="h-6 w-6 text-primary" />

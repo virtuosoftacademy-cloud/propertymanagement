@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import { ComplianceReport } from "@/models";
 import { UserRole, ComplianceCategory } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -50,8 +51,13 @@ async function extractId(context: any): Promise<string | null> {
 const ValidCategories = Object.values(ComplianceCategory) as string[];
 
 export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (_user: any, request: NextRequest, context: any) => {
+  async (user: any, request: NextRequest, context: any) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_edit");
+      if (denied) return denied;
+
       const id = await extractId(context);
 
       if (!id) {

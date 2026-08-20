@@ -1,4 +1,5 @@
 import mongoose, { Schema, Model } from "mongoose";
+import { findByIdIncludingDeleted, effectiveRoleOf } from "@/lib/models/lookup";
 import {
   IMaintenanceRequest,
   MaintenancePriority,
@@ -405,21 +406,17 @@ MaintenanceRequestSchema.pre("save", async function (next) {
   // Validate assigned user exists and has appropriate role
   if (this.isModified("assignedTo") && this.assignedTo) {
     const User = mongoose.model("User");
-    const user = await User.findById(this.assignedTo);
+    const user = await findByIdIncludingDeleted(User, this.assignedTo);
 
     if (!user) {
       return next(new Error("Assigned user not found"));
     }
 
     if (
-      ![
-        "maintenance_staff",
-        "property_manager",
-        "manager",
-        "super_admin",
-        "admin",
-        "technician",
-      ].includes(user.role)
+      // Legacy names (maintenance_staff, property_manager, super_admin,
+      // technician) are not UserRole values any more; resolving to the
+      // built-in role covers both built-ins and custom roles.
+      !["admin", "manager"].includes(await effectiveRoleOf(user.role))
     ) {
       return next(new Error("User cannot be assigned maintenance requests"));
     }

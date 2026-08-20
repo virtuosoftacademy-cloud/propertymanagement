@@ -5,6 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { UserRole } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -14,6 +15,7 @@ import {
 import Lease from "@/models/Lease";
 import User from "@/models/User";
 import Property from "@/models/Property";
+import { canAccessProperty } from "@/lib/auth/property-scope";
 
 export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (
@@ -22,11 +24,22 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
     { params }: { params: Promise<{ id: string }> }
   ) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_view");
+      if (denied) return denied;
+
       const { id: propertyId } = await params;
 
       // Validate property ID
       if (!isValidObjectId(propertyId)) {
         return createErrorResponse("Invalid property ID", 400);
+      }
+
+      // This route lists the TENANTS of a property, so it leaks tenant identity
+      // for any property id if left unscoped.
+      if (!(await canAccessProperty(user, propertyId))) {
+        return createErrorResponse("Property not found", 404);
       }
 
       // Get query parameters

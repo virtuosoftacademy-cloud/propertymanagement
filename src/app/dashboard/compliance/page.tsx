@@ -639,7 +639,7 @@ export default function CompliancePage() {
       </div>
 
       {/* Main List Card */}
-      <Card>
+      <Card className="gap-2 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">

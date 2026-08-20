@@ -367,7 +367,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Personal Information */}
-            <Card>
+            <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" />
@@ -501,7 +501,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
             </Card>
 
             {/* Account & Security */}
-            <Card>
+            <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />

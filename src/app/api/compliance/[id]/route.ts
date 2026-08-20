@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import mongoose from "mongoose";
 import { ComplianceReport } from "@/models";
 import { UserRole, ComplianceStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -24,8 +25,13 @@ const isValidId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 // ============================================================================
 
 export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (_user: any, request: NextRequest, context: { params: { id: string } }) => {
+  async (user: any, request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_view");
+      if (denied) return denied;
+
       const { id } = await context.params;
 
       if (!isValidId(id)) {
@@ -59,8 +65,13 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 // ============================================================================
 
 export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (_user: any, request: NextRequest, context: { params: { id: string } }) => {
+  async (user: any, request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_edit");
+      if (denied) return denied;
+
       const { id } = await context.params;
 
       if (!isValidId(id)) {
@@ -149,8 +160,13 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 // ============================================================================
 
 export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
-  async (user: any, request: NextRequest, context: { params: { id: string } }) => {
+  async (user: any, request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "compliance_delete");
+      if (denied) return denied;
+
       const { id } = await context.params;
 
       if (!isValidId(id)) {

@@ -194,7 +194,9 @@ export function RoleSelector({
 
 // Role comparison utilities
 export function isHigherRole(role1: string, role2: string): boolean {
-  const hierarchy = [UserRole.TENANT, UserRole.MANAGER, UserRole.ADMIN];
+  // string[] so plain role names from the API compare without a cast; an
+  // unknown (custom) role indexes to -1 and sorts below tenant.
+  const hierarchy: string[] = [UserRole.TENANT, UserRole.MANAGER, UserRole.ADMIN];
 
   return hierarchy.indexOf(role1) > hierarchy.indexOf(role2);
 }

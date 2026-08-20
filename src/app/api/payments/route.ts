@@ -4,11 +4,13 @@
  */
 
 import { NextRequest } from "next/server";
+import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { Payment, Property } from "@/models";
 import { UserRole, PaymentStatus } from "@/types";
 import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
+import { assertPaymentMethodEnabled } from "@/lib/payments/enabled-methods";
 import {
   createSuccessResponse as createApiSuccessResponse,
   createErrorResponse as createApiErrorResponse,
@@ -47,6 +49,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type");
     const propertyId = searchParams.get("propertyId");
     const tenantId = searchParams.get("tenantId");
+    const leaseId = searchParams.get("leaseId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const search = (searchParams.get("search") || "").trim();
@@ -89,6 +92,20 @@ export async function GET(request: NextRequest) {
     if (propertyId && userRole !== UserRole.TENANT)
       query.propertyId = propertyId;
     if (tenantId && userRole !== UserRole.TENANT) query.tenantId = tenantId;
+
+    // Lease filter. This was read by nobody: PaymentStatusDashboard requests
+    // `?leaseId=...` on the lease detail and lease payments pages, and the
+    // parameter was silently ignored — so the dashboard listed and summarised
+    // payments from EVERY lease, not the one on screen.
+    //
+    // Applies to tenants too: their own payments across several leases would
+    // otherwise all show under whichever lease they opened.
+    if (leaseId) {
+      if (!mongoose.Types.ObjectId.isValid(leaseId)) {
+        return createErrorResponse("Invalid lease ID", 400);
+      }
+      query.leaseId = new mongoose.Types.ObjectId(leaseId);
+    }
 
     // Restrict to the caller's properties. Mirrors the ownership check the POST
     // handler in this same file already performs before creating a payment.
@@ -229,6 +246,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rent is cash-only. Only checked when a method is supplied: this endpoint
+    // creates SCHEDULED payments, which are legitimately created without one
+    // and get a method when they are actually paid.
+    if (body.paymentMethod) {
+      const methodError = assertPaymentMethodEnabled(body.paymentMethod);
+      if (methodError) {
+        return createErrorResponse(methodError, 400);
+      }
+    }
+
     // Verify property ownership for managers
     if (userRole === UserRole.MANAGER) {
       const property = await Property.findById(body.propertyId);
@@ -268,6 +295,30 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error in POST /api/payments:", error);
+
+    // Surface the reason. The Payment model rejects a save with specific,
+    // useful messages — "Cannot create payments for inactive leases",
+    // "Payment due date must be within lease period", "Lease does not belong
+    // to the specified tenant" — and this handler used to replace all of them
+    // with a blanket 500 "Failed to create payment", leaving no way to tell a
+    // business-rule refusal from a server fault.
+    const message = error instanceof Error ? error.message : "";
+
+    // Mongoose schema validation
+    if ((error as any)?.name === "ValidationError") {
+      const details = Object.values((error as any).errors ?? {})
+        .map((e: any) => e?.message)
+        .filter(Boolean)
+        .join(", ");
+      return createErrorResponse(details || "Invalid payment data", 400);
+    }
+
+    // Rejections thrown by the model's pre-save hook are business rules, not
+    // server faults, so they belong in a 400.
+    if (message) {
+      return createErrorResponse(message, 400);
+    }
+
     return createErrorResponse("Failed to create payment", 500);
   }
 }

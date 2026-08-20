@@ -6,11 +6,11 @@ import mongoose from "mongoose";
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
 
     const {

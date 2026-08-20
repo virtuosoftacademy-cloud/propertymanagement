@@ -8,6 +8,8 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Property } from "@/models";
 import { UserRole } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { isPropertyInScope } from "@/lib/auth/property-scope";
 
 // GET /api/properties/[id]/units - Get all units for a property
 export async function GET(
@@ -43,6 +45,17 @@ export async function GET(
       // Tenants can only access units they are associated with
       // For now, we'll restrict tenant access to units
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Custom roles must hold this permission; built-in roles are governed
+    // by the role check above. Unit mutations edit the parent property.
+    const denied = requirePermission(session.user as any, "property_view");
+    if (denied) return denied;
+
+    // Units inherit the parent property's visibility scope. 404, not 403, so
+    // an out-of-scope property is indistinguishable from a missing one.
+    if (!isPropertyInScope({ id: session.user.id, role: userRole as any, permissions: (session.user as any).permissions }, property)) {
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
     // Get all units from the embedded units array
@@ -88,6 +101,17 @@ export async function POST(
     // Single company architecture - Admin and Manager can create units for all properties
     if (![UserRole.ADMIN, UserRole.MANAGER].includes(userRole as UserRole)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Custom roles must hold this permission; built-in roles are governed
+    // by the role check above. Unit mutations edit the parent property.
+    const denied = requirePermission(session.user as any, "property_edit");
+    if (denied) return denied;
+
+    // Units inherit the parent property's visibility scope. 404, not 403, so
+    // an out-of-scope property is indistinguishable from a missing one.
+    if (!isPropertyInScope({ id: session.user.id, role: userRole as any, permissions: (session.user as any).permissions }, property)) {
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
     // Verify this is a multi-unit property

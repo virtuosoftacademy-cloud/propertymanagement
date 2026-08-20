@@ -438,7 +438,7 @@ export function MaintenanceRequestForm({
           className="space-y-8"
         >
           {/* Request Details */}
-          <Card className="border-0">
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader className="pb-6">
               <CardTitle className="flex items-center gap-3 text-xl">
                 <div className="p-2 rounded-lg bg-linear-to-br from-primary to-primary text-white">
@@ -598,7 +598,7 @@ export function MaintenanceRequestForm({
           </Card>
 
           {(showPropertyTenantSection ?? !isTenantView) && (
-            <Card className="border-0">
+            <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
               <CardHeader className="pb-6">
                 <CardTitle className="flex items-center gap-3 text-xl">
                   <div className="p-2 rounded-lg bg-linear-to-br from-green-500 to-emerald-600 text-white">
@@ -817,7 +817,7 @@ export function MaintenanceRequestForm({
           )}
 
           {(showAssignmentSchedulingSection ?? !isTenantView) && (
-            <Card>
+            <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" />
@@ -951,7 +951,7 @@ export function MaintenanceRequestForm({
           )}
 
           {/* Image Upload */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ImageIcon className="h-5 w-5" />

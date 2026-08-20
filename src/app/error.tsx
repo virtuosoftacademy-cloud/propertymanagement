@@ -278,7 +278,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                   size="sm"
                   className="text-xs"
                 >
-                  <a href="mailto:support@tenure.co.uk">Contact Support</a>
+                  <a href="mailto:support@propertypro.com">Contact Support</a>
                 </Button>
               </div>
             </div>

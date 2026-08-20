@@ -981,10 +981,17 @@ UserSchema.methods.restore = function (this: UserDocument) {
   return this.save({ validateBeforeSave: false });
 };
 
-// Query middleware to exclude soft deleted documents
-UserSchema.pre(/^find/, function () {
-  // @ts-expect-error - Query middleware typing issue in Mongoose
-  this.find({ deletedAt: null });
+// Query middleware to exclude soft deleted documents.
+//
+// Escapable: a query that mentions `deletedAt` itself is left alone, so the
+// history page can ask for deleted users. Without this the filter is
+// unconditional and soft-deleted users are invisible to every query, which
+// makes a restore/permanent-delete flow impossible to build.
+UserSchema.pre(/^find/, function (this: any) {
+  const conditions = this.getQuery?.() ?? {};
+  if (!("deletedAt" in conditions)) {
+    this.find({ deletedAt: null });
+  }
 });
 
 // Prevent duplicate email registration

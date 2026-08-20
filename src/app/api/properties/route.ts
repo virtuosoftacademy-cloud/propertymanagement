@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { Property } from "@/models";
 import { UserRole, PropertyStatus } from "@/types";
+import { requirePermission } from "@/lib/auth/require-permission";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -23,6 +24,10 @@ import {
   validateSchema,
 } from "@/lib/validations";
 import { calculatePropertyStatusFromUnits } from "@/utils/property-status-calculator";
+import {
+  applyPropertyScope,
+  canViewAllProperties,
+} from "@/lib/auth/property-scope";
 import mongoose from "mongoose";
 
 // ============================================================================
@@ -32,6 +37,11 @@ import mongoose from "mongoose";
 export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (user, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_view");
+      if (denied) return denied;
+
       const { searchParams } = new URL(request.url);
       const paginationParams = parsePaginationParams(searchParams);
 
@@ -111,6 +121,14 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       if (filters.hasAvailableUnits) {
         query["units.status"] = "available";
       }
+
+      // Restrict to the caller's own properties unless they may see them all.
+      //
+      // Applied HERE, before the branch below: the admin path uses the raw
+      // driver (Property.collection.find), which runs no Mongoose middleware,
+      // so a model-level hook would not cover it. Merging into `query` covers
+      // both paths. No-op for admins and anyone with property_view_all.
+      applyPropertyScope(query, user);
 
       // For admin users, show non-deleted by default; include deleted when explicitly requested
       let result;
@@ -223,6 +241,11 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (user, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_create");
+      if (denied) return denied;
+
       const { success, data: body, error } = await parseRequestBody(request);
       if (!success) {
         return createErrorResponse(error!, 400);
@@ -249,20 +272,26 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // Note: bedrooms, bathrooms, squareFootage, rentAmount, securityDeposit
       // are now stored only at the unit level - no property root level fields needed
 
-      // Single company architecture - Admin and Manager can create properties
-      // Set default owner to the creating user if not specified
-      newPropertyData.ownerId = propertyData.ownerId || user.id;
+      // ownerId records WHO CREATED the property — there is no createdBy field,
+      // and per-property visibility keys off it. Always the caller: accepting
+      // propertyData.ownerId would let someone file a property under another
+      // user and hide it from themselves, or forge provenance.
+      newPropertyData.ownerId = user.id;
 
-      // Managers can optionally assign themselves as manager
-      if (user.role === UserRole.MANAGER && propertyData.managerId) {
-        newPropertyData.managerId = propertyData.managerId;
-      } else if (user.role === UserRole.MANAGER) {
+      // Assignment grants visibility, so only an admin may direct it. For
+      // everyone else the supplied values are ignored and the creator is
+      // recorded as the manager — that is what makes "I can see what I created"
+      // true by construction rather than by the creator's own say-so.
+      if (canViewAllProperties(user)) {
+        if (propertyData.managerId) {
+          newPropertyData.managerId = propertyData.managerId;
+        }
+        if (propertyData.assignedAgentId) {
+          newPropertyData.assignedAgentId = propertyData.assignedAgentId;
+        }
+      } else {
         newPropertyData.managerId = user.id;
-      }
-
-      // Admins can assign any manager
-      if (user.role === UserRole.ADMIN && propertyData.managerId) {
-        newPropertyData.managerId = propertyData.managerId;
+        delete newPropertyData.assignedAgentId;
       }
 
       // Unified approach: units are embedded directly in the property document
@@ -305,6 +334,11 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 export const PUT = withRoleAndDB([UserRole.ADMIN])(
   async (user, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_edit");
+      if (denied) return denied;
+
       const { success, data: body, error } = await parseRequestBody(request);
       if (!success) {
         return createErrorResponse(error!, 400);
@@ -359,6 +393,11 @@ export const PUT = withRoleAndDB([UserRole.ADMIN])(
 export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
   async (user, request: NextRequest) => {
     try {
+      // Custom roles must hold this permission; built-in roles are
+      // governed by the role list above.
+      const denied = requirePermission(user, "property_delete");
+      if (denied) return denied;
+
       const { searchParams } = new URL(request.url);
       const propertyIds = searchParams.get("ids")?.split(",") || [];
 
@@ -366,14 +405,22 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         return createErrorResponse("Property IDs are required", 400);
       }
 
-      // Check which properties exist and are not already deleted
+      // Check which properties exist and are not already deleted.
+      //
+      // Scoped: without this a manager could bulk soft-delete any property in
+      // the system by posting its id, since nothing here checked ownership.
+      // Ids outside the caller's scope simply don't match, so they are reported
+      // as not-found rather than confirming they exist.
+      const bulkQuery: Record<string, any> = {
+        _id: {
+          $in: propertyIds.map((id) => new mongoose.Types.ObjectId(id)),
+        },
+        deletedAt: null,
+      };
+      applyPropertyScope(bulkQuery, user);
+
       const existingProperties = await Property.collection
-        .find({
-          _id: {
-            $in: propertyIds.map((id) => new mongoose.Types.ObjectId(id)),
-          },
-          deletedAt: null,
-        })
+        .find(bulkQuery)
         .toArray();
 
       if (existingProperties.length === 0) {

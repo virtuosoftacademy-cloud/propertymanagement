@@ -247,7 +247,7 @@ export function EnhancedApplicationForm({
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-6 w-6" />
@@ -275,7 +275,7 @@ export function EnhancedApplicationForm({
       </Card>
 
       {/* Step Navigation */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardContent className="pt-6">
           <div className="flex justify-between items-center">
             {STEPS.map((step) => {
@@ -323,7 +323,7 @@ export function EnhancedApplicationForm({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Step 1: Personal Information */}
           {currentStep === 1 && (
-            <Card>
+            <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" />
@@ -445,7 +445,7 @@ export function EnhancedApplicationForm({
 
           {/* Step 2: Employment Information */}
           {currentStep === 2 && (
-            <Card>
+            <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="h-5 w-5" />
@@ -554,7 +554,7 @@ export function EnhancedApplicationForm({
           )}
 
           {/* Navigation Buttons */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardContent className="pt-6">
               <div className="flex justify-between">
                 <Button
