@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   // output:"standalone",
   // Served from its own host so its auth cookie stays isolated from the
   // tenure landing page dev server on localhost:3000.
-  // allowedDevOrigins: ["tenure.localhost"],
+  allowedDevOrigins: ["tenure.localhost"],
   typescript: {
     ignoreBuildErrors: true,
   },
