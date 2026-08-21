@@ -984,7 +984,7 @@ export function EnhancedPropertyForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="text-sm text-gray-500 rounded-lg p-3 border bg-foreground dark:bg-background border-primary-200 dark:border-primary">
+          <div className="text-sm text-gray-500 rounded-lg p-3 border bg-accent dark:bg-background border-primary-200 dark:border-primary">
             <p className="font-medium text-primary dark:text-primary-dark mb-1">
               Smart Unit Management
             </p>
@@ -1177,7 +1177,7 @@ export function EnhancedPropertyForm({
                   key={item}
                   className={`group relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md ${selectedAmenities.includes(item)
                     ? "border-primary bg-primary-50 text-primary shadow-primary-100 dark:bg-primary-950/30 dark:border-primary-400 dark:text-primary-300"
-                    : "border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-primary-600 dark:hover:bg-primary-950/20"
+                    : "border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 dark:border-gray-700 dark:bg-primary/10 dark:hover:border-primary-600 dark:hover:bg-primary-950/20"
                     }`}
                   onClick={() => handleAmenityToggle(item)}
                 >
@@ -1202,7 +1202,7 @@ export function EnhancedPropertyForm({
             })}
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+          <div className="bg-gray-50 dark:bg-primary/10 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
             <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
               {t("properties.form.amenities.custom.label")}
             </Label>
@@ -1217,14 +1217,14 @@ export function EnhancedPropertyForm({
                     handleAddCustomAmenity();
                   }
                 }}
-                className="flex-1 border-gray-300 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:focus:border-primary-400"
+                className="flex-1 border-gray-300 focus:border-primary focus:ring-primary/30 dark:border-gray-600 dark:focus:border-primary-400"
               />
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleAddCustomAmenity}
                 disabled={!customAmenity.trim()}
-                className="px-4 border-primary-300 text-primary-600 hover:bg-primary-50 hover:border-primary-400 disabled:opacity-50 disabled:cursor-not-allowed dark:border-primary-600 dark:text-primary-400 dark:hover:bg-primary-950/20"
+                className="px-4 border-primary text-primary-600 hover:bg-primary-50 hover:border-primary-400 disabled:opacity-50 disabled:cursor-not-allowed dark:border-primary-600 dark:text-primary-400 dark:hover:bg-primary-950/20"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -1232,7 +1232,7 @@ export function EnhancedPropertyForm({
           </div>
 
           {selectedAmenities.length > 0 && (
-            <div className="bg-foreground dark:bg-background rounded-xl p-6 border border-primary-200 dark:border-primary-800">
+            <div className="bg-background dark:bg-primary/10 rounded-xl p-6 border border-primary-200 dark:border-primary-800">
               <Label className="text-sm font-semibold text-primary-800 dark:text-primary-300 mb-4 block">
                 {t("properties.form.amenities.selected.label", {
                   values: { count: selectedAmenities.length },

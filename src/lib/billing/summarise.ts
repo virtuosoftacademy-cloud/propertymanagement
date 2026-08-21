@@ -9,7 +9,7 @@
 
 import type {
   Subscription,
-  Subscription,
+  SubscriptionPayment,
   SubscriptionPaymentsSummary,
   SubscriptionRevenueSummary,
   MonthlyRevenuePoint,
@@ -47,7 +47,7 @@ export function summariseSubscriptions(
 }
 
 export function summarisePayments(
-  rows: Subscription[],
+  rows: SubscriptionPayment[],
   now: Date = new Date()
 ): SubscriptionPaymentsSummary {
   const totalReceived = rows.reduce((sum, p) => sum + p.amount, 0);
@@ -78,7 +78,7 @@ const MONTH_KEY = (d: Date) =>
  */
 export function buildRevenueHistory(
   accounts: Subscription[],
-  payments: Subscription[],
+  payments: SubscriptionPayment[],
   now: Date = new Date(),
   months = 12
 ): MonthlyRevenuePoint[] {
@@ -112,7 +112,7 @@ export function buildRevenueHistory(
     // Money actually received that month, spread to a monthly figure so an
     // annual payment does not show as a one-month revenue spike.
     const mrr = received.reduce((sum, p) => {
-      const account = accounts.find((a) => a.id === p.accountId);
+      const account = accounts.find((a) => a.id === p.subscriptionId);
       return sum + monthlyEquivalent(p.amount, account?.billingCycle ?? "monthly");
     }, 0);
 

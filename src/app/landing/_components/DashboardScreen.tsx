@@ -18,11 +18,11 @@ export default function LandingDashboard() {
                     {/* Floating mini card — bottom-left */}
                     <div className="absolute left-0 top-1/2 -translate-x-1/5 -translate-y-28 z-10 hidden md:flex flex-col gap-3">
                         <Image
-                            src="/assets/dashboardsection.png"
+                            src="/images/dashboardsection.png"
                             alt="Tenure Dashboard"
-                            width={20}
-                            height={20}
-                            className="w-full h-full object-cover object-top"
+                            width={600}
+                            height={800}
+                            className="w-54 h-full object-cover object-top"
                         />
                         {/* <div>
               <div className="flex items-center justify-between mb-1">
@@ -59,11 +59,11 @@ export default function LandingDashboard() {
                         {/* Screen */}
                         {/* <div className="bg-white rounded-t-lg overflow-hidden" style={{ height: "420px" }}> */}
                         <Image
-                            src="/assets/dashboard.png"
+                            src="/images/dashboard.png"
                             alt="Tenure Dashboard"
                             width={1120}
                             height={1120}
-                            className="w-[85rem] h-full"
+                            className="w-340 h-full"
                         />
                         {/* </div> */}
                     </div>
@@ -76,7 +76,7 @@ export default function LandingDashboard() {
             {/* </div> */}
 
             {/* ── Text row below laptop ── */}
-            <div className="mx-auto max-w-5xl px-6 sm:px-12 pt-14 pb-16">
+            <div className="mx-auto max-w-7xl px-12 sm:px-24 pt-14 pb-16">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10  items-start">
 
                     {/* Left */}
@@ -98,13 +98,13 @@ export default function LandingDashboard() {
                             status, maintenance alerts and lease renewals, all visible the
                             moment you log in. No guesswork. Just clarity.
                         </p>
-                        <Link
+                        {/* <Link
                             href="#"
                             className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:opacity-75 transition-opacity"
                         >
                             Read More
                             <ArrowRight className="h-4 w-4" />
-                        </Link>
+                        </Link> */}
                     </div>
 
                 </div>

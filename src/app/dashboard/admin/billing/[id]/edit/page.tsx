@@ -87,7 +87,7 @@ export default function EditSubscriptionPage({
   const plan = resolvePlan(account.planId);
 
   const handleSubmit = async (values: ManagerAccountFormValues) => {
-    const response = await fetch(`/api/billing/manager-accounts/${id}`, {
+    const response = await fetch(`/api/billing/subscriptions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),

@@ -312,7 +312,7 @@ export function LogoManagement({
   return (
     <div className="space-y-6">
       {/* Logo Management */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
@@ -477,7 +477,7 @@ export function LogoManagement({
       </Card>
 
       {/* Color Management */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
@@ -557,7 +557,7 @@ export function LogoManagement({
 
       {/* Add Custom Setting */}
       {onCreate && (
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>

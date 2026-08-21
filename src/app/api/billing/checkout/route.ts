@@ -16,12 +16,21 @@ import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
 import { createErrorResponse, createSuccessResponse } from "@/lib/api-utils";
-import { resolvePlan } from "@/lib/billing/plans";
-import { isCheckoutablePlan, stripePriceIdFor } from "@/lib/billing/stripe-prices";
+
+import { getPlan, priceIdFor } from "@/lib/billing/plan-store";
 
 const checkoutSchema = z.object({
   planId: z.string().trim().min(1),
   cycle: z.enum(["monthly", "annual"]).default("monthly"),
+  /**
+   * Who started this. Optional because the endpoint is public, but the sign-up
+   * page always sends it — and without it the webhook can only identify the
+   * buyer by the email they typed into Stripe. Someone who registers as one
+   * address and pays with another then gets a SECOND account instead of having
+   * their pending one claimed.
+   */
+  email: z.string().trim().email().optional(),
+  userId: z.string().trim().optional(),
 });
 
 function appUrl(): string {
@@ -48,14 +57,17 @@ export async function POST(request: NextRequest) {
       return createErrorResponse("Choose a plan to continue", 400);
     }
 
-    const { planId, cycle } = parsed.data;
-    const plan = resolvePlan(planId);
+    const { planId, cycle, email, userId } = parsed.data;
+    const plan = await getPlan(planId);
 
     if (!plan) return createErrorResponse("Unknown plan", 400);
 
     // Free is provisioned without payment and Custom is negotiated; neither has
     // a Price, so sending them to Checkout would 500 on an empty line item.
-    if (!isCheckoutablePlan(planId)) {
+    // priceIdFor returns null for those, and THROWS for a paid plan with no
+    // Price — a silent fallback would charge the wrong amount.
+    const priceId = priceIdFor(plan, cycle);
+    if (!priceId) {
       return createErrorResponse(
         plan.custom
           ? "This plan is priced per client — please contact us."
@@ -63,9 +75,6 @@ export async function POST(request: NextRequest) {
         400
       );
     }
-
-    const priceId = stripePriceIdFor(planId, cycle);
-    if (!priceId) return createErrorResponse("Unknown plan", 400);
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -79,8 +88,14 @@ export async function POST(request: NextRequest) {
       allow_promotion_codes: true,
       // The webhook is the only thing that provisions, and it reads these back
       // rather than trusting the client that started the session.
-      subscription_data: { metadata: { planId, cycle } },
-      metadata: { planId, cycle },
+      // Prefill so the buyer is nudged towards the address they registered
+      // with; the metadata below is what actually identifies them, because a
+      // buyer can always overwrite this field on Stripe's page.
+      ...(email ? { customer_email: email } : {}),
+      subscription_data: {
+        metadata: { planId, cycle, ...(userId ? { userId } : {}), ...(email ? { signupEmail: email } : {}) },
+      },
+      metadata: { planId, cycle, ...(userId ? { userId } : {}), ...(email ? { signupEmail: email } : {}) },
       success_url: `${appUrl()}/billing/welcome?session_id={CHECKOUT_SESSION_ID}`,
       // The landing page (and its #pricing anchor) has been removed; send a
       // cancelled checkout back to the app root instead of a dead URL.

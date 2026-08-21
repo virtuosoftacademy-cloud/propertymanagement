@@ -651,20 +651,80 @@ async function handlePaymentMethodAttached(
   // Could store payment method details for future use
 }
 
+/**
+ * Fields that MOVED on Stripe's invoice object.
+ *
+ * `invoice.subscription`, `invoice.payment_intent` and `invoice.charge` were
+ * removed in the 2025-x API versions; this account is on 2026-04-22.dahlia,
+ * where they live under `parent.subscription_details` and `payments[]`.
+ *
+ * Reading the old names returned undefined, and an undefined value is stripped
+ * from a Mongoose query rather than matched — so
+ * `findOne({ stripeSubscriptionId: invoice.subscription })` degraded to
+ * `findOne({})` and returned an ARBITRARY recurring-payment record. That is
+ * how a rent payment could be filed against the wrong tenant, so the callers
+ * below bail out when there is no id rather than querying with a blank filter.
+ *
+ * Both shapes are read: an event created under an older version, or replayed
+ * from the dashboard, still carries the flat field.
+ */
+function invoiceSubscriptionId(invoice: Stripe.Invoice): string | undefined {
+  const legacy = (invoice as any).subscription;
+  if (legacy)
+    return typeof legacy === "string" ? legacy : (legacy.id as string);
+
+  const current = (invoice as any).parent?.subscription_details?.subscription;
+  if (!current) return undefined;
+  return typeof current === "string" ? current : (current.id as string);
+}
+
+/** The PaymentIntent that settled an invoice. Now one per entry in payments[]. */
+function invoicePaymentIntentId(invoice: Stripe.Invoice): string | undefined {
+  const legacy = (invoice as any).payment_intent;
+  if (legacy)
+    return typeof legacy === "string" ? legacy : (legacy.id as string);
+
+  for (const entry of ((invoice as any).payments?.data ?? []) as any[]) {
+    const intent = entry?.payment?.payment_intent;
+    if (intent) return typeof intent === "string" ? intent : intent.id;
+  }
+  return undefined;
+}
+
+/**
+ * The end of the period an invoice covers — i.e. what the rent was paid FOR.
+ *
+ * The line item's period, not `invoice.period_end`: on a subscription's first
+ * invoice the invoice-level window collapses to the moment of issue, which
+ * would date a rent payment to the day the tenancy started and then schedule
+ * the next one from that same wrong date.
+ */
+function invoicePeriodEnd(invoice: Stripe.Invoice): number | undefined {
+  return (
+    ((invoice.lines?.data?.[0] as any)?.period?.end as number | undefined) ??
+    ((invoice as any).period_end as number | undefined)
+  );
+}
+
 async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice
 ): Promise<void> {
   // Handle recurring payment success
 
   // Find the recurring payment setup
-  const { RecurringPayment } = await import("@/models/RecurringPayment");
+  const subscriptionId = invoiceSubscriptionId(invoice);
+  // No id means this invoice is not tied to a subscription. Querying anyway
+  // would match an arbitrary tenant (see invoiceSubscriptionId above).
+  if (!subscriptionId) return;
+
+  const RecurringPayment = (await import("@/models/RecurringPayment")).default;
   const recurringPayment = await RecurringPayment.findOne({
-    stripeSubscriptionId: invoice.subscription,
+    stripeSubscriptionId: subscriptionId,
   });
 
   if (recurringPayment) {
     // Create a new payment record for this recurring payment
-    const { Payment } = await import("@/models/Payment");
+    const Payment = (await import("@/models/Payment")).default;
     const payment = new Payment({
       tenantId: recurringPayment.tenantId,
       propertyId: recurringPayment.propertyId,
@@ -672,16 +732,16 @@ async function handleInvoicePaymentSucceeded(
       amount: invoice.amount_paid / 100, // Convert from cents
       type: "rent",
       status: PaymentStatus.COMPLETED,
-      dueDate: new Date(invoice.period_end * 1000),
+      dueDate: new Date(invoicePeriodEnd(invoice)! * 1000),
       paidDate: new Date(invoice.status_transitions.paid_at! * 1000),
-      stripePaymentIntentId: invoice.payment_intent as string,
+      stripePaymentIntentId: invoicePaymentIntentId(invoice),
       description: `Recurring rent payment - ${new Date().toLocaleDateString()}`,
     });
 
     await payment.save();
 
     // Update next payment date
-    const nextDate = new Date(invoice.period_end * 1000);
+    const nextDate = new Date(invoicePeriodEnd(invoice)! * 1000);
     switch (recurringPayment.frequency) {
       case "monthly":
         nextDate.setMonth(nextDate.getMonth() + 1);
@@ -706,14 +766,19 @@ async function handleInvoicePaymentFailed(
 ): Promise<void> {
 
   // Find the recurring payment setup
-  const { RecurringPayment } = await import("@/models/RecurringPayment");
+  const subscriptionId = invoiceSubscriptionId(invoice);
+  // No id means this invoice is not tied to a subscription. Querying anyway
+  // would match an arbitrary tenant (see invoiceSubscriptionId above).
+  if (!subscriptionId) return;
+
+  const RecurringPayment = (await import("@/models/RecurringPayment")).default;
   const recurringPayment = await RecurringPayment.findOne({
-    stripeSubscriptionId: invoice.subscription,
+    stripeSubscriptionId: subscriptionId,
   });
 
   if (recurringPayment) {
     // Create a failed payment record
-    const { Payment } = await import("@/models/Payment");
+    const Payment = (await import("@/models/Payment")).default;
     const payment = new Payment({
       tenantId: recurringPayment.tenantId,
       propertyId: recurringPayment.propertyId,
@@ -721,17 +786,15 @@ async function handleInvoicePaymentFailed(
       amount: invoice.amount_due / 100, // Convert from cents
       type: "rent",
       status: PaymentStatus.FAILED,
-      dueDate: new Date(invoice.period_end * 1000),
-      stripePaymentIntentId: invoice.payment_intent as string,
+      dueDate: new Date(invoicePeriodEnd(invoice)! * 1000),
+      stripePaymentIntentId: invoicePaymentIntentId(invoice),
       description: `Failed recurring rent payment - ${new Date().toLocaleDateString()}`,
     });
 
     await payment.save();
 
     // Send notification about failed payment
-    const { PaymentNotification } = await import(
-      "@/models/PaymentNotification"
-    );
+    const PaymentNotification = (await import("@/models/PaymentNotification")).default;
     const notification = new PaymentNotification({
       tenantId: recurringPayment.tenantId,
       paymentId: payment._id,
@@ -752,15 +815,18 @@ async function handleInvoicePaymentFailed(
 async function handleInvoiceUpcoming(invoice: Stripe.Invoice): Promise<void> {
 
   // Send reminder notification for upcoming payment
-  const { RecurringPayment } = await import("@/models/RecurringPayment");
+  const subscriptionId = invoiceSubscriptionId(invoice);
+  // No id means this invoice is not tied to a subscription. Querying anyway
+  // would match an arbitrary tenant (see invoiceSubscriptionId above).
+  if (!subscriptionId) return;
+
+  const RecurringPayment = (await import("@/models/RecurringPayment")).default;
   const recurringPayment = await RecurringPayment.findOne({
-    stripeSubscriptionId: invoice.subscription,
+    stripeSubscriptionId: subscriptionId,
   });
 
   if (recurringPayment) {
-    const { PaymentNotification } = await import(
-      "@/models/PaymentNotification"
-    );
+    const PaymentNotification = (await import("@/models/PaymentNotification")).default;
     const notification = new PaymentNotification({
       tenantId: recurringPayment.tenantId,
       paymentId: null, // No payment record yet
@@ -772,7 +838,7 @@ async function handleInvoiceUpcoming(invoice: Stripe.Invoice): Promise<void> {
       message: `Your recurring rent payment of ${formatCurrency(
         invoice.amount_due / 100
       )} will be processed on ${new Date(
-        invoice.period_end * 1000
+        invoicePeriodEnd(invoice)! * 1000
       ).toLocaleDateString()}.`,
     });
 
@@ -787,7 +853,7 @@ async function handleSubscriptionCreated(
 ): Promise<void> {
 
   // Find the recurring payment setup and update it with the subscription ID
-  const { RecurringPayment } = await import("@/models/RecurringPayment");
+  const RecurringPayment = (await import("@/models/RecurringPayment")).default;
   const recurringPayment = await RecurringPayment.findOne({
     stripeSubscriptionId: subscription.id,
   });
@@ -805,7 +871,7 @@ async function handleSubscriptionUpdated(
 ): Promise<void> {
 
   // Update the recurring payment setup
-  const { RecurringPayment } = await import("@/models/RecurringPayment");
+  const RecurringPayment = (await import("@/models/RecurringPayment")).default;
   const recurringPayment = await RecurringPayment.findOne({
     stripeSubscriptionId: subscription.id,
   });
@@ -832,7 +898,7 @@ async function handleSubscriptionDeleted(
 ): Promise<void> {
 
   // Deactivate the recurring payment setup
-  const { RecurringPayment } = await import("@/models/RecurringPayment");
+  const RecurringPayment = (await import("@/models/RecurringPayment")).default;
   const recurringPayment = await RecurringPayment.findOne({
     stripeSubscriptionId: subscription.id,
   });
@@ -842,9 +908,7 @@ async function handleSubscriptionDeleted(
     await recurringPayment.save();
 
     // Send notification about cancelled subscription
-    const { PaymentNotification } = await import(
-      "@/models/PaymentNotification"
-    );
+    const PaymentNotification = (await import("@/models/PaymentNotification")).default;
     const notification = new PaymentNotification({
       tenantId: recurringPayment.tenantId,
       paymentId: null,

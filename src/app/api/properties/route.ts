@@ -280,7 +280,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
             error: unitLimitMessage(allowance),
             code: UNIT_LIMIT_CODE,
             allowance,
-            upgradeUrl: "/pricing",
+            upgradeUrl: "/landing/pricing",
           },
           { status: 403 }
         );

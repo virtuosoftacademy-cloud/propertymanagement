@@ -6,7 +6,7 @@
  * The admin is the vendor here: clients pay the admin to be given a Manager
  * account, so this is a revenue view, not a bill the org owes.
  *
- * Reads GET /api/billing/manager-accounts.
+ * Reads GET /api/billing/subscriptions.
  */
 
 import { useMemo, useRef, useState } from "react";
@@ -58,7 +58,7 @@ import {
   showSimpleSuccess,
 } from "@/lib/toast-notifications";
 import { downloadCsv, downloadPdf, exportFilename } from "@/lib/utils/export";
-import type { ManagerAccount } from "@/types/billing";
+import type { Subscription } from "@/types/billing";
 
 const formatCurrency = (amount: number) =>
   `£${amount.toLocaleString("en-GB", {
@@ -92,7 +92,7 @@ export default function ManagerAccountsPage() {
   } = useManagerAccounts();
   const { summary, accounts } = data ?? EMPTY_ACCOUNTS_VIEW;
 
-  const [paymentTarget, setPaymentTarget] = useState<ManagerAccount | null>(
+  const [paymentTarget, setPaymentTarget] = useState<Subscription | null>(
     null
   );
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -126,7 +126,7 @@ export default function ManagerAccountsPage() {
         account.companyName,
         account.contactEmail,
         account.contactPhone,
-        account.managerName,
+        account.userName,
         resolvePlan(account.planId)?.name ?? account.planId,
         account.status.replace(/_/g, " "),
         // So "company" and "individual" work as search terms, matching the
@@ -315,7 +315,7 @@ export default function ManagerAccountsPage() {
     setIsRefreshing(false);
   };
 
-  const openPayment = (account: ManagerAccount) => {
+  const openPayment = (account: Subscription) => {
     setPaymentTarget(account);
     setPaymentOpen(true);
   };
@@ -530,11 +530,11 @@ export default function ManagerAccountsPage() {
         onConfirm={async (amount, receivedOn, notes) => {
           if (!paymentTarget) return;
 
-          const response = await fetch("/api/billing/manager-payments", {
+          const response = await fetch("/api/billing/payments", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              accountId: paymentTarget.id,
+              subscriptionId: paymentTarget.id,
               amount,
               receivedOn: receivedOn || new Date().toISOString(),
               notes: notes || undefined,
@@ -563,7 +563,7 @@ export default function ManagerAccountsPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onSubmit={async (values) => {
-          const response = await fetch("/api/billing/manager-accounts", {
+          const response = await fetch("/api/billing/subscriptions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(values),

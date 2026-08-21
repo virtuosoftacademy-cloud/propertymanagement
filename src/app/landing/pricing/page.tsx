@@ -59,7 +59,7 @@ function Cell({ value }: { value: ComparisonValue }) {
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-accent/50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-accent/50 py-12 px-4 sm:px-6 lg:px-8 md:py-28">
       <div className="mx-auto max-w-5xl space-y-10">
         {/* Header */}
         <div className="text-center space-y-2">

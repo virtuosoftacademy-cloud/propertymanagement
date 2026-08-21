@@ -22,7 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PlanForm } from "@/components/billing/plan-form";
-import { showSimpleSuccess } from "@/lib/toast-notifications";
+import { showSimpleError, showSimpleSuccess } from "@/lib/toast-notifications";
 import { resolvePlan } from "@/lib/billing/plans";
 import { useManagerAccounts } from "@/hooks/useManagerBilling";
 import type { PlanFormValues } from "@/lib/billing/plan-schema";
@@ -69,8 +69,22 @@ export default function EditPlanPage({
     );
   }
 
-  const handleSubmit = (values: PlanFormValues) => {
-    // TODO(billing): PUT /api/plans/[id]. The values are already validated.
+  const handleSubmit = async (values: PlanFormValues) => {
+    const response = await fetch(`/api/billing/plans/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok || !result?.success) {
+      showSimpleError(
+        "Not saved",
+        result?.error || "The plan could not be updated."
+      );
+      return;
+    }
+
     showSimpleSuccess("Plan updated", `${values.name} has been saved.`);
     backToPlans();
   };

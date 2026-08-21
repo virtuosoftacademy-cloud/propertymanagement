@@ -14,7 +14,7 @@ export const managerAccountFormSchema = z
   .object({
     /**
      * The selected user. Held alongside clientName so the account can carry a
-     * real reference (ManagerAccount.managerUserId) rather than a name string
+     * real reference (Subscription.userId) rather than a name string
      * nothing can join on.
      */
     clientUserId: z.string().trim().min(1, "Select a client"),
@@ -42,7 +42,7 @@ export const managerAccountFormSchema = z
         (value) => !value || isValidPhoneNumber(value),
         "Enter a valid UK phone number, e.g. 07700 900000 or 01632 960000"
       ),
-    managerName: z
+    userName: z
       .string()
       .trim()
       .max(120, "Manager name cannot exceed 120 characters")

@@ -21,11 +21,11 @@ import {
   priceFor,
   type ManagerAccountFormValues,
 } from "@/lib/billing/manager-account-schema";
-import type { ManagerAccount } from "@/types/billing";
+import type { Subscription } from "@/types/billing";
 
 interface ManagerAccountFormProps {
   /** Pass an account to edit it; omit to create a new one. */
-  account?: ManagerAccount | null;
+  account?: Subscription | null;
   onSubmit: (values: ManagerAccountFormValues) => void;
   onCancel: () => void;
   submitLabel?: string;
@@ -37,16 +37,16 @@ type FieldErrors = Partial<Record<keyof ManagerAccountFormValues, string>>;
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const initialValues = (
-  account?: ManagerAccount | null
+  account?: Subscription | null
 ): ManagerAccountFormValues =>
   account
     ? {
-        clientUserId: account.managerUserId ?? "",
+        clientUserId: account.userId ?? "",
         clientName: account.clientName,
         companyName: account.companyName ?? "",
         contactEmail: account.contactEmail,
         contactPhone: account.contactPhone ?? "",
-        managerName: account.managerName ?? "",
+        userName: account.userName ?? "",
         planId: account.planId,
         billingCycle: account.billingCycle,
         amount: account.amount,
@@ -61,7 +61,7 @@ const initialValues = (
         companyName: "",
         contactEmail: "",
         contactPhone: "",
-        managerName: "",
+        userName: "",
         planId: "starter",
         billingCycle: "monthly",
         amount: priceFor("starter", "monthly") ?? 0,
@@ -101,14 +101,14 @@ export function ManagerAccountForm({
   // renders the placeholder, and saving the form would blank out a link the
   // admin never intended to touch.
   const selectableUsers = useMemo(() => {
-    const current = account?.managerUserId;
+    const current = account?.userId;
     if (!current || fetchedUsers.some((u) => u.id === current)) {
       return fetchedUsers;
     }
     return [
       {
         id: current,
-        name: account?.managerName || account?.clientName || "Current client",
+        name: account?.userName || account?.clientName || "Current client",
         email: account?.contactEmail || "",
         company: account?.companyName,
       },
@@ -141,7 +141,7 @@ export function ManagerAccountForm({
       companyName: user?.company ?? prev.companyName,
       contactEmail: user?.email ?? prev.contactEmail,
       contactPhone: user?.phone ?? "",
-      managerName: user?.name ?? prev.managerName,
+      userName: user?.name ?? prev.userName,
     }));
 
     setErrors((prev) => ({
@@ -229,7 +229,7 @@ export function ManagerAccountForm({
               {selectableUsers.map((user) => {
                 // Already on an account — shown so it is obvious why they are
                 // not available, rather than silently missing from the list.
-                const taken = Boolean(user.hasAccount) && user.id !== account?.managerUserId;
+                const taken = Boolean(user.hasAccount) && user.id !== account?.userId;
 
                 return (
                   <SelectItem key={user.id} value={user.id} disabled={taken}>
@@ -297,12 +297,12 @@ export function ManagerAccountForm({
 
         {/* Derived from the selected user rather than typed again — the client
             and the person who uses the account are the same person here. */}
-        {values.managerName && (
+        {values.userName && (
           <div className="bg-muted/50 flex items-center gap-2 rounded-lg p-3">
             <UserRound className="text-muted-foreground h-4 w-4 shrink-0" />
             <span className="text-muted-foreground text-sm">
               Manager account for{" "}
-              <span className="font-medium">{values.managerName}</span>
+              <span className="font-medium">{values.userName}</span>
             </span>
           </div>
         )}

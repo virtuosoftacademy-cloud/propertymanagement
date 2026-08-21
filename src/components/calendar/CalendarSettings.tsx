@@ -202,7 +202,7 @@ export function CalendarSettings({
 
         <div className="space-y-6">
           {/* Display Settings */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Eye className="h-4 w-4" />
@@ -278,7 +278,7 @@ export function CalendarSettings({
           </Card>
 
           {/* Time Settings */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="h-4 w-4" />
@@ -390,7 +390,7 @@ export function CalendarSettings({
           </Card>
 
           {/* Email Service Test */}
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />

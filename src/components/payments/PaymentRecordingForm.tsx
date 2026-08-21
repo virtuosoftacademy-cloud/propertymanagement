@@ -290,7 +290,7 @@ export default function PaymentRecordingForm({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin mr-2" />
           {t("payments.record.loading.message")}
@@ -303,7 +303,7 @@ export default function PaymentRecordingForm({
     <div className="space-y-6">
       {/* Outstanding Invoices */}
       {allocation && allocation.invoices.length > 0 && (
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -343,7 +343,7 @@ export default function PaymentRecordingForm({
       )}
 
       {/* Payment Form */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <PoundSterling className="h-5 w-5" />

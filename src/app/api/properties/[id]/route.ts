@@ -192,6 +192,19 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         ...propertyUpdateData
       } = updateData;
 
+      // Read the CURRENT unit count before anything is applied to the document.
+      // The form posts back a totalUnits it computed from the NEW unit list, and
+      // Object.assign below would write that onto the document — so measuring
+      // the delta afterwards compared the new count against itself, always got
+      // zero, and the plan ceiling never fired on this route.
+      const unitsBefore = property.totalUnits || 1;
+
+      // totalUnits and isMultiUnit are DERIVED from the units array further
+      // down. Taking them from the request lets a client assert its own unit
+      // count, which is both a stale-data hazard and the bypass described above.
+      delete (propertyUpdateData as any).totalUnits;
+      delete (propertyUpdateData as any).isMultiUnit;
+
       // Update the property data
       Object.assign(property, propertyUpdateData);
 
@@ -200,7 +213,7 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // property already holding its units must stay editable at the ceiling,
       // and shrinking it is always allowed.
       if (units && Array.isArray(units)) {
-        const delta = units.length - (property.totalUnits || 1);
+        const delta = units.length - unitsBefore;
         if (delta > 0) {
           const allowance = await getUnitAllowance(user as any, delta);
           if (!allowance.allowed) {
@@ -210,7 +223,7 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
                 error: unitLimitMessage(allowance),
                 code: UNIT_LIMIT_CODE,
                 allowance,
-                upgradeUrl: "/pricing",
+                upgradeUrl: "/landing/pricing",
               },
               { status: 403 }
             );

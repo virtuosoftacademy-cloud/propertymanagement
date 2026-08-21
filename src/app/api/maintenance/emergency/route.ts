@@ -25,6 +25,7 @@ import {
   validateSchema,
 } from "@/lib/validations";
 import { z } from "zod";
+import { isPropertyInScope } from "@/lib/auth/property-scope";
 
 // ============================================================================
 // GET /api/maintenance/emergency - Get emergency maintenance requests
@@ -495,6 +496,17 @@ export const POST = withRoleAndDB([
     // Verify property exists
     const property = await Property.findById(emergencyData.propertyId);
     if (!property) {
+      return createErrorResponse("Property not found", 404);
+    }
+
+    // ...and that it is THIS caller's property. An emergency request is only
+    // ever read back through property scope, so one raised against someone
+    // else's property would be invisible to whoever raised it and would
+    // surface in the other manager's queue instead.
+    //
+    // 404, not 403 — a 403 confirms the property exists to someone who should
+    // not know that.
+    if (!isPropertyInScope(user, property)) {
       return createErrorResponse("Property not found", 404);
     }
 

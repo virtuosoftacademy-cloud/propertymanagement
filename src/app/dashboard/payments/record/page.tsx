@@ -171,7 +171,7 @@ export default function RecordPaymentPage() {
       </div>
 
       {/* Tenant & Lease Selection */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -271,7 +271,7 @@ export default function RecordPaymentPage() {
 
       {/* Instructions */}
       {!selectedTenantId && (
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardContent className="py-8">
             <div className="text-center text-muted-foreground">
               <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />

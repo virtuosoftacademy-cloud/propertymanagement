@@ -14,10 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Banknote } from "lucide-react";
-import type { ManagerAccount } from "@/types/billing";
+import type { Subscription } from "@/types/billing";
 
 interface RecordPaymentDialogProps {
-  account: ManagerAccount | null;
+  account: Subscription | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (amount: number, receivedOn: string, notes: string) => void;

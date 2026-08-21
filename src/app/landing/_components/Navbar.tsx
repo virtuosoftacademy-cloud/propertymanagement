@@ -34,6 +34,33 @@ export default function Navbar() {
     autoResolveConflicts: true,
   });
 
+  // The landing page is PUBLIC, but useDisplaySettingsSync reads
+  // /api/settings/display, which 401s for anonymous visitors — so a logged-out
+  // visitor always fell back to the bundled placeholder logo and favicon and
+  // never saw the configured branding. /api/branding/public serves the same
+  // admin-owned branding without a session; the sign-in page already uses it.
+  const [publicBranding, setPublicBranding] = useState<{
+    logoLight?: string;
+    logoDark?: string;
+    favicon?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/branding/public");
+        const json = await res.json();
+        if (!cancelled && json?.success && json.data) setPublicBranding(json.data);
+      } catch {
+        // Best-effort: the defaults below still render.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -42,21 +69,26 @@ export default function Navbar() {
     const defaultLight = "/images/logo-light.png";
     const defaultDark = "/images/logo-dark.png";
 
+    // displaySettings first so an admin editing branding sees it update live;
+    // publicBranding is what an anonymous visitor gets.
     const branding = displaySettings?.branding;
-    const light = branding?.logoLight || defaultLight;
-    const dark = branding?.logoDark || defaultDark;
+    const light = branding?.logoLight || publicBranding?.logoLight || defaultLight;
+    const dark = branding?.logoDark || publicBranding?.logoDark || defaultDark;
 
     return resolvedTheme === "dark" ? dark : light;
-  }, [displaySettings?.branding, resolvedTheme]);
+  }, [displaySettings?.branding, publicBranding, resolvedTheme]);
 
   const currentIconUrl = useMemo(() => {
     const defaultIcon = "/favicon.ico";
-    return displaySettings?.branding?.favicon || defaultIcon;
-  }, [displaySettings?.branding]);
+    return (
+      displaySettings?.branding?.favicon || publicBranding?.favicon || defaultIcon
+    );
+  }, [displaySettings?.branding, publicBranding]);
 
   // Update the favicon in the document head when branding changes.
   useEffect(() => {
-    const faviconUrl = displaySettings?.branding?.favicon;
+    const faviconUrl =
+      displaySettings?.branding?.favicon || publicBranding?.favicon;
     if (!faviconUrl) return;
     try {
       const rels = ["icon", "shortcut icon"] as const;
@@ -72,7 +104,7 @@ export default function Navbar() {
     } catch {
       // no-op; favicon update is best-effort
     }
-  }, [displaySettings?.branding?.favicon]);
+  }, [displaySettings?.branding?.favicon, publicBranding?.favicon]);
 
   // Refresh branding immediately when settings are updated elsewhere.
   useEffect(() => {
@@ -106,11 +138,8 @@ export default function Navbar() {
             alt="Logo"
             width={160}
             height={48}
-            className={cn(
-              "transition-all duration-300 h-7 md:h-auto",
-              scrolled && "h-7 lg:h-8"
-            )}
-            priority
+            className="transition-all duration-300 h-6 w-16 md:w-30 md:h-10"
+          priority
           />
         </Link>
 
@@ -188,14 +217,14 @@ export default function Navbar() {
               >
                 <Link href="/auth/signin">Log In</Link>
               </Button>
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="lg"
                 className="rounded-none text-sm font-normal px-10! text-white border border-white"
                 asChild
               >
                 <Link href="/auth/signup">Sign Up</Link>
-              </Button>
+              </Button> */}
             </div>
           )}
         </div>

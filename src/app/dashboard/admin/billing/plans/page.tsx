@@ -38,9 +38,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DeletePlanDialog } from "@/components/billing/delete-plan-dialog";
-import { showSimpleSuccess } from "@/lib/toast-notifications";
-import { MANAGER_PLANS, type ManagerPlan } from "@/lib/billing/plans";
-import { useManagerAccounts } from "@/hooks/useManagerBilling";
+import { showSimpleError, showSimpleSuccess } from "@/lib/toast-notifications";
+import { type ManagerPlan } from "@/lib/billing/plans";
+import { useManagerAccounts, usePlans } from "@/hooks/useManagerBilling";
 
 export default function PlansPage() {
   const router = useRouter();
@@ -51,6 +51,10 @@ export default function PlansPage() {
   // can be retired, so it belongs next to the plan rather than a click away.
   const { data } = useManagerAccounts();
   const accounts = data?.accounts ?? [];
+
+  // The live catalogue, not the const — a plan created here must show up here.
+  const { data: plans, refetch: refetchPlans } = usePlans();
+  const MANAGER_PLANS = (plans ?? []) as ManagerPlan[];
   const usage = (planId: string) =>
     accounts.filter((account) => account.planId === planId).length;
 
@@ -225,11 +229,28 @@ export default function PlansPage() {
         accountsOnPlan={deleteTarget ? usage(deleteTarget.id) : 0}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        // TODO(billing): DELETE /api/plans/[id]. The dialog has already
-        // confirmed no accounts reference this plan.
-        onConfirm={(plan) => {
-          showSimpleSuccess("Plan deleted", `${plan.name} has been removed.`);
+        // Retires the plan (deactivates the role) rather than deleting it.
+        // The API refuses while any subscription or user is still on it — a
+        // plan id is stored on both, so removing one in use would leave
+        // subscriptions pointing at nothing and users on a role that
+        // resolves to no permissions.
+        onConfirm={async (plan) => {
+          const response = await fetch(`/api/billing/plans/${plan.id}`, {
+            method: "DELETE",
+          });
+          const result = await response.json().catch(() => null);
+
+          if (!response.ok || !result?.success) {
+            showSimpleError(
+              "Plan not retired",
+              result?.error || "The plan could not be retired."
+            );
+            return;
+          }
+
+          showSimpleSuccess("Plan retired", `${plan.name} is no longer sold.`);
           setDeleteOpen(false);
+          await refetchPlans();
         }}
       />
     </div>

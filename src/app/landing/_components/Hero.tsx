@@ -1,5 +1,7 @@
 'use client'
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_PLAN_ID } from "@/lib/billing/plans";
 
 export default function Hero() {
   return (
@@ -34,10 +36,17 @@ export default function Hero() {
 
           {/* CTA */}
           <div>
+            {/* Was a bare <button> with no href and no handler — the primary
+                call to action on the page did nothing when clicked. Carries the
+                plan the same way the pricing cards do, so sign-up opens the free
+                tier rather than defaulting to whatever the form picks. */}
             <Button
+              asChild
               className="cursor-pointer p-6 font-medium px-8 rounded-none hover:text-foreground bg-primary hover:bg-secondary"
             >
-              Start for Free
+              <Link href={`/auth/signup?plan=${DEFAULT_PLAN_ID}`}>
+                Start for Free
+              </Link>
             </Button>
           </div>
 

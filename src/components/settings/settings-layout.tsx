@@ -384,7 +384,7 @@ export function SettingsLayout({
         <p className="text-muted-foreground">{t("settings.pageDescription")}</p>
       </div>
 
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 justify-between">
             <div className="flex items-center gap-2">

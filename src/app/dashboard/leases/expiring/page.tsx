@@ -551,7 +551,7 @@ export default function ExpiringLeasesPage() {
           </div>
 
           {/* Integrated Filters Bar */}
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/60 dark:border-gray-700/60">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 bg-gray-50/50 dark:bg-primary/5 rounded-lg border border-gray-200/60 dark:border-gray-700/60">
             {/* Search - Using GlobalSearch with 300ms debounce */}
             <GlobalSearch
               placeholder={t("leases.expiring.filters.searchPlaceholder")}
@@ -573,7 +573,7 @@ export default function ExpiringLeasesPage() {
                   setTimeFilter(value)
                 }
               >
-                <SelectTrigger className="w-[140px] h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <SelectTrigger className="w-[140px] h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-primary/5">
                   <SelectValue
                     placeholder={t(
                       "leases.expiring.filters.timeRangePlaceholder"
@@ -601,7 +601,7 @@ export default function ExpiringLeasesPage() {
                   handleSort(sortBy, sortOrder as "asc" | "desc");
                 }}
               >
-                <SelectTrigger className="w-40 h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <SelectTrigger className="w-40 h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-primary/5">
                   <SelectValue placeholder={t("leases.filters.sort")} />
                 </SelectTrigger>
                 <SelectContent>

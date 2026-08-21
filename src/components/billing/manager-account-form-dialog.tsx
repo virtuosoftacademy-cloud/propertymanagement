@@ -10,13 +10,13 @@ import {
 import { UserPlus } from "lucide-react";
 import { ManagerAccountForm } from "./manager-account-form";
 import type { ManagerAccountFormValues } from "@/lib/billing/manager-account-schema";
-import type { ManagerAccount } from "@/types/billing";
+import type { Subscription } from "@/types/billing";
 
 interface ManagerAccountFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Pass an account to edit it; omit to create a new one. */
-  account?: ManagerAccount | null;
+  account?: Subscription | null;
   onSubmit: (values: ManagerAccountFormValues) => void;
 }
 

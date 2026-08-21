@@ -13,6 +13,7 @@
 import { Property, Subscription } from "@/models";
 import { propertyScopeFilter, canViewAllProperties } from "@/lib/auth/property-scope";
 import { MANAGER_PLANS, resolvePlan, DEFAULT_PLAN_ID } from "./plans";
+import { getPlan, getPlans } from "./plan-store";
 
 /** Machine-readable so the UI can tell this apart from a generic 403. */
 export const UNIT_LIMIT_CODE = "UNIT_LIMIT_REACHED";
@@ -23,7 +24,9 @@ export interface UnitAllowance {
   /** null = unlimited. */
   limit: number | null;
   used: number;
-  /** Whether `wanted` more units may be created. */
+  /** How many units the caller was trying to add. */
+  requested: number;
+  /** Whether `requested` more units may be created. */
   allowed: boolean;
 }
 
@@ -52,10 +55,10 @@ async function planIdFor(user: ScopeUser): Promise<string> {
     .select("planId")
     .lean();
 
-  if (account?.planId && resolvePlan(account.planId)) return account.planId;
+  if (account?.planId && (await getPlan(account.planId))) return account.planId;
 
   const role = user.assignedRole || "";
-  if (MANAGER_PLANS.some((p) => p.id === role)) return role;
+  if (role && (await getPlan(role))) return role;
 
   return DEFAULT_PLAN_ID;
 }
@@ -88,12 +91,15 @@ export async function getUnitAllowance(
       planName: "Admin",
       limit: null,
       used: 0,
+      requested: wanted,
       allowed: true,
     };
   }
 
   const planId = await planIdFor(user);
-  let plan = resolvePlan(planId);
+  // Reads the role-backed catalogue, falling back to the const — see plan-store.
+  let plan: { name: string; unitLimit: number | null } | undefined =
+    await getPlan(planId);
 
   // Fail CLOSED. `plan?.unitLimit ?? null` reads an unresolvable plan as
   // "unlimited", so a stale or renamed plan id silently removes the ceiling
@@ -104,7 +110,8 @@ export async function getUnitAllowance(
     console.error(
       `[billing] Unknown plan "${planId}" for user ${user.id} — falling back to the most restrictive plan.`
     );
-    plan = [...MANAGER_PLANS]
+    const all = await getPlans();
+    plan = [...all]
       .filter((p) => p.unitLimit !== null)
       .sort((a, b) => (a.unitLimit as number) - (b.unitLimit as number))[0];
   }
@@ -118,6 +125,7 @@ export async function getUnitAllowance(
       planName: plan?.name ?? planId,
       limit: null,
       used: await unitsUsed(user),
+      requested: wanted,
       allowed: true,
     };
   }
@@ -129,13 +137,22 @@ export async function getUnitAllowance(
     planName: plan?.name ?? planId,
     limit,
     used,
+    requested: wanted,
     allowed: used + wanted <= limit,
   };
 }
 
 /** Message shown to the user when they hit the ceiling. */
 export function unitLimitMessage(a: UnitAllowance): string {
-  return `Your ${a.planName} plan includes ${a.limit} unit${
-    a.limit === 1 ? "" : "s"
-  } and you're using ${a.used}. Upgrade to add more.`;
+  const cap = `${a.limit} unit${a.limit === 1 ? "" : "s"}`;
+
+  // Two genuinely different refusals. Reporting only current usage said
+  // "you're using 0" to someone adding two units on a one-unit plan, which
+  // reads as though they had room and the refusal was a mistake.
+  if (a.used >= (a.limit ?? 0)) {
+    return `Your ${a.planName} plan includes ${cap}, and you're already using ${a.used}. Upgrade to add more.`;
+  }
+
+  const total = a.used + a.requested;
+  return `Your ${a.planName} plan includes ${cap}. Adding ${a.requested} would take you to ${total}. Upgrade to add more.`;
 }

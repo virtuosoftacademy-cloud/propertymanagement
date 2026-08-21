@@ -100,7 +100,15 @@ export default function SignUpPage() {
         const checkout = await fetch("/api/billing/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planId: plan, cycle: "monthly" }),
+          // Identify the buyer so the webhook claims the pending subscription
+          // just created, rather than matching on whatever email they type on
+          // Stripe's page.
+          body: JSON.stringify({
+            planId: plan,
+            cycle: "monthly",
+            email,
+            userId: json?.data?.user?._id ?? json?.data?.user?.id,
+          }),
         });
         const checkoutJson = await checkout.json();
 

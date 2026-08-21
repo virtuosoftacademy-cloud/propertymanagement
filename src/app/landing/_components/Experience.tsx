@@ -43,8 +43,8 @@ const features: FeatureCard[] = [
 
 export default function LandingExperience() {
   return (
-    <section className="bg-foreground/5 py-20">
-      <div className="mx-auto max-w-850 px-6 sm:px-14 bg-primary/5">
+    <section className="bg-primary/5 py-20">
+      <div className="mx-auto max-w-850 px-6 sm:px-14">
 
         {/* ── Heading ── */}
         <div className="flex items-center gap-4 mb-4">
@@ -88,13 +88,13 @@ export default function LandingExperience() {
               </div>
 
               {/* Read More */}
-              <Link
+              {/* <Link
                 href={f.href}
                 className="inline-flex items-center gap-1 text-base text-primary group-hover:text-white font-semibold transition-colors duration-300 hover:opacity-70"
               >
                 Read More
                 <span className="text-xs">▶</span>
-              </Link>
+              </Link> */}
             </div>
           ))}
         </div>

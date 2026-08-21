@@ -6,6 +6,7 @@
 import { NextRequest } from "next/server";
 import { Lease, Property, User } from "@/models";
 import { UserRole, LeaseStatus } from "@/types";
+import { canAccessProperty } from "@/lib/auth/property-scope";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -23,6 +24,32 @@ import {
 // ============================================================================
 // GET /api/leases/[id] - Get a specific lease
 // ============================================================================
+
+/**
+ * Whether this caller may touch this lease.
+ *
+ * The LIST routes scope by property, but this one did not — so a lease
+ * belonging to another subscriber was hidden from the table yet readable,
+ * editable and deletable at its own URL by anyone who knew the id. Tenants
+ * were unrestricted here too.
+ *
+ * Returns 404 rather than 403 on refusal, matching the property routes: a 403
+ * confirms the lease exists to someone who should not know that.
+ */
+async function canTouchLease(user: any, lease: any): Promise<boolean> {
+  if (user.role === UserRole.ADMIN) return true;
+
+  if (user.role === UserRole.TENANT) {
+    // Same rule the list applies: a tenant sees only their own lease.
+    const tenantId = lease.tenantId?._id ?? lease.tenantId;
+    return String(tenantId ?? "") === String(user.id);
+  }
+
+  // propertyId may be populated by this route, so read through the object.
+  const propertyId = lease.propertyId?._id ?? lease.propertyId;
+  if (!propertyId) return false;
+  return canAccessProperty(user, String(propertyId));
+}
 
 export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.TENANT])(
   async (
@@ -75,6 +102,13 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.TEN
         return createErrorResponse("Lease not found", 404);
       }
 
+
+      if (!(await canTouchLease(user, lease))) {
+
+        return createErrorResponse("Lease not found", 404);
+
+      }
+
       // Role-based authorization
       if (user.role === UserRole.TENANT) {
         if (!lease.tenantId._id.equals(user.id)) {
@@ -115,6 +149,10 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // Find the lease
       const lease = await Lease.findById(id);
       if (!lease) {
+        return createErrorResponse("Lease not found", 404);
+      }
+
+      if (!(await canTouchLease(user, lease))) {
         return createErrorResponse("Lease not found", 404);
       }
 
@@ -231,6 +269,10 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         return createErrorResponse("Lease not found", 404);
       }
 
+      if (!(await canTouchLease(user, lease))) {
+        return createErrorResponse("Lease not found", 404);
+      }
+
       // Prevent deleting active leases
       if (lease.status === LeaseStatus.ACTIVE) {
         return createErrorResponse(
@@ -283,6 +325,10 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER, UserRole.T
           ? await Lease.findOne({ _id: id, deletedAt: { $ne: null } })
           : await Lease.findById(id);
       if (!lease) {
+        return createErrorResponse("Lease not found", 404);
+      }
+
+      if (!(await canTouchLease(user, lease))) {
         return createErrorResponse("Lease not found", 404);
       }
 

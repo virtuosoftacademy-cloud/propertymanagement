@@ -481,7 +481,7 @@ export default function PaymentHistoryPage() {
                       className="cursor-pointer"
                       onClick={() =>
                         router.push(
-                          `/dashboard/admin/billing/${payment.accountId}/edit`
+                          `/dashboard/admin/billing/${payment.subscriptionId}/edit`
                         )
                       }
                     >

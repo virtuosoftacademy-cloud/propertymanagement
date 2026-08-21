@@ -286,7 +286,7 @@ export default function CalendarSettingsPage() {
 
         {/* Display Settings */}
         <TabsContent value="display" className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Eye className="h-5 w-5" />
@@ -447,7 +447,7 @@ export default function CalendarSettingsPage() {
 
         {/* Time Settings */}
         <TabsContent value="time" className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
@@ -601,7 +601,7 @@ export default function CalendarSettingsPage() {
 
         {/* Event Settings */}
         <TabsContent value="events" className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
@@ -738,7 +738,7 @@ export default function CalendarSettingsPage() {
 
         {/* Notification Settings */}
         <TabsContent value="notifications" className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
@@ -828,7 +828,7 @@ export default function CalendarSettingsPage() {
 
         {/* Color Settings */}
         <TabsContent value="colors" className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Palette className="h-5 w-5" />

@@ -29,6 +29,7 @@ import {
   paginationSchema,
   validateSchema,
 } from "@/lib/validations";
+import { isPropertyInScope } from "@/lib/auth/property-scope";
 
 // ============================================================================
 // GET /api/compliance
@@ -211,6 +212,17 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // ─── Existence check ────────────────────────────────────────────────
       const property = await Property.findById(reportData.propertyId);
       if (!property) {
+        return createErrorResponse("Property not found", 404);
+      }
+
+      // ...and that it belongs to THIS caller. These records are only ever read
+      // back through property scope, so one created against someone else's
+      // property is invisible to whoever created it and lands in the other
+      // manager's data instead.
+      //
+      // 404, not 403 — a 403 confirms the property exists to someone who should
+      // not know that.
+      if (!isPropertyInScope(user as any, property)) {
         return createErrorResponse("Property not found", 404);
       }
       if (property.deletedAt) {

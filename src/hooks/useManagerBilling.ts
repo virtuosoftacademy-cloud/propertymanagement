@@ -61,19 +61,47 @@ function useBillingResource<T>(url: string): Result<T> {
 
 export function useManagerAccounts() {
   return useBillingResource<SubscriptionsView>(
-    "/api/billing/manager-accounts"
+    "/api/billing/subscriptions"
   );
 }
 
-export function useManagerPayments(accountId?: string) {
-  const query = accountId ? `?accountId=${encodeURIComponent(accountId)}` : "";
+export function useManagerPayments(subscriptionId?: string) {
+  const query = subscriptionId ? `?subscriptionId=${encodeURIComponent(subscriptionId)}` : "";
   return useBillingResource<SubscriptionPaymentsView>(
-    `/api/billing/manager-payments${query}`
+    `/api/billing/payments${query}`
   );
 }
 
 export function useManagerAnalytics() {
   return useBillingResource<SubscriptionAnalyticsView>("/api/billing/analytics");
+}
+
+/**
+ * The plan catalogue, read from roles.
+ *
+ * Not the MANAGER_PLANS const: that is the seed and the client-side fallback,
+ * so a plan created through the admin UI would not appear in it. Each entry
+ * also carries subscriptionCount/userCount, which is what decides whether a
+ * plan can be retired.
+ */
+export function usePlans() {
+  return useBillingResource<
+    Array<{
+      id: string;
+      name: string;
+      description: string;
+      monthlyPrice: number | null;
+      annualPrice: number | null;
+      unitLimit: number | null;
+      pricePerUnit?: number | null;
+      features: string[];
+      popular?: boolean;
+      custom?: boolean;
+      stripePriceIdMonthly?: string | null;
+      subscriptionCount?: number;
+      userCount?: number;
+    }>
+  >("/api/billing/plans");
 }
 
 export function useSelectableUsers() {

@@ -287,7 +287,7 @@ export function BrandingSection({
   const companyAddress = form.watch("branding.companyAddress");
 
   return (
-    <Card>
+    <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>

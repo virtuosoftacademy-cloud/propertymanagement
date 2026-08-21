@@ -4,7 +4,7 @@
 
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { ManagerAccount } from "@/models";
+import { Subscription } from "@/models";
 import { UserRole } from "@/types";
 import {
   createSuccessResponse,
@@ -14,7 +14,7 @@ import {
   withRoleAndDB,
 } from "@/lib/api-utils";
 import { managerAccountFormSchema } from "@/lib/billing/manager-account-schema";
-import { serializeAccount } from "@/lib/billing/serialize";
+import { serializeSubscription } from "@/lib/billing/serialize";
 
 function idFrom(context: any): string | null {
   const id = context?.params?.id;
@@ -30,13 +30,13 @@ export const GET = withRoleAndDB([UserRole.ADMIN])(
       const id = idFrom({ params });
       if (!id) return createErrorResponse("Invalid account id", 400);
 
-      const doc = await ManagerAccount.findById(id)
-        .populate("managerUserId", "firstName lastName name")
-        .lean();
+      // No populate: it replaces the field, so a soft-deleted user would
+      // erase the id this record links by. See serializeSubscription.
+      const doc = await Subscription.findById(id).lean();
 
       if (!doc) return createErrorResponse("Account not found", 404);
 
-      return createSuccessResponse(serializeAccount(doc as any));
+      return createSuccessResponse(serializeSubscription(doc as any));
     } catch (error) {
       return handleApiError(error);
     }
@@ -63,14 +63,14 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN])(
 
       const v = parsed.data;
 
-      const updated = await ManagerAccount.findByIdAndUpdate(
+      const updated = await Subscription.findByIdAndUpdate(
         id,
         {
           clientName: v.clientName,
           companyName: v.companyName,
           contactEmail: v.contactEmail,
           contactPhone: v.contactPhone,
-          managerUserId: v.clientUserId,
+          userId: v.clientUserId,
           planId: v.planId,
           status: v.status,
           amount: v.amount,
@@ -85,7 +85,7 @@ export const PATCH = withRoleAndDB([UserRole.ADMIN])(
       if (!updated) return createErrorResponse("Account not found", 404);
 
       return createSuccessResponse(
-        serializeAccount(updated as any),
+        serializeSubscription(updated as any),
         "Manager account updated"
       );
     } catch (error) {
@@ -105,7 +105,7 @@ export const DELETE = withRoleAndDB([UserRole.ADMIN])(
       const id = idFrom({ params });
       if (!id) return createErrorResponse("Invalid account id", 400);
 
-      const doc = await ManagerAccount.findById(id);
+      const doc = await Subscription.findById(id);
       if (!doc) return createErrorResponse("Account not found", 404);
 
       if (doc.stripeSubscriptionId) {

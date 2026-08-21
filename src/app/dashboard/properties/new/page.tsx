@@ -122,14 +122,13 @@ export default function EnhancedNewPropertyPage() {
         </div>
       </div>
 
-      {limitError && (
-        <UpgradePrompt
-          message={limitError.error}
-          allowance={limitError.allowance}
-          upgradeUrl={limitError.upgradeUrl}
-          className="mb-6"
-        />
-      )}
+      <UpgradePrompt
+        open={Boolean(limitError)}
+        onOpenChange={(next) => { if (!next) setLimitError(null); }}
+        message={limitError?.error ?? ""}
+        allowance={limitError?.allowance}
+        upgradeUrl={limitError?.upgradeUrl}
+      />
 
       <EnhancedPropertyForm
         onSubmit={handlePropertySubmit}

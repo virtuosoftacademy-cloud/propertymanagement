@@ -169,7 +169,7 @@ export default function TenantApplicationForm({
     switch (currentStep) {
       case 1:
         return (
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -274,7 +274,7 @@ export default function TenantApplicationForm({
 
       case 2:
         return (
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
@@ -361,7 +361,7 @@ export default function TenantApplicationForm({
 
       case 3:
         return (
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Phone className="h-5 w-5" />
@@ -516,7 +516,7 @@ export default function TenantApplicationForm({
 
       case 4:
         return (
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -588,7 +588,7 @@ export default function TenantApplicationForm({
 
       case 5:
         return (
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5" />
@@ -693,7 +693,7 @@ export default function TenantApplicationForm({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Progress Bar */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardContent className="pt-6">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">

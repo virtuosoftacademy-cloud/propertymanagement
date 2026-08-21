@@ -12,9 +12,9 @@
  * Set STRIPE_SUBSCRIPTION_WEBHOOK_SECRET to this endpoint's signing secret.
  *
  * Stripe retries on any non-2xx, so every handler here must be idempotent —
- * hence the unique indexes on Subscription.stripeSubscriptionId and
- * Subscription.stripeInvoiceId, which make a double delivery collide rather
- * than silently create a second account or double-count revenue.
+ * hence the unique index on Subscription.stripeSubscriptionId and the
+ * conditional push used for embedded payments, which make a double delivery a
+ * no-op rather than a second subscription or double-counted revenue.
  */
 
 // Aliased: the local `mongoose` in this file is a connection cache, not the
@@ -23,14 +23,14 @@ import { model as dbModel } from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import connectDB from "@/lib/mongodb";
-import { Subscription, Subscription, User } from "@/models";
-import { resolvePlan } from "@/lib/billing/plans";
-import { planForStripePrice } from "@/lib/billing/stripe-prices";
+import { Subscription, User } from "@/models";
+
 import {
   createPasswordResetToken,
   SEVEN_DAYS_MS,
 } from "@/lib/invitation-utils";
 import { emailService } from "@/lib/email-service";
+import { getPlan, planForPriceId } from "@/lib/billing/plan-store";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +55,93 @@ function periodLabel(date: Date): string {
 }
 
 /**
+ * The subscription an invoice belongs to.
+ *
+ * `invoice.subscription` was REMOVED in the 2025-x API versions and lives on
+ * `invoice.parent.subscription_details.subscription` now. Reading the old field
+ * returned undefined on every delivery, so handleInvoicePaid bailed at its
+ * first line: no payment was ever recorded and nobody was ever promoted off
+ * `free` after paying. Both shapes are read so this keeps working whichever
+ * API version an event was created under — old events replayed from the
+ * dashboard still carry the flat field.
+ */
+function invoiceSubscriptionId(invoice: Stripe.Invoice): string | undefined {
+  const legacy = (invoice as any).subscription;
+  if (legacy)
+    return typeof legacy === "string" ? legacy : (legacy.id as string);
+
+  const current = (invoice as any).parent?.subscription_details?.subscription;
+  if (!current) return undefined;
+  return typeof current === "string" ? current : (current.id as string);
+}
+
+/**
+ * When the current billing period ends — i.e. the renewal date.
+ *
+ * Also moved: it is per-item now rather than on the subscription. Left
+ * unhandled this silently made every renewsAt null, which is what the admin
+ * billing list reads for "Renews".
+ */
+function subscriptionPeriodEnd(
+  subscription: Stripe.Subscription
+): number | undefined {
+  return (
+    ((subscription as any).current_period_end as number | undefined) ??
+    ((subscription.items?.data?.[0] as any)?.current_period_end as
+      | number
+      | undefined)
+  );
+}
+
+/**
+ * Put the buyer on the role their plan grants.
+ *
+ * Sign-up deliberately creates paid-plan users on `free` (see auth/register),
+ * which is what stops someone granting themselves Pro by filling in a form —
+ * so until this runs, someone who has paid still has Free's permissions and
+ * Free's one-unit ceiling.
+ *
+ * Called from BOTH checkout.session.completed and invoice.paid. Those two
+ * events are emitted within the same second and Stripe does not guarantee
+ * their order, so whichever lands first must be able to do this; running it
+ * twice writes the same value, so the duplicate is harmless.
+ *
+ * Best-effort by design: a failure here must not make Stripe retry a payment
+ * that was already recorded. The subscription is on the right plan either way,
+ * so a missed promotion is recoverable by replaying the event.
+ */
+async function promoteUserToPlan(
+  userId: unknown,
+  planId: string
+): Promise<void> {
+  if (!userId || !planId) return;
+
+  try {
+    const planRole = await dbModel("Role").findOne({
+      name: planId,
+      isActive: true,
+    });
+
+    if (!planRole) {
+      console.error(
+        `[billing] paid ${planId} but no active role of that name — user left on free`
+      );
+      return;
+    }
+
+    await dbModel("User").updateOne(
+      { _id: userId as any },
+      { $set: { role: planId } }
+    );
+  } catch (promotionError) {
+    console.error(
+      `[billing] failed to promote user ${userId} to ${planId}:`,
+      promotionError
+    );
+  }
+}
+
+/**
  * Provision a manager login for a paying customer. Idempotent: an existing user
  * with this email is reused rather than duplicated, which matters because
  * Stripe may deliver checkout.session.completed more than once.
@@ -62,6 +149,7 @@ function periodLabel(date: Date): string {
 async function provisionManagerUser(
   email: string,
   name: string | null | undefined,
+  planId: string,
   planName: string
 ): Promise<{ userId: string; created: boolean }> {
   const existing = await User.findOne({ email: email.toLowerCase() });
@@ -73,7 +161,11 @@ async function provisionManagerUser(
     email: email.toLowerCase(),
     firstName: firstName || "New",
     lastName: rest.join(" ") || "Manager",
-    role: "manager",
+    // The role IS the plan (see lib/billing/plan-store) — that is what the
+    // unit ceiling and the permission checks read. A literal "manager" here
+    // matched no plan, so a buyer with no prior account landed on a role the
+    // plan lookup could not resolve and fell closed to no units at all.
+    role: planId || "manager",
     isActive: true,
     // No password is set here. The customer receives a set-password link;
     // inventing one and emailing it would be worse than making them choose.
@@ -140,17 +232,39 @@ async function handleCheckoutCompleted(
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const priceId = subscription.items.data[0]?.price?.id;
-  const mapped = priceId ? planForStripePrice(priceId) : null;
 
-  // "pro" as the last resort: it is the only plan sold through Checkout now
-  // that starter/growth are retired (see scripts/seed-plan-roles.js).
-  const planId = mapped?.planId ?? session.metadata?.planId ?? "pro";
+  // The Price that was actually paid is the authority — it comes from Stripe,
+  // whereas metadata was written by whoever started the session. Metadata is
+  // only the fallback for a Price we no longer recognise (a plan renamed or
+  // retired between checkout and this delivery).
+  const mapped = priceId ? await planForPriceId(priceId) : null;
+
+  const planId = mapped?.plan.id ?? session.metadata?.planId ?? "";
   const cycle =
     mapped?.cycle ??
     ((session.metadata?.cycle as "monthly" | "annual") || "monthly");
 
+  if (!planId) {
+    throw new Error(
+      `Checkout ${session.id} paid Price ${priceId} which matches no plan, and carried no planId metadata`
+    );
+  }
+
+  const plan = mapped?.plan ?? (await getPlan(planId));
+
+  // The address they REGISTERED with, not the one typed on Stripe's page.
+  // Those differ often — Stripe prefills but the buyer can overwrite it, and
+  // people pay with a personal card under a different address. Matching on the
+  // Stripe email alone left the pending subscription unclaimed and created a
+  // duplicate account under the paying address.
+  const signupEmail = session.metadata?.signupEmail || undefined;
+  const signupUserId = session.metadata?.userId || undefined;
+
   const email =
-    session.customer_details?.email || session.customer_email || undefined;
+    signupEmail ||
+    session.customer_details?.email ||
+    session.customer_email ||
+    undefined;
   if (!email) {
     // Nothing to provision against. Fail loudly so Stripe retries rather than
     // recording a paid subscription nobody can log into.
@@ -161,12 +275,11 @@ async function handleCheckoutCompleted(
   const { userId } = await provisionManagerUser(
     email,
     name,
-    resolvePlan(planId)?.name ?? planId
+    planId,
+    plan?.name ?? planId
   );
 
-  const currentPeriodEnd = (subscription as any).current_period_end as
-    | number
-    | undefined;
+  const currentPeriodEnd = subscriptionPeriodEnd(subscription);
 
   const paidFields = {
     contactEmail: email,
@@ -176,8 +289,8 @@ async function handleCheckoutCompleted(
     amount:
       toMajor(subscription.items.data[0]?.price?.unit_amount) ||
       (cycle === "annual"
-        ? (resolvePlan(planId)?.annualPrice ?? 0)
-        : (resolvePlan(planId)?.monthlyPrice ?? 0)),
+        ? (plan?.annualPrice ?? 0)
+        : (plan?.monthlyPrice ?? 0)),
     billingCycle: cycle,
     startedAt: new Date(subscription.start_date * 1000),
     renewsAt: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null,
@@ -206,7 +319,14 @@ async function handleCheckoutCompleted(
     // of those would silently convert a negotiated cash arrangement into a
     // Stripe subscription and lose the record of how that client actually pays.
     paymentMethod: "card",
-    $or: [{ userId: userId }, { contactEmail: email.toLowerCase() }],
+    // signupUserId first: it is the only identifier that survives the buyer
+    // changing their email on Stripe's page.
+    $or: [
+      ...(signupUserId ? [{ userId: signupUserId }] : []),
+      { userId: userId },
+      { contactEmail: email.toLowerCase() },
+      ...(signupEmail ? [{ contactEmail: signupEmail.toLowerCase() }] : []),
+    ],
   }).sort({ createdAt: -1 });
 
   if (unclaimed) {
@@ -218,18 +338,16 @@ async function handleCheckoutCompleted(
     // on stripeSubscriptionId makes the loser throw, the webhook returns 500,
     // and Stripe retries — by which time the check at the top matches instead.
     await unclaimed.save();
+    await promoteUserToPlan(userId, planId);
     return;
   }
 
   await Subscription.create({ ...paidFields, clientName: name || email });
-
+  await promoteUserToPlan(userId, planId);
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
-  const subscriptionId =
-    typeof (invoice as any).subscription === "string"
-      ? (invoice as any).subscription
-      : (invoice as any).subscription?.id;
+  const subscriptionId = invoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
 
   const account = await Subscription.findOne({
@@ -244,68 +362,56 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     );
   }
 
-  // Money has arrived, so the account may now hold its plan's role. Sign-up
-  // deliberately creates paid-plan users on `free` (see auth/register), which
-  // is what stops someone granting themselves Pro by filling in a form.
-  //
-  // Best-effort: a failure here must not make Stripe retry a payment we have
-  // already recorded. The account is on the right plan either way, so this is
-  // recoverable by re-running the promotion.
-  if (account.userId) {
-    try {
-      const RoleModel = dbModel("Role");
-      const planRole = await RoleModel.findOne({
-        name: account.planId,
-        isActive: true,
-      });
-
-      if (planRole) {
-        await dbModel("User").updateOne(
-            { _id: account.userId },
-            { $set: { role: account.planId } }
-          );
-      } else {
-        console.error(
-          `[billing] paid ${account.planId} but no active role of that name — user left on free`
-        );
-      }
-    } catch (promotionError) {
-      console.error(
-        `[billing] failed to promote user ${account.userId} to ${account.planId}:`,
-        promotionError
-      );
-    }
-  }
+  await promoteUserToPlan(account.userId, account.planId);
 
   const receivedOn = new Date(
     (invoice.status_transitions?.paid_at ?? invoice.created) * 1000
   );
 
-  try {
-    await Subscription.create({
-      accountId: account._id,
-      clientName: account.clientName,
-      companyName: account.companyName,
-      planId: account.planId,
-      amount: toMajor(invoice.amount_paid),
-      receivedOn,
-      method: "card",
-      recordedBy: "Stripe",
-      periodLabel: periodLabel(receivedOn),
-      stripeInvoiceId: invoice.id,
-    });
-  } catch (error: any) {
-    // Unique index on stripeInvoiceId: this invoice is already in the ledger,
-    // so the delivery is a retry. Not an error.
-    if (error?.code !== 11000) throw error;
-    return;
-  }
+  // The line item's period, NOT invoice.period_end. On a subscription's FIRST
+  // invoice those differ: the invoice's own window collapses to the moment of
+  // issue, so using it set renewsAt to today and the billing list showed an
+  // account renewing the day it was bought. The line is what states the period
+  // actually paid for.
+  const periodEnd =
+    ((invoice.lines?.data?.[0] as any)?.period?.end as number | undefined) ??
+    ((invoice as any).period_end as number | undefined);
 
-  account.lastPaymentAt = receivedOn;
-  account.status = "active";
-  const periodEnd = (invoice as any).period_end as number | undefined;
-  if (periodEnd) account.renewsAt = new Date(periodEnd * 1000);
-  await account.save();
+  // Push the payment ONLY if this invoice is not already on the document.
+  // A unique index cannot help here: Mongo permits repeated keys inside a
+  // single document's array, so a retried delivery would append a duplicate
+  // and inflate reported revenue. The filter makes the write idempotent —
+  // matchedCount 0 means we have already recorded it.
+  const result = await Subscription.updateOne(
+    {
+      _id: account._id,
+      deletedAt: null,
+      "payments.stripeInvoiceId": { $ne: invoice.id },
+    },
+    {
+      $push: {
+        payments: {
+          amount: toMajor(invoice.amount_paid),
+          receivedOn,
+          method: "card",
+          recordedBy: "Stripe",
+          periodLabel: periodLabel(receivedOn),
+          stripeInvoiceId: invoice.id,
+        },
+      },
+      $set: {
+        lastPaymentAt: receivedOn,
+        status: "active",
+        ...(periodEnd ? { renewsAt: new Date(periodEnd * 1000) } : {}),
+      },
+    }
+  );
+
+  if (result.matchedCount === 0) {
+    console.warn(
+      `[billing] invoice ${invoice.id} already recorded — ignoring retry`
+    );
+  }
 }
 
 async function handleSubscriptionChanged(subscription: Stripe.Subscription) {
@@ -316,10 +422,12 @@ async function handleSubscriptionChanged(subscription: Stripe.Subscription) {
   if (!account) return;
 
   const priceId = subscription.items.data[0]?.price?.id;
-  const mapped = priceId ? planForStripePrice(priceId) : null;
+  const mapped = priceId ? await planForPriceId(priceId) : null;
 
   if (mapped) {
-    account.planId = mapped.planId;
+    // An upgrade or downgrade in Stripe moves the account onto the matching
+    // plan here too, so the role the user holds follows what they now pay for.
+    account.planId = mapped.plan.id;
     account.billingCycle = mapped.cycle;
   }
   if (priceId) account.stripePriceId = priceId;
@@ -348,9 +456,7 @@ async function handleSubscriptionChanged(subscription: Stripe.Subscription) {
 
   account.cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
 
-  const currentPeriodEnd = (subscription as any).current_period_end as
-    | number
-    | undefined;
+  const currentPeriodEnd = subscriptionPeriodEnd(subscription);
   if (currentPeriodEnd) account.renewsAt = new Date(currentPeriodEnd * 1000);
 
   await account.save();
@@ -376,10 +482,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 }
 
 async function handleInvoiceFailed(invoice: Stripe.Invoice) {
-  const subscriptionId =
-    typeof (invoice as any).subscription === "string"
-      ? (invoice as any).subscription
-      : (invoice as any).subscription?.id;
+  const subscriptionId = invoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
 
   await Subscription.findOneAndUpdate(

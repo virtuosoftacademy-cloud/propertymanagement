@@ -25,7 +25,10 @@
 import { NextRequest } from "next/server";
 import { Lease, Property, User } from "@/models";
 import { UserRole, LeaseStatus } from "@/types";
-import { applyDerivedPropertyScope } from "@/lib/auth/property-scope";
+import {
+  applyDerivedPropertyScope,
+  isPropertyInScope,
+} from "@/lib/auth/property-scope";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -217,6 +220,18 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // ─── Existence & authorization checks ───────────────────────────────
       const property = await Property.findById(leaseData.propertyId);
       if (!property) return createErrorResponse("Property not found", 404);
+
+      // A lease is only ever visible through its PROPERTY — the model has no
+      // createdBy — so creating one against a property outside your scope
+      // produces a lease you cannot see, filed under someone else's
+      // portfolio. Refusing here makes "a lease you create is a lease you can
+      // see" true by construction rather than by convention.
+      //
+      // 404, not 403, matching the property routes: a 403 would confirm the
+      // property exists to someone who should not know that.
+      if (!isPropertyInScope(user, property)) {
+        return createErrorResponse("Property not found", 404);
+      }
 
       const unit = property.units.find(
         (u: any) => u._id?.toString() === leaseData.unitId?.toString()

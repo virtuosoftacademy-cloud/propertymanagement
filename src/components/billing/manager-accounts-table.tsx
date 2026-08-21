@@ -26,12 +26,12 @@ import {
   Users,
 } from "lucide-react";
 import { resolvePlan } from "@/lib/billing/plans";
-import type { ManagerAccount, ManagerAccountStatus } from "@/types/billing";
+import type { Subscription, SubscriptionStatus } from "@/types/billing";
 
 interface ManagerAccountsTableProps {
-  accounts: ManagerAccount[];
-  onRecordPayment: (account: ManagerAccount) => void;
-  onEdit: (account: ManagerAccount) => void;
+  accounts: Subscription[];
+  onRecordPayment: (account: Subscription) => void;
+  onEdit: (account: Subscription) => void;
   /**
    * Description of what is narrowing the list (search term, status, plan), so
    * the empty state can say why it is empty rather than claiming nothing exists.
@@ -40,7 +40,7 @@ interface ManagerAccountsTableProps {
 }
 
 const STATUS_META: Record<
-  ManagerAccountStatus,
+  SubscriptionStatus,
   { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
 > = {
   pending: { label: "Pending", variant: "secondary" },
@@ -151,8 +151,8 @@ export function ManagerAccountsTable({
                         </div>
                       </TableCell>
                       <TableCell>
-                        {account.managerName ? (
-                          <span className="text-sm">{account.managerName}</span>
+                        {account.userName ? (
+                          <span className="text-sm">{account.userName}</span>
                         ) : (
                           <span className="text-muted-foreground text-sm italic">
                             Not provisioned

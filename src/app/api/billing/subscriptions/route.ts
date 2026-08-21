@@ -6,9 +6,9 @@
  */
 
 import { NextRequest } from "next/server";
-import { ManagerAccount } from "@/models";
+import { Subscription, User } from "@/models";
 import { UserRole } from "@/types";
-import type { ManagerAccountsView } from "@/types/billing";
+import type { SubscriptionsView } from "@/types/billing";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -17,24 +17,38 @@ import {
   withRoleAndDB,
 } from "@/lib/api-utils";
 import { managerAccountFormSchema } from "@/lib/billing/manager-account-schema";
-import { serializeAccount } from "@/lib/billing/serialize";
-import { summariseAccounts } from "@/lib/billing/summarise";
+import {
+  serializeSubscription,
+  loadVisibleSubscriptions,
+} from "@/lib/billing/serialize";
+import { summariseSubscriptions } from "@/lib/billing/summarise";
 
 // ============================================================================
-// GET /api/billing/manager-accounts - list with derived summary
+// GET /api/billing/subscriptions - list with derived summary
 // ============================================================================
 
 export const GET = withRoleAndDB([UserRole.ADMIN])(async () => {
   try {
-    const docs = await ManagerAccount.find({})
-      .populate("managerUserId", "firstName lastName name")
-      .sort({ createdAt: -1 })
-      .lean();
+    // Same visibility rule as analytics — see loadVisibleSubscriptions.
+    const { docs, names, hidden } = await loadVisibleSubscriptions(
+      Subscription,
+      User
+    );
 
-    const accounts = (docs as any[]).map(serializeAccount);
+    if (hidden > 0) {
+      // Not silent: the revenue below now excludes these, and an admin
+      // chasing a client that vanished needs somewhere to see why.
+      console.warn(
+        `[billing] ${hidden} subscription(s) hidden — their user is deleted`
+      );
+    }
 
-    const view: ManagerAccountsView = {
-      summary: summariseAccounts(accounts),
+    const accounts = docs.map((d) =>
+      serializeSubscription(d, names.get(String(d.userId ?? "")))
+    );
+
+    const view: SubscriptionsView = {
+      summary: summariseSubscriptions(accounts),
       accounts,
     };
 
@@ -45,7 +59,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN])(async () => {
 });
 
 // ============================================================================
-// POST /api/billing/manager-accounts - record a newly sold account
+// POST /api/billing/subscriptions - record a newly sold account
 // ============================================================================
 
 export const POST = withRoleAndDB([UserRole.ADMIN])(
@@ -66,12 +80,12 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
 
       const values = parsed.data;
 
-      const created = await ManagerAccount.create({
+      const created = await Subscription.create({
         clientName: values.clientName,
         companyName: values.companyName,
         contactEmail: values.contactEmail,
         contactPhone: values.contactPhone,
-        managerUserId: values.clientUserId,
+        userId: values.clientUserId,
         planId: values.planId,
         status: values.status,
         amount: values.amount,
@@ -85,7 +99,7 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
       });
 
       return createSuccessResponse(
-        serializeAccount(created as any),
+        serializeSubscription(created as any),
         "Manager account created"
       );
     } catch (error) {

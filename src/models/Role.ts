@@ -23,6 +23,38 @@ export interface IRole extends mongoose.Document {
    * next.config.ts sets typescript.ignoreBuildErrors.
    */
   color: "default" | "destructive" | "outline" | "secondary";
+
+  // ── Plan fields ───────────────────────────────────────────────────────────
+  //
+  // A subscription plan IS a role: registration sets a user's role to the plan
+  // id, and the Stripe webhook promotes them to it on payment. Keeping the
+  // pricing on the role means the permissions a plan grants and the price it
+  // charges are defined in one place and cannot drift apart — previously a plan
+  // could exist with no matching role, and sign-up failed with "Sign-up is not
+  // available yet" and no way to see why.
+  //
+  // Roles that are not plans (agent, maintenance_staff) simply leave isPlan
+  // false and carry none of this.
+  /** Whether this role is sold as a subscription plan. */
+  isPlan: boolean;
+  /** GBP, major units. null = negotiated per client. */
+  monthlyPrice: number | null;
+  annualPrice: number | null;
+  /** How many units the holder may operate. null = unlimited. */
+  unitLimit: number | null;
+  /** Optional per-unit charge on top of the flat price, GBP/unit/month. */
+  pricePerUnit: number | null;
+  /** Bullet points shown on the pricing card. */
+  features: string[];
+  /** Highlighted on the pricing grid. */
+  popular: boolean;
+  /** Priced per client rather than off the shelf; no Stripe Price. */
+  custom: boolean;
+  /** Set when the plan is sold through Stripe Checkout. */
+  stripeProductId: string | null;
+  stripePriceIdMonthly: string | null;
+  stripePriceIdAnnual: string | null;
+
   userCount: number;
   createdBy: mongoose.Types.ObjectId;
   updatedBy: mongoose.Types.ObjectId;
@@ -194,6 +226,19 @@ const RoleSchema = new Schema<IRole>(
       enum: ["default", "destructive", "outline", "secondary"],
       default: "outline",
     },
+
+    // Plan fields — see the interface above for why these live on the role.
+    isPlan: { type: Boolean, default: false, index: true },
+    monthlyPrice: { type: Number, default: null, min: 0 },
+    annualPrice: { type: Number, default: null, min: 0 },
+    unitLimit: { type: Number, default: null, min: 0 },
+    pricePerUnit: { type: Number, default: null, min: 0 },
+    features: { type: [String], default: [] },
+    popular: { type: Boolean, default: false },
+    custom: { type: Boolean, default: false },
+    stripeProductId: { type: String, default: null, trim: true },
+    stripePriceIdMonthly: { type: String, default: null, trim: true },
+    stripePriceIdAnnual: { type: String, default: null, trim: true },
     userCount: {
       type: Number,
       default: 0,

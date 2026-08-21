@@ -446,7 +446,7 @@ export function SystemSettings({ onAlert }: SystemSettingsProps) {
 
         {categories.map((category) => (
           <TabsContent key={category.value} value={category.value}>
-            <Card>
+            <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
               <CardHeader>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -518,7 +518,7 @@ export function SystemSettings({ onAlert }: SystemSettingsProps) {
               </CardHeader>
               <CardContent>
                 {showAddForm && newSetting.category === category.value && (
-                  <Card className="mb-6">
+                  <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background mb-6">
                     <CardHeader>
                       <CardTitle className="text-lg">Add New Setting</CardTitle>
                     </CardHeader>

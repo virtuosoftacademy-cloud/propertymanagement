@@ -2,14 +2,22 @@
 
 import Link from "next/link";
 import { ArrowUpRight, Lock } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export interface UnitAllowanceInfo {
   planId: string;
   planName: string;
   limit: number | null;
   used: number;
+  requested?: number;
 }
 
 interface UpgradePromptProps {
@@ -18,48 +26,64 @@ interface UpgradePromptProps {
   allowance?: UnitAllowanceInfo;
   /** Where to send them. The API returns this so the link is not duplicated. */
   upgradeUrl?: string;
-  className?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 /**
  * Shown when a plan ceiling blocks an action.
  *
- * Deliberately not a toast: a toast disappears, and the user is left looking at
- * a form that refuses to submit with no explanation of why. This stays on the
- * page next to the thing they were trying to do, and carries the way out.
+ * A modal rather than an inline alert: the refusal is the answer to something
+ * the user just did, and it has to interrupt. An inline banner above a long
+ * property form can sit off-screen entirely — the save appears to do nothing.
+ *
+ * Dismissable on purpose. The user's edits are still in the form behind it, so
+ * trapping them here would mean losing that work to read the message.
  */
 export function UpgradePrompt({
   message,
   allowance,
-  upgradeUrl = "/pricing",
-  className,
+  upgradeUrl = "/landing/pricing",
+  open,
+  onOpenChange,
 }: UpgradePromptProps) {
-  return (
-    <Alert className={className}>
-      <Lock className="h-4 w-4" />
-      <AlertTitle>
-        {allowance
-          ? `You've reached your ${allowance.planName} plan limit`
-          : "Plan limit reached"}
-      </AlertTitle>
-      <AlertDescription className="space-y-3">
-        <p className="text-sm">{message}</p>
+  const showUsage = allowance && allowance.limit !== null;
 
-        {allowance?.limit !== null && allowance && (
-          <p className="text-muted-foreground text-xs">
-            Using {allowance.used} of {allowance.limit} unit
-            {allowance.limit === 1 ? "" : "s"}.
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <div className="bg-muted mb-3 flex h-10 w-10 items-center justify-center rounded-full">
+            <Lock className="h-5 w-5" />
+          </div>
+          <DialogTitle>
+            {allowance
+              ? `You've reached your ${allowance.planName} plan limit`
+              : "Plan limit reached"}
+          </DialogTitle>
+          <DialogDescription>{message}</DialogDescription>
+        </DialogHeader>
+
+        {showUsage && (
+          <p className="text-muted-foreground text-sm">
+            Using {allowance!.used} of {allowance!.limit} unit
+            {allowance!.limit === 1 ? "" : "s"}.
           </p>
         )}
 
-        <Button asChild size="sm">
-          <Link href={upgradeUrl}>
-            View plans
-            <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-          </Link>
-        </Button>
-      </AlertDescription>
-    </Alert>
+        <DialogFooter className="sm:justify-between">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Keep editing
+          </Button>
+          <Button asChild>
+            <Link href={upgradeUrl}>
+              View plans
+              <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

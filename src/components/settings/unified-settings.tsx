@@ -470,7 +470,7 @@ export function UnifiedSettings({
 
         {/* Profile Settings */}
         <TabsContent value="profile" className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -695,7 +695,7 @@ export function UnifiedSettings({
 
         {/* Notification Settings */}
         <TabsContent value="notifications" className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
@@ -1104,7 +1104,7 @@ export function UnifiedSettings({
         </TabsContent>
 
         <TabsContent value="display" className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Palette className="h-5 w-5" />
@@ -1460,7 +1460,7 @@ export function UnifiedSettings({
         {/* System Settings - Admin Only */}
         {session?.user?.role === "admin" && (
           <TabsContent value="system" className="space-y-6">
-            <Card>
+            <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <SettingsIcon className="h-5 w-5" />
@@ -1473,7 +1473,7 @@ export function UnifiedSettings({
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Branding Settings */}
-                  <Card>
+                  <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                     <CardHeader>
                       <CardTitle className="text-lg">Branding</CardTitle>
                       <CardDescription>
@@ -1522,7 +1522,7 @@ export function UnifiedSettings({
                   </Card>
 
                   {/* Email Settings */}
-                  <Card>
+                  <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                     <CardHeader>
                       <CardTitle className="text-lg">
                         Email Configuration
@@ -1575,7 +1575,7 @@ export function UnifiedSettings({
                   </Card>
 
                   {/* Security Settings */}
-                  <Card>
+                  <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                     <CardHeader>
                       <CardTitle className="text-lg">Security</CardTitle>
                       <CardDescription>
@@ -1635,7 +1635,7 @@ export function UnifiedSettings({
                   </Card>
 
                   {/* Maintenance Settings */}
-                  <Card>
+                  <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
                     <CardHeader>
                       <CardTitle className="text-lg">Maintenance</CardTitle>
                       <CardDescription>

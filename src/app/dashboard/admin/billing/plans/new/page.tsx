@@ -14,7 +14,14 @@ import { ArrowLeft, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlanForm } from "@/components/billing/plan-form";
-import { showSimpleSuccess } from "@/lib/toast-notifications";
+import { showSimpleError, showSimpleSuccess } from "@/lib/toast-notifications";
+
+/**
+ * The plan id is the ROLE NAME, and role names are lowercase with underscores.
+ * Derived from the display name so an admin never has to know that.
+ */
+const slugify = (s: string) =>
+  s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 import type { PlanFormValues } from "@/lib/billing/plan-schema";
 
 export default function NewPlanPage() {
@@ -22,8 +29,22 @@ export default function NewPlanPage() {
 
   const backToPlans = () => router.push("/dashboard/admin/billing/plans");
 
-  const handleSubmit = (values: PlanFormValues) => {
-    // TODO(billing): POST /api/plans once the catalogue moves to the database.
+  const handleSubmit = async (values: PlanFormValues) => {
+    const response = await fetch("/api/billing/plans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...values, id: slugify(values.name) }),
+    });
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok || !result?.success) {
+      showSimpleError(
+        "Plan not created",
+        result?.error || "The plan could not be saved."
+      );
+      return;
+    }
+
     // The values are already validated and typed by the time they arrive here.
     showSimpleSuccess("Plan added", `${values.name} has been created.`);
     backToPlans();

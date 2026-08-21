@@ -40,7 +40,19 @@ function populatedName(value: MaybePopulatedUser): string | undefined {
   return joined || undefined;
 }
 
-export function serializeSubscription(doc: ISubscription): Subscription {
+/**
+ * @param userName resolved separately by the caller.
+ *
+ * Names are NOT populated. .populate() REPLACES the field, so when the
+ * referenced user is missing or soft-deleted it becomes null and the raw id is
+ * lost with it — which silently broke the link between a subscription and its
+ * user, and blanked the client picker on the edit form. Reading the id straight
+ * off the document means it survives regardless of the user's state.
+ */
+export function serializeSubscription(
+  doc: ISubscription,
+  userName?: string
+): Subscription {
   return {
     id: String(doc._id),
     clientName: doc.clientName,
@@ -48,7 +60,7 @@ export function serializeSubscription(doc: ISubscription): Subscription {
     contactEmail: doc.contactEmail,
     contactPhone: doc.contactPhone || undefined,
     userId: refId(doc.userId),
-    userName: populatedName(doc.userId) ?? doc.clientName,
+    userName: userName ?? populatedName(doc.userId) ?? doc.clientName,
     planId: doc.planId,
     status: doc.status,
     amount: doc.amount,
@@ -92,6 +104,68 @@ export function serializePayment(
     notes: doc.notes || undefined,
     stripeInvoiceId: doc.stripeInvoiceId || undefined,
   };
+}
+
+/**
+ * Display names for a set of subscriptions, keyed by user id.
+ *
+ * Soft-deleted users are simply absent — the subscription still shows its own
+ * clientName, and the id it links by is untouched.
+ */
+export async function resolveUserNames(
+  docs: ISubscription[],
+  User: any
+): Promise<Map<string, string>> {
+  const ids = docs.map((d) => refId(d.userId)).filter(Boolean) as string[];
+  if (ids.length === 0) return new Map();
+
+  const users: any[] = await User.find({ _id: { $in: ids } })
+    .select("firstName lastName")
+    .lean();
+
+  return new Map(
+    users.map((u) => [
+      String(u._id),
+      [u.firstName, u.lastName].filter(Boolean).join(" ").trim(),
+    ])
+  );
+}
+
+/**
+ * Subscriptions an admin should see, with their users' display names.
+ *
+ * Shared by the list and the analytics endpoints so the two cannot disagree
+ * about who exists — a subscription hidden from one but counted by the other
+ * would show a client that vanished from the table but still moved the
+ * revenue figures.
+ *
+ * A subscription is hidden when it POINTS AT a deleted user. One with no
+ * userId at all is kept: that is an account sold but not yet provisioned a
+ * login, which is a real row someone still needs to act on.
+ */
+export async function loadVisibleSubscriptions(
+  Subscription: any,
+  User: any
+): Promise<{
+  docs: ISubscription[];
+  names: Map<string, string>;
+  hidden: number;
+}> {
+  const all: ISubscription[] = await Subscription.find({})
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // The User model's soft-delete hook means this map holds LIVE users only,
+  // so it doubles as the liveness check.
+  const names = await resolveUserNames(all, User);
+
+  // .has(), not truthiness — a live user with a blank name maps to "".
+  const docs = all.filter((d) => {
+    const uid = d.userId ? String(d.userId) : "";
+    return uid === "" || names.has(uid);
+  });
+
+  return { docs, names, hidden: all.length - docs.length };
 }
 
 /** Every payment across a set of subscriptions, newest first. */

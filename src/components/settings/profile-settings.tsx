@@ -462,7 +462,7 @@ export function ProfileSettings({ user, onUpdate, onAlert }: ProfileSettingsProp
     <div className="space-y-6">
 
       {/* ── Avatar ── */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="text-lg">{t("settings.profile.avatar.title")}</CardTitle>
           <CardDescription>{t("settings.profile.avatar.description")}</CardDescription>
@@ -498,7 +498,7 @@ export function ProfileSettings({ user, onUpdate, onAlert }: ProfileSettingsProp
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
         {/* Basic Information */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="text-lg">{t("settings.profile.basicInfo.title")}</CardTitle>
             <CardDescription>{t("settings.profile.basicInfo.description")}</CardDescription>
@@ -671,7 +671,7 @@ export function ProfileSettings({ user, onUpdate, onAlert }: ProfileSettingsProp
         </Card>
 
         {/* Emergency Contact */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="text-lg">{t("settings.profile.emergencyContact.title")}</CardTitle>
             <CardDescription>{t("settings.profile.emergencyContact.description")}</CardDescription>
@@ -716,7 +716,7 @@ export function ProfileSettings({ user, onUpdate, onAlert }: ProfileSettingsProp
         </Card>
 
         {/* Social Links */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="text-lg">{t("settings.profile.socialLinks.title")}</CardTitle>
             <CardDescription>{t("settings.profile.socialLinks.description")}</CardDescription>
@@ -757,7 +757,7 @@ export function ProfileSettings({ user, onUpdate, onAlert }: ProfileSettingsProp
       </form>
 
       {/* Account Information */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardHeader>
           <CardTitle className="text-lg">{t("settings.profile.accountInfo.title")}</CardTitle>
           <CardDescription>{t("settings.profile.accountInfo.description")}</CardDescription>

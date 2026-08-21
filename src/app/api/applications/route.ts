@@ -24,6 +24,7 @@ import {
   paginationSchema,
   validateSchema,
 } from "@/lib/validations";
+import { isPropertyInScope } from "@/lib/auth/property-scope";
 
 // ============================================================================
 // GET /api/applications - Get all applications with pagination and filtering
@@ -176,6 +177,17 @@ export async function POST(request: NextRequest) {
     // Verify property exists and is available
     const property = await Property.findById(applicationData.propertyId);
     if (!property) {
+      return createErrorResponse("Property not found", 404);
+    }
+
+    // ...and that it belongs to THIS caller. These records are only ever read
+    // back through property scope, so one created against someone else's
+    // property is invisible to whoever created it and lands in the other
+    // manager's data instead.
+    //
+    // 404, not 403 — a 403 confirms the property exists to someone who should
+    // not know that.
+    if (!isPropertyInScope(user as any, property)) {
       return createErrorResponse("Property not found", 404);
     }
 

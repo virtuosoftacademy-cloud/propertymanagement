@@ -392,7 +392,7 @@ export function DisplaySettings({
         className="space-y-6"
       >
         {/* Theme Settings */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Palette className="h-5 w-5" />
@@ -436,7 +436,7 @@ export function DisplaySettings({
         </Card>
 
         {/* Language */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Globe2 className="h-5 w-5" />
@@ -515,7 +515,7 @@ export function DisplaySettings({
         />
 
         {/* Currency */}
-        <Card>
+        <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <PoundSterling className="h-5 w-5" />

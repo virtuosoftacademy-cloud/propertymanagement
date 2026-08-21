@@ -292,7 +292,7 @@ export default function TenantMaintenanceRequestForm({
 
   if (loadingLeases) {
     return (
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin" />
           <span className="ml-2">{t("maintenance.tenant.form.loading")}</span>
@@ -303,7 +303,7 @@ export default function TenantMaintenanceRequestForm({
 
   if (leases.length === 0) {
     return (
-      <Card>
+      <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
         <CardContent className="text-center py-8">
           <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">
@@ -318,7 +318,7 @@ export default function TenantMaintenanceRequestForm({
   }
 
   return (
-    <Card>
+    <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings className="h-5 w-5" />

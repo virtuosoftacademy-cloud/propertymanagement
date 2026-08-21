@@ -57,6 +57,12 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
   roles: UserRole[];
+  /**
+   * When set, the item ALSO requires this permission. Built-in roles are
+   * governed by `roles` alone; an admin-created role must additionally hold
+   * this (or its *_management parent) to see the item.
+   */
+  permission?: string;
   children?: NavItem[];
 }
 
@@ -247,18 +253,21 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/compliance",
         icon: FileLock,
         roles: [UserRole.ADMIN, UserRole.MANAGER],
+        permission: "compliance_view",
         children: [
           {
             title: "All Reports",
             href: "/dashboard/compliance",
             icon: Files,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
+            permission: "compliance_view",
           },
           {
             title: "Add Report",
             href: "/dashboard/compliance/new",
             icon: FilePlusCorner,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
+            permission: "compliance_view",
           }
         ]
       }
@@ -278,12 +287,14 @@ const navigationSections: NavSection[] = [
             href: "/dashboard/payments",
             icon: CreditCard,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
+            permission: "payment_history",
           },
           {
             title: "nav.payments.overdue",
             href: "/dashboard/payments/overdue",
             icon: TrendingDown,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
+            permission: "payment_history",
           },
           // {
           //   title: "nav.leases.invoices",
@@ -321,24 +332,28 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/analytics",
         icon: BarChart3,
         roles: [UserRole.ADMIN, UserRole.MANAGER],
+        permission: "reports_property",
         children: [
           {
             title: "nav.analytics.financial",
             href: "/dashboard/analytics/financial",
             icon: PoundSterling,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
+            permission: "reports_property",
           },
           {
             title: "nav.analytics.occupancy",
             href: "/dashboard/analytics/occupancy",
             icon: Building2,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
+            permission: "reports_property",
           },
           {
             title: "nav.analytics.maintenance",
             href: "/dashboard/analytics/maintenance",
             icon: Wrench,
             roles: [UserRole.ADMIN, UserRole.MANAGER],
+            permission: "reports_property",
           },
         ],
       },
@@ -407,11 +422,6 @@ const navigationSections: NavSection[] = [
           },
         ],
       },
-      // Manager-account revenue belongs to the org owner alone. ADMIN-only
-      // `roles` removes the whole group for other roles — the filters below
-      // drop non-matching items rather than disabling them, and a parent whose
-      // children all filter out renders as a dead toggle, so the parent is
-      // gated too.
       {
         title: "nav.admin.subscriptions",
         href: "/dashboard/admin/billing",
@@ -460,7 +470,7 @@ const navigationSections: NavSection[] = [
             title: "nav.settings.display",
             href: "/dashboard/settings/display",
             icon: Palette,
-            roles: [UserRole.ADMIN, UserRole.MANAGER],
+            roles: [UserRole.ADMIN],
           },
         ],
       },
@@ -494,6 +504,23 @@ export function Sidebar({ className }: SidebarProps) {
   });
 
   const userRole = session?.user?.role as UserRole;
+
+  /**
+   * Whether an item's optional permission is satisfied.
+   *
+   * Mirrors hasActionPermission() on the server: admins pass, built-in roles
+   * pass (the role list is the authority for them), and an admin-created role
+   * must hold the permission or its *_management parent. Hiding the link is
+   * cosmetic — the page and its API enforce the same rule.
+   */
+  const canSee = (item: NavItem) => {
+    if (!item.permission) return true;
+    if (userRole === UserRole.ADMIN) return true;
+    if (!session?.user?.isCustomRole) return true;
+    const held = session?.user?.permissions ?? [];
+    const group = item.permission.split("_")[0];
+    return held.includes(item.permission) || held.includes(`${group}_management`);
+  };
 
   const toggleExpanded = (href: string) => {
     setExpandedItems((prev) =>
@@ -546,7 +573,7 @@ export function Sidebar({ className }: SidebarProps) {
     .map((section) => ({
       ...section,
       items: section.items
-        .filter((item) => item.roles.includes(userRole))
+        .filter((item) => item.roles.includes(userRole) && canSee(item))
         .map(updateItemWithDynamicBadge),
     }))
     .filter((section) => section.items.length > 0);
@@ -554,8 +581,8 @@ export function Sidebar({ className }: SidebarProps) {
   const renderNavItem = (item: NavItem, level = 0) => {
     const isActive = pathname === item.href;
     const hasChildren = item.children && item.children.length > 0;
-    const filteredChildren = item.children?.filter((child) =>
-      child.roles.includes(userRole)
+    const filteredChildren = item.children?.filter(
+      (child) => child.roles.includes(userRole) && canSee(child)
     );
 
     // Check if any child is active (for parent highlighting)

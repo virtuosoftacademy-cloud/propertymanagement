@@ -8,6 +8,32 @@ import { useEffect, useMemo, useState } from "react";
 
 const Footer = () => {
   const { resolvedTheme } = useTheme();
+  // The landing footer is PUBLIC, and useDisplaySettingsSync reads
+  // /api/settings/display which 401s without a session — so anonymous
+  // visitors never saw the configured branding. /api/branding/public serves
+  // the same admin-owned values without auth.
+  const [publicBranding, setPublicBranding] = useState<{
+    logoLight?: string;
+    logoDark?: string;
+    favicon?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/branding/public");
+        const json = await res.json();
+        if (!cancelled && json?.success && json.data) setPublicBranding(json.data);
+      } catch {
+        // Best-effort; the bundled default still renders.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const { settings: displaySettings, syncSettings } = useDisplaySettingsSync({
     pollInterval: 30000,
     autoResolveConflicts: true,
@@ -19,16 +45,18 @@ const Footer = () => {
     const defaultDark = "/images/logo-dark.png";
 
     const branding = displaySettings?.branding;
-    const light = branding?.logoLight || defaultLight;
-    const dark = branding?.logoDark || defaultDark;
+    const light = branding?.logoLight || publicBranding?.logoLight || defaultLight;
+    const dark = branding?.logoDark || publicBranding?.logoDark || defaultDark;
 
     return resolvedTheme === "dark" ? dark : light;
-  }, [displaySettings?.branding, resolvedTheme]);
+  }, [displaySettings?.branding, publicBranding, resolvedTheme]);
 
   const currentIconUrl = useMemo(() => {
     const defaultIcon = "/favicon.ico";
-    return displaySettings?.branding?.favicon || defaultIcon;
-  }, [displaySettings?.branding]);
+    return (
+      displaySettings?.branding?.favicon || publicBranding?.favicon || defaultIcon
+    );
+  }, [displaySettings?.branding, publicBranding]);
 
   // Update the favicon in the document head when branding changes.
   useEffect(() => {
@@ -67,8 +95,17 @@ const Footer = () => {
     };
   }, [syncSettings]);
 
-  const [currentLogo, setCurrentLogo] = useState()
-  const logoSrc = currentLogo ? currentIconUrl : currentLogoUrl;
+  // The footer sits on a dark background in BOTH themes
+  // (bg-foreground / dark:bg-background), so it always wants the dark-background
+  // logo — not the theme-derived one the header uses.
+  //
+  // This previously read from a `currentLogo` state that was declared and never
+  // assigned, so the ternary always chose "" and the footer rendered an empty
+  // <Image src="">. That is why no footer logo appeared for anyone.
+  const footerLogoSrc =
+    displaySettings?.branding?.logoDark ||
+    publicBranding?.logoDark ||
+    "/images/logo-dark.png";
 
   return (
     <footer className="relative bg-foreground dark:bg-background">
@@ -77,22 +114,20 @@ const Footer = () => {
           <div className="flex justify-between flex-wrap space-y-10 gap-10">
             <div className="flex justify-center md:justify-start">
               <Link href="/">
-                <Image src={currentLogo ? logoSrc : ""} alt="Tenure Logo" width={40} height={10} className="w-48 h-auto md:py-2" />
+                <Image src={footerLogoSrc} alt="PropertyPro logo" width={192} height={48} className="w-38 h-auto md:py-2" />
               </Link>
             </div>
 
             <div>
-              <p className="text-base md:text-[1.2rem] text-foreground dark:text-muted-foreground md:max-w-lg leading-relaxed font-serif">
+              <p className="text-base md:text-[1.2rem] dark:text-foreground text-muted-foreground md:max-w-lg leading-relaxed font-serif">
                 Bring your properties, tenants, payments, and workflows together in one powerful platform designed to simplify operations and keep you in control.
               </p>
             </div>
-            <div className="text-sm md:text-base dark:text-muted-foreground text-foreground">
-              <h2 className="text-muted-foreground dark:text-foreground">
-                <strong>
+            <div className="text-sm md:text-base text-accent dark:text-foreground space-y-1">
+              <h2>
                   Help & Legal
-                </strong>
               </h2>
-              <ul>
+              <ul className="text-muted-foreground dark:text-foreground">
                 <li>Terms & Conditions</li>
                 <li>Privacy Policy</li>
               </ul>
@@ -100,8 +135,8 @@ const Footer = () => {
             </div>
           </div>
         </div>
-        <hr className="bg-accent dark:bg-muted-foreground" />
-        <div className="dark:text-muted-foreground text-foreground pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm md:text-base">
+        <hr className="bg-foreground dark:bg-muted-foreground" />
+        <div className="dark:text-foreground text-muted-foreground pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm md:text-base">
           <p>© 2026 Tenure | All rights reserved.</p>
         </div>
 
