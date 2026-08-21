@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
@@ -33,7 +33,7 @@ import {
  * TENANT — this page does not offer a role picker, so a self-registered user
  * can never choose to be an admin).
  */
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -279,5 +279,22 @@ export default function SignUpPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    // useSearchParams reads ?plan=<id>, which needs a Suspense boundary —
+    // without one the whole route opts into client-side rendering and the
+    // production build fails while prerendering this page.
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-muted-foreground text-sm">Loading…</p>
+        </div>
+      }
+    >
+      <SignUpForm />
+    </Suspense>
   );
 }
