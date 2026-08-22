@@ -67,6 +67,9 @@ export const GET = withRoleAndDB([
     const rentPeriod = searchParams.get("rentPeriod") || undefined; // month / week / day
     // History view: `deleted=true` returns only soft-deleted leases.
     const deleted    = searchParams.get("deleted") === "true";
+    /** Deletion-date range — only meaningful (and only applied) alongside `deleted`. */
+    const deletedFrom = searchParams.get("deletedFrom") || undefined;
+    const deletedTo   = searchParams.get("deletedTo") || undefined;
 
     const validation = validateSchema(paginationSchema, paginationParams);
     if (!validation.success) {
@@ -80,6 +83,24 @@ export const GET = withRoleAndDB([
     const query: any = deleted
       ? { deletedAt: { $ne: null } }
       : { deletedAt: null };
+
+    if (deleted && (deletedFrom || deletedTo)) {
+      const range: any = { $ne: null };
+      if (deletedFrom) {
+        const from = new Date(deletedFrom);
+        if (!Number.isNaN(from.getTime())) range.$gte = from;
+      }
+      if (deletedTo) {
+        // Inclusive of the whole day: a bare date parses to midnight, which
+        // would otherwise exclude everything deleted later that same day.
+        const to = new Date(deletedTo);
+        if (!Number.isNaN(to.getTime())) {
+          to.setHours(23, 59, 59, 999);
+          range.$lte = to;
+        }
+      }
+      query.deletedAt = range;
+    }
 
     // Tenant restriction
     if (user.role === UserRole.TENANT) {

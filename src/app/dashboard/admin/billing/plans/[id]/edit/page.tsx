@@ -5,14 +5,18 @@
  *
  * The guard is inherited from src/app/dashboard/admin/billing/layout.tsx.
  *
- * UI ONLY. The plan is read from the const catalogue in
- * src/lib/billing/plans.ts; saving validates and returns to the list without
- * persisting anything.
+ * Reads the live plan from GET /api/billing/plans/[id]. This used to read
+ * resolvePlan(id) from the hardcoded const catalogue, which meant a plan
+ * created by promoting a role (see /plans/new) could never be opened here —
+ * every such plan hit the "Plan not found" branch below, because the const
+ * catalogue had never heard of it. Saving already went through the real API;
+ * only the read was stale.
  */
 
+import { useEffect, useState } from "react";
 import { use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileX, Layers, Users } from "lucide-react";
+import { ArrowLeft, FileX, Layers, Loader2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,9 +27,9 @@ import {
 } from "@/components/ui/card";
 import { PlanForm } from "@/components/billing/plan-form";
 import { showSimpleError, showSimpleSuccess } from "@/lib/toast-notifications";
-import { resolvePlan } from "@/lib/billing/plans";
 import { useManagerAccounts } from "@/hooks/useManagerBilling";
 import type { PlanFormValues } from "@/lib/billing/plan-schema";
+import type { ManagerPlan } from "@/lib/billing/plans";
 
 export default function EditPlanPage({
   params,
@@ -37,13 +41,39 @@ export default function EditPlanPage({
 
   const backToPlans = () => router.push("/dashboard/admin/billing/plans");
 
-  // TODO(billing): replace with GET /api/plans/[id] once plans are persisted.
-  const plan = resolvePlan(id);
+  const [plan, setPlan] = useState<ManagerPlan | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`/api/billing/plans/${id}`, {
+          credentials: "include",
+        });
+        const payload = await response.json().catch(() => null);
+        if (cancelled) return;
+        setPlan(response.ok && payload?.success ? payload.data : null);
+      } catch {
+        if (!cancelled) setPlan(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const { data } = useManagerAccounts();
   const accountsOnPlan = (data?.accounts ?? []).filter(
     (account) => account.planId === id
   );
+
+  if (plan === undefined) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
 
   if (!plan) {
     return (

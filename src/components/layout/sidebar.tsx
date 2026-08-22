@@ -472,6 +472,15 @@ const navigationSections: NavSection[] = [
             icon: Palette,
             roles: [UserRole.ADMIN],
           },
+          {
+            // The account's OWN subscription, not the admin ledger under
+            // nav.admin.subscriptions — a manager needs to see what they pay
+            // for without being able to read every other client's account.
+            title: "nav.settings.billing",
+            href: "/dashboard/settings/subscription",
+            icon: CreditCard,
+            roles: [UserRole.ADMIN, UserRole.MANAGER],
+          },
         ],
       },
     ],

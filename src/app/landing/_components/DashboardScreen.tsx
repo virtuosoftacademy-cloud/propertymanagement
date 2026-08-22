@@ -73,7 +73,7 @@ export default function LandingDashboard() {
                 </div>
 
             </div>
-            {/* </div> */}
+            <div className="absolute -top-1/2 inset-0 bg-white -z-10 max-h-3/4 mt-40" />
 
             {/* ── Text row below laptop ── */}
             <div className="mx-auto max-w-7xl px-12 sm:px-24 pt-14 pb-16">
@@ -84,7 +84,7 @@ export default function LandingDashboard() {
                         <p className="text-sm font-semibold uppercase tracking-widest text-white/60">
                             Get Free Trial
                         </p>
-                        <h4 className="text-2xl md:text-4xl font-semibold text-accent leading-tight">
+                        <h4 className="text-2xl md:text-4xl font-semibold text-white leading-tight">
                             Your Entire Portfolio.
                             <br />
                             One Screen.
@@ -93,7 +93,7 @@ export default function LandingDashboard() {
 
                     {/* Right */}
                     <div className="flex flex-col gap-4 justify-center">
-                        <p className="text-sm md:text-lg text-accent/80 leading-tight font-serif">
+                        <p className="text-sm md:text-lg text-white/70 leading-tight font-serif">
                             Everything you need to run your properties, live metrics, payment
                             status, maintenance alerts and lease renewals, all visible the
                             moment you log in. No guesswork. Just clarity.
@@ -109,7 +109,7 @@ export default function LandingDashboard() {
 
                 </div>
             </div>
-            <div className="absolute top-1/2 inset-0 bg-primary -z-10 max-h-3/4 -mt-40"/>
+            <div className="absolute top-1/2 inset-0 bg-primary -z-10 max-h-3/4 -mt-40" />
 
         </section>
     );

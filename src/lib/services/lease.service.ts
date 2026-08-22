@@ -18,6 +18,10 @@ export interface LeaseQueryParams {
   sortOrder?: "asc" | "desc";
   /** History view: return only soft-deleted leases. */
   deleted?: boolean;
+  /** Restrict to leases deleted on/after this date (ISO). Requires `deleted`. */
+  deletedFrom?: string;
+  /** Restrict to leases deleted on/before this date (ISO), inclusive of the whole day. Requires `deleted`. */
+  deletedTo?: string;
 }
 
 export interface LeaseFormData {

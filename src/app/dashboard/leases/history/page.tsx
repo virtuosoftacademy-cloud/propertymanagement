@@ -6,6 +6,15 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { GlobalSearch } from "@/components/ui/global-search";
 import { GlobalPagination } from "@/components/ui/global-pagination";
 import { LoadingSpinner } from "@/components/ui/loading-state";
@@ -31,6 +40,7 @@ import {
   MoreHorizontal,
   RotateCcw,
   History,
+  X,
 } from "lucide-react";
 import {
   showSimpleError,
@@ -38,7 +48,7 @@ import {
   showSimpleInfo,
 } from "@/lib/toast-notifications";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
-import { UserRole } from "@/types";
+import { LeaseStatus, UserRole } from "@/types";
 import {
   leaseService,
   LeaseResponse,
@@ -51,6 +61,14 @@ import {
  * The normal list can never show these: the Lease model's `pre(/^find/)` hook
  * excludes `deletedAt` records unless a query names that field, which the API
  * does only when `deleted=true`.
+ *
+ * Bulk restore only — there is no bulk delete here, because there is no
+ * PERMANENT delete for leases at all: DELETE /api/leases/[id] only soft-
+ * deletes, which is what put the lease in this list in the first place. That
+ * is unlike the user history page, which has a real hard-delete behind an
+ * impact check; building an equivalent for leases (a new hard-delete route,
+ * plus deciding what "referenced by other records" even means for a lease)
+ * is a separate, larger piece of work, not implied by mirroring this page.
  */
 export default function LeaseHistoryPage() {
   const router = useRouter();
@@ -68,11 +86,42 @@ export default function LeaseHistoryPage() {
     pages: 0,
   });
 
+  // Filters.
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [deletedFrom, setDeletedFrom] = useState<Date | undefined>();
+  const [deletedTo, setDeletedTo] = useState<Date | undefined>();
+
+  const hasActiveFilters =
+    Boolean(searchTerm) ||
+    statusFilter !== "all" ||
+    Boolean(deletedFrom) ||
+    Boolean(deletedTo);
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setDeletedFrom(undefined);
+    setDeletedTo(undefined);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  // Row selection, for the bulk restore below the table.
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkRestoring, setBulkRestoring] = useState(false);
+  const allOnPageSelected =
+    leases.length > 0 && leases.every((l) => selectedIds.includes(l._id));
+
   // Fires once per distinct empty result rather than on every refetch.
   const lastEmptyRef = useRef<string | null>(null);
 
   const fetchHistory = useCallback(
-    async (page: number, search: string) => {
+    async (
+      page: number,
+      search: string,
+      statusValue: string,
+      from?: Date,
+      to?: Date
+    ) => {
       try {
         setLoading(true);
 
@@ -80,6 +129,9 @@ export default function LeaseHistoryPage() {
           page,
           limit: 12,
           search: search || undefined,
+          status: statusValue !== "all" ? (statusValue as LeaseStatus) : undefined,
+          deletedFrom: from ? from.toISOString().slice(0, 10) : undefined,
+          deletedTo: to ? to.toISOString().slice(0, 10) : undefined,
           sortBy: "updatedAt",
           sortOrder: "desc",
           deleted: true,
@@ -93,16 +145,23 @@ export default function LeaseHistoryPage() {
           total: response.pagination.total,
           pages: response.pagination.pages,
         });
+        // Filters just changed the result set — stale selections from the
+        // previous page would otherwise "restore" rows nobody can see anymore.
+        setSelectedIds([]);
 
         const term = (search || "").trim();
+        const filtersApplied =
+          Boolean(term) || statusValue !== "all" || Boolean(from) || Boolean(to);
         if (response.pagination.total === 0) {
-          const key = term || "__no-search__";
+          const key = filtersApplied
+            ? `${term}|${statusValue}|${from?.getTime() ?? ""}|${to?.getTime() ?? ""}`
+            : "__no-search__";
           if (lastEmptyRef.current !== key) {
             lastEmptyRef.current = key;
             showSimpleInfo(
-              term ? "No deleted leases found" : "No deleted leases",
-              term
-                ? `No deleted leases match "${term}".`
+              filtersApplied ? "No deleted leases found" : "No deleted leases",
+              filtersApplied
+                ? "No deleted leases match these filters."
                 : "Nothing has been deleted yet."
             );
           }
@@ -131,8 +190,17 @@ export default function LeaseHistoryPage() {
   useEffect(() => {
     if (status !== "authenticated") return;
     if (session?.user?.role === UserRole.TENANT) return;
-    fetchHistory(pagination.page, searchTerm);
-  }, [status, session?.user?.role, pagination.page, searchTerm, fetchHistory]);
+    fetchHistory(pagination.page, searchTerm, statusFilter, deletedFrom, deletedTo);
+  }, [
+    status,
+    session?.user?.role,
+    pagination.page,
+    searchTerm,
+    statusFilter,
+    deletedFrom,
+    deletedTo,
+    fetchHistory,
+  ]);
 
   const handleRestore = async (lease: LeaseResponse) => {
     try {
@@ -145,6 +213,7 @@ export default function LeaseHistoryPage() {
       // Drop it from the history view it was just restored out of.
       setLeases((prev) => prev.filter((l) => l._id !== lease._id));
       setPagination((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+      setSelectedIds((prev) => prev.filter((id) => id !== lease._id));
     } catch (error) {
       showSimpleError(
         "Restore failed",
@@ -153,6 +222,65 @@ export default function LeaseHistoryPage() {
     } finally {
       setRestoringId(null);
     }
+  };
+
+  const handleBulkRestore = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setBulkRestoring(true);
+    const results = await Promise.allSettled(
+      ids.map((id) => leaseService.restoreLease(id))
+    );
+    setBulkRestoring(false);
+
+    const restoredIds = ids.filter((_, i) => results[i].status === "fulfilled");
+    const failedCount = results.length - restoredIds.length;
+
+    if (restoredIds.length > 0) {
+      setLeases((prev) => prev.filter((l) => !restoredIds.includes(l._id)));
+      setPagination((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - restoredIds.length),
+      }));
+      setSelectedIds((prev) => prev.filter((id) => !restoredIds.includes(id)));
+    }
+
+    if (failedCount === 0) {
+      showSimpleSuccess(
+        restoredIds.length === 1 ? "Lease restored" : "Leases restored",
+        `${restoredIds.length} lease${
+          restoredIds.length === 1 ? "" : "s"
+        } returned to the active list.`
+      );
+    } else if (restoredIds.length === 0) {
+      showSimpleError(
+        "Restore failed",
+        `Could not restore ${failedCount === 1 ? "that lease" : `any of the ${failedCount} selected leases`}.`
+      );
+    } else {
+      showSimpleInfo(
+        "Partially restored",
+        `${restoredIds.length} restored, ${failedCount} failed. The failed ones are still selected.`
+      );
+    }
+  };
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? [...prev, id] : prev.filter((sid) => sid !== id)
+    );
+  };
+
+  const toggleAllOnPage = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      if (checked) {
+        const pageIds = leases.map((l) => l._id);
+        return [...new Set([...prev, ...pageIds])];
+      }
+      const pageIds = new Set(leases.map((l) => l._id));
+      return prev.filter((id) => !pageIds.has(id));
+    });
   };
 
   if (session?.user?.role === UserRole.TENANT) return null;
@@ -193,15 +321,67 @@ export default function LeaseHistoryPage() {
 
       <Card>
         <CardContent className="p-4 space-y-4">
-          <GlobalSearch
-            placeholder="Search deleted leases by property, tenant or unit"
-            initialValue={searchTerm}
-            onSearch={(value) => {
-              setSearchTerm(value);
-              setPagination((prev) => ({ ...prev, page: 1 }));
-            }}
-            isLoading={loading}
-          />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <GlobalSearch
+              placeholder="Search deleted leases by property, tenant or unit"
+              initialValue={searchTerm}
+              onSearch={(value) => {
+                setSearchTerm(value);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+              isLoading={loading}
+              className="flex-1"
+            />
+
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+            >
+              <SelectTrigger className="h-10 w-full sm:w-[160px]">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                {Object.values(LeaseStatus).map((value) => (
+                  <SelectItem key={value} value={value} className="capitalize">
+                    {value.replace("_", " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <DatePicker
+              date={deletedFrom}
+              onSelect={(date) => {
+                setDeletedFrom(date);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+              placeholder="Deleted from"
+              className="sm:w-[160px]"
+              disabled={(date) => (deletedTo ? date > deletedTo : false)}
+            />
+
+            <DatePicker
+              date={deletedTo}
+              onSelect={(date) => {
+                setDeletedTo(date);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+              placeholder="Deleted to"
+              className="sm:w-[160px]"
+              disabled={(date) => (deletedFrom ? date < deletedFrom : false)}
+            />
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
 
           {loading ? (
             <div className="flex justify-center items-center py-16">
@@ -212,16 +392,54 @@ export default function LeaseHistoryPage() {
               <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-1">No deleted leases</h3>
               <p className="text-muted-foreground">
-                {searchTerm
-                  ? "No deleted leases match your search."
+                {hasActiveFilters
+                  ? "No deleted leases match these filters."
                   : "Deleted leases will appear here."}
               </p>
             </div>
           ) : (
+            <>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2.5">
+                  <span className="text-sm font-medium">
+                    {selectedIds.length} selected
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedIds([])}
+                      disabled={bulkRestoring}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleBulkRestore}
+                      disabled={bulkRestoring}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      {bulkRestoring
+                        ? "Restoring…"
+                        : `Restore ${selectedIds.length}`}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allOnPageSelected}
+                        onCheckedChange={(checked) =>
+                          toggleAllOnPage(checked === true)
+                        }
+                        aria-label="Select all deleted leases on this page"
+                      />
+                    </TableHead>
                     {/* propertyUnit, not property — the latter key does not
                         exist, so the header rendered as the literal
                         "leases.table.property". */}
@@ -238,6 +456,21 @@ export default function LeaseHistoryPage() {
                 <TableBody>
                   {leases.map((lease) => (
                     <TableRow key={lease._id} className="opacity-90">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(lease._id)}
+                          onCheckedChange={(checked) =>
+                            toggleRow(lease._id, checked === true)
+                          }
+                          disabled={
+                            restoringId === lease._id ||
+                            (bulkRestoring && selectedIds.includes(lease._id))
+                          }
+                          aria-label={`Select lease at ${
+                            lease.propertyId?.name || "unknown property"
+                          }`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="font-medium">
                           {lease.propertyId?.name || "—"}
@@ -280,7 +513,10 @@ export default function LeaseHistoryPage() {
                             <Button
                               variant="ghost"
                               className="h-8 w-8 p-0"
-                              disabled={restoringId === lease._id}
+                              disabled={
+                                restoringId === lease._id ||
+                                (bulkRestoring && selectedIds.includes(lease._id))
+                              }
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
@@ -312,6 +548,7 @@ export default function LeaseHistoryPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
 
           {pagination.total > 0 && (

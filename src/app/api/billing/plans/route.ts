@@ -44,6 +44,15 @@ const planSchema = z.object({
   custom: z.boolean().default(false),
   /** Permissions the plan grants — this is a role, after all. */
   permissions: z.array(z.string()).default([]),
+  /**
+   * Build the plan on an EXISTING role instead of creating a new one.
+   *
+   * Without this the name clash below is always an error, which is right for a
+   * typo but wrong for the main way plans get made: an admin puts a price on a
+   * role they already use. Must equal `id`, so there is no way to price up one
+   * role while claiming to have priced another.
+   */
+  basedOnRole: z.string().trim().optional(),
 });
 
 // ============================================================================
@@ -94,12 +103,39 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
 
       const v = parsed.data;
 
-      const clash = await Role.findOne({ name: v.id });
-      if (clash) {
+      const existing = await Role.findOne({ name: v.id });
+
+      // Promoting an existing role: allowed, but only when the caller said so
+      // explicitly and named the same role. Anything else is a collision.
+      const promoting = Boolean(v.basedOnRole) && v.basedOnRole === v.id;
+
+      if (existing && !promoting) {
         return createErrorResponse(
           `A role named "${v.id}" already exists. Edit it instead, or choose another id.`,
           409
         );
+      }
+
+      if (v.basedOnRole && v.basedOnRole !== v.id) {
+        return createErrorResponse(
+          `The plan id must match the role it is based on ("${v.basedOnRole}").`,
+          400
+        );
+      }
+
+      if (promoting) {
+        if (!existing) {
+          return createErrorResponse(
+            `No role named "${v.basedOnRole}" to build the plan on.`,
+            404
+          );
+        }
+        if (existing.isPlan) {
+          return createErrorResponse(
+            `"${v.id}" is already a plan. Edit it instead.`,
+            409
+          );
+        }
       }
 
       // Create the Stripe Product/Price BEFORE the role. If Stripe fails we
@@ -151,11 +187,9 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
         }
       }
 
-      const role = await Role.create({
-        name: v.id,
+      const planFields = {
         label: v.name,
         description: v.description || v.name,
-        permissions: v.permissions,
         // Plans are sold to managers; this is what makes every route guard
         // written against the three-value UserRole enum accept the holder.
         inheritsFrom: "manager",
@@ -172,20 +206,46 @@ export const POST = withRoleAndDB([UserRole.ADMIN])(
         stripeProductId,
         stripePriceIdMonthly,
         stripePriceIdAnnual,
-        createdBy: user.id,
         updatedBy: user.id,
-      });
+      };
+
+      let role;
+
+      if (promoting && existing) {
+        // $set rather than save(): roles predating this feature can be missing
+        // `createdBy`, which is required, and a full validate would reject the
+        // update for a field the admin never touched.
+        //
+        // Permissions are deliberately NOT overwritten. The role's existing
+        // permissions are the whole reason it was chosen, and the form only
+        // ever echoes them back — writing them here would let a stale form
+        // silently narrow what everyone holding this role can do.
+        await Role.updateOne({ _id: existing._id }, { $set: planFields });
+        role = await Role.findById(existing._id);
+      } else {
+        role = await Role.create({
+          name: v.id,
+          permissions: v.permissions,
+          createdBy: user.id,
+          ...planFields,
+        });
+      }
 
       return createSuccessResponse(
         {
-          id: role.name,
+          id: role?.name ?? v.id,
+          promoted: promoting,
           stripeProductId,
           stripePriceIdMonthly,
           stripePriceIdAnnual,
         },
-        isPaid
-          ? `Plan created, with its Stripe Price.`
-          : `Plan created.`
+        promoting
+          ? isPaid
+            ? `The ${v.name} role is now a paid plan, with its Stripe Price.`
+            : `The ${v.name} role is now a plan.`
+          : isPaid
+            ? `Plan created, with its Stripe Price.`
+            : `Plan created.`
       );
     } catch (error) {
       return handleApiError(error);

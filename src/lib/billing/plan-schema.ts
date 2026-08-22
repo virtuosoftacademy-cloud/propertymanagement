@@ -9,8 +9,15 @@
 import { z } from "zod";
 import { MANAGER_PLANS } from "./plans";
 
-/** Lowercase kebab slug — this becomes the persisted planId. */
-const PLAN_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
+/**
+ * This becomes the persisted planId AND the role name, so it obeys the
+ * role-name rules the API enforces: lowercase letters, digits and UNDERSCORES.
+ *
+ * It previously allowed hyphens and rejected underscores — the exact inverse of
+ * the server's `^[a-z0-9_]+$` — so any multi-word plan name slugged to an id
+ * the form accepted and the API then refused.
+ */
+const PLAN_ID_PATTERN = /^[a-z][a-z0-9_]*$/;
 
 /**
  * @param currentPlanId when editing, the plan's own ID — excluded from the
@@ -27,7 +34,7 @@ export const createPlanFormSchema = (currentPlanId?: string) =>
       .max(40, "Plan ID cannot exceed 40 characters")
       .regex(
         PLAN_ID_PATTERN,
-        "Use lowercase letters, numbers and hyphens, starting with a letter"
+        "Use lowercase letters, numbers and underscores, starting with a letter"
       ),
     name: z
       .string()
@@ -159,7 +166,7 @@ export function slugify(name: string): string {
   return name
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
     .slice(0, 40);
 }

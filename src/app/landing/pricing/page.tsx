@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MANAGER_PLANS } from "@/lib/billing/plans";
+import { getPlans, type StoredPlan } from "@/lib/billing/plan-store";
 import {
   PLAN_COMPARISON,
   type ComparisonValue,
@@ -20,14 +20,36 @@ import {
 /**
  * Public pricing page.
  *
- * A server component: the plan catalogue is a plain const, so there is nothing
- * to fetch and no reason to ship this to the client. Sign-up links carry
- * ?plan=<id>, which /auth/signup forwards to /api/auth/register — that is what
- * sets the account's role and opens its subscription.
+ * A server component reading getPlans() directly — a plain DB read, so there
+ * is nothing to ship to the client. This used to import MANAGER_PLANS, the
+ * hardcoded const: a plan created through the admin UI (plans are roles; see
+ * src/lib/billing/plan-store.ts) existed in Stripe and in the database, could
+ * be bought via a direct checkout call, but could never be FOUND here — the
+ * one place a customer actually shops. getPlans() reads the same live roles
+ * the admin catalogue and checkout already price from, with the const as its
+ * own fallback if the database is empty or unreachable, so this page can never
+ * render nothing.
+ *
+ * Sign-up links carry ?plan=<id>, which /auth/signup forwards to
+ * /api/auth/register — that is what sets the account's role and opens its
+ * subscription.
  *
  * Lives at /pricing rather than on a marketing home page, which no longer
  * exists in this project.
  */
+
+// Without this, `next build` prerenders the page ONCE and ships that snapshot
+// as static HTML — every visitor would see whatever plans existed at build
+// time until the next deploy. A plan an admin creates or edits would be
+// invisible here regardless of the fix above, which is the exact bug this
+// page exists to not have.
+export const dynamic = "force-dynamic";
+
+/** See the comment above the comparison table's render site. */
+function shouldShowComparison(plans: StoredPlan[]): boolean {
+  const ids = new Set(plans.map((p) => p.id));
+  return ids.has("free") && ids.has("pro");
+}
 
 function priceLabel(monthlyPrice: number | null) {
   if (monthlyPrice === null) return "POA";
@@ -57,7 +79,9 @@ function Cell({ value }: { value: ComparisonValue }) {
   return <span className="text-sm">{value}</span>;
 }
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const plans = await getPlans();
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-accent/50 py-12 px-4 sm:px-6 lg:px-8 md:py-28">
       <div className="mx-auto max-w-5xl space-y-10">
@@ -73,8 +97,12 @@ export default function PricingPage() {
         </div>
 
         {/* Plan cards */}
-        <div className="grid gap-6 sm:grid-cols-2">
-          {MANAGER_PLANS.map((plan) => (
+        <div
+          className={`grid gap-6 sm:grid-cols-2 ${
+            plans.length >= 3 ? "lg:grid-cols-3" : ""
+          } ${plans.length === 1 ? "sm:grid-cols-1 sm:max-w-sm sm:mx-auto" : ""}`}
+        >
+          {plans.map((plan) => (
             <Card
               key={plan.id}
               className={`border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background ${
@@ -122,7 +150,19 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Comparison */}
+        {/*
+          Comparison table — Free vs Pro only, and deliberately so.
+          PLAN_COMPARISON is hand-written marketing copy: each row carries a
+          curated hint ("Charged monthly on top of the flat price…") that only
+          makes sense written by a person who knows what the plan is FOR. A
+          plan an admin creates from a role — see the cards above, which DO
+          show every live plan — has no such copy, and fabricating a hint for
+          "Agent — £39/mo" would be inventing a claim about a product nobody
+          wrote. So this table only renders while both plans it was written
+          for still exist; if either is retired, it hides rather than show a
+          comparison for a plan that is not being sold.
+        */}
+        {shouldShowComparison(plans) && (
         <Card className="border-0 shadow-lg bg-linear-to-br from-white to-gray-50/50 dark:from-primary/10 dark:to-background">
           <CardHeader>
             <CardTitle>Compare features</CardTitle>
@@ -190,6 +230,7 @@ export default function PricingPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}

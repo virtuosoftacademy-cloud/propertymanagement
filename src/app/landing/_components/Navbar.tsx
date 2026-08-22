@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { useDisplaySettingsSync } from "@/hooks/useDisplaySettingsSync";
-import { useTheme } from "next-themes";
 import { signOut, useSession } from "next-auth/react";
 import { useUserAvatar } from "@/components/providers/UserAvatarProvider";
 import { useLocalizationContext } from "@/components/providers/LocalizationProvider";
@@ -25,7 +24,6 @@ import NotificationBell from "@/components/notifications/notification-bell";
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
-  const { resolvedTheme } = useTheme();
   const { data: session, status } = useSession();
   const { avatarUrl } = useUserAvatar();
   const { t } = useLocalizationContext();
@@ -64,7 +62,21 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const currentLogoUrl = useMemo(() => {
+  /**
+   * BOTH logos, not the one for the current theme.
+   *
+   * Picking here with `resolvedTheme` cannot work during server rendering: the
+   * theme lives in localStorage, so the server always resolved to the light
+   * logo while a dark-mode visitor's client resolved to the dark one, and React
+   * reported a hydration mismatch on the img src.
+   *
+   * Rendering both and letting Tailwind's `dark:` variants choose fixes it
+   * without a mounted gate — the provider uses attribute="class", so the class
+   * is on <html> before paint. That also keeps the logo in the server HTML,
+   * which matters because it is the LCP element and marked `priority`; hiding
+   * it until mount would trade a console warning for a slower, flashing header.
+   */
+  const logoUrls = useMemo(() => {
     // Always fall back to the default logos so something always renders.
     const defaultLight = "/images/logo-light.png";
     const defaultDark = "/images/logo-dark.png";
@@ -72,11 +84,13 @@ export default function Navbar() {
     // displaySettings first so an admin editing branding sees it update live;
     // publicBranding is what an anonymous visitor gets.
     const branding = displaySettings?.branding;
-    const light = branding?.logoLight || publicBranding?.logoLight || defaultLight;
-    const dark = branding?.logoDark || publicBranding?.logoDark || defaultDark;
 
-    return resolvedTheme === "dark" ? dark : light;
-  }, [displaySettings?.branding, publicBranding, resolvedTheme]);
+    return {
+      light:
+        branding?.logoLight || publicBranding?.logoLight || defaultLight,
+      dark: branding?.logoDark || publicBranding?.logoDark || defaultDark,
+    };
+  }, [displaySettings?.branding, publicBranding]);
 
   const currentIconUrl = useMemo(() => {
     const defaultIcon = "/favicon.ico";
@@ -134,12 +148,23 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/">
           <Image
-            src={currentLogoUrl}
+            src={logoUrls.light}
             alt="Logo"
             width={160}
             height={48}
-            className="transition-all duration-300 h-6 w-16 md:w-30 md:h-10"
-          priority
+            className="transition-all duration-300 h-6 w-16 md:w-30 md:h-10 dark:hidden"
+            priority
+          />
+          <Image
+            src={logoUrls.dark}
+            alt="Logo"
+            width={160}
+            height={48}
+            // Both carry the same alt deliberately. `hidden` is display:none,
+            // which drops the element from the accessibility tree, so exactly
+            // one of the pair is ever announced.
+            className="transition-all duration-300 h-6 w-16 md:w-30 md:h-10 hidden dark:block"
+            priority
           />
         </Link>
 

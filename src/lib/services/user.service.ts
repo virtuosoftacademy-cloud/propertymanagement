@@ -37,6 +37,10 @@ export interface UserQueryParams {
    * only does when this is set — same arrangement as leases.
    */
   deleted?: boolean;
+  /** Restrict to users deleted on/after this date (ISO). Requires `deleted`. */
+  deletedFrom?: string;
+  /** Restrict to users deleted on/before this date (ISO), inclusive of the whole day. Requires `deleted`. */
+  deletedTo?: string;
 }
 
 export interface DeletionImpactEntry {

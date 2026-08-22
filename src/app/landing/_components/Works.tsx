@@ -1,13 +1,10 @@
-// components/landing/LandingWorks.tsx
 
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import Link from "next/link";
 
 export default function LandingWorks() {
   return (
-    <section className="mx-auto max-w-360 sm:px-6 py-10 md:py-20">
-      <div className="grid grid-cols-1 md:grid-cols-2">
+    <section className="py-10 md:py-20 bg-white">
+      <div className="sm:px-6 mx-auto max-w-360  grid grid-cols-1 md:grid-cols-2">
 
         {/* Left: image */}
         <div className="w-full h-[300px] md:h-auto overflow-hidden">
@@ -25,7 +22,7 @@ export default function LandingWorks() {
         <div className="flex flex-col justify-center gap-6 px-6 sm:px-14 md:text-left text-center py-16">
 
           {/* Heading */}
-          <h4 className="text-2xl md:text-4xl font-bold text-foreground leading-snug">
+          <h4 className="text-2xl md:text-4xl font-bold text-accent-foreground dark:text-card leading-snug">
             Built for the Way Property
             <br />
             Management Actually{" "}
@@ -33,7 +30,7 @@ export default function LandingWorks() {
           </h4>
 
           {/* Body */}
-          <div className="font-serif text-sm md:text-lg text-foreground/60 leading-relaxed">
+        <div className="font-serif text-sm md:text-lg text-muted-foreground leading-relaxed">
             <p>
               Managing properties isn't just about collecting rent, it's about
               staying on top of dozens of moving parts, all at once. Tenure was

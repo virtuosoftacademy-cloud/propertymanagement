@@ -217,13 +217,6 @@ export default function PlansPage() {
         </div>
       )}
 
-      <p className="text-muted-foreground text-sm">
-        Plans are defined in code for now
-        <span className="font-mono text-xs"> (src/lib/billing/plans.ts)</span>.
-        Adding, editing or deleting here validates the details but does not
-        persist yet.
-      </p>
-
       <DeletePlanDialog
         plan={deleteTarget}
         accountsOnPlan={deleteTarget ? usage(deleteTarget.id) : 0}

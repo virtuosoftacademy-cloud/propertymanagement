@@ -17,7 +17,7 @@ const LandingPage = () => {
             <LandingDashboard />
             <TestimonialsSection />
             <LandingPricing />
-            <CtaForm />
+            {/* <CtaForm /> */}
             {/* <CtaSplitSection /> */}
         </div>
     );

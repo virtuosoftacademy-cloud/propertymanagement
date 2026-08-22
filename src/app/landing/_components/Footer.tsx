@@ -1,13 +1,11 @@
 'use client';
 
 import { useDisplaySettingsSync } from "@/hooks/useDisplaySettingsSync";
-import { useTheme } from "next-themes";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const Footer = () => {
-  const { resolvedTheme } = useTheme();
   // The landing footer is PUBLIC, and useDisplaySettingsSync reads
   // /api/settings/display which 401s without a session — so anonymous
   // visitors never saw the configured branding. /api/branding/public serves
@@ -39,24 +37,12 @@ const Footer = () => {
     autoResolveConflicts: true,
   });
 
-  const currentLogoUrl = useMemo(() => {
-    // Always fall back to the default logos so something always renders.
-    const defaultLight = "/images/logo-light.png";
-    const defaultDark = "/images/logo-dark.png";
-
-    const branding = displaySettings?.branding;
-    const light = branding?.logoLight || publicBranding?.logoLight || defaultLight;
-    const dark = branding?.logoDark || publicBranding?.logoDark || defaultDark;
-
-    return resolvedTheme === "dark" ? dark : light;
-  }, [displaySettings?.branding, publicBranding, resolvedTheme]);
-
-  const currentIconUrl = useMemo(() => {
-    const defaultIcon = "/favicon.ico";
-    return (
-      displaySettings?.branding?.favicon || publicBranding?.favicon || defaultIcon
-    );
-  }, [displaySettings?.branding, publicBranding]);
+  // NOTE: there is deliberately no theme-derived logo here, unlike the header.
+  // See footerLogoSrc below — the footer background is dark in BOTH themes, so
+  // swapping the logo with the theme would put a light-on-transparent logo on a
+  // dark background half the time. A theme-derived memo used to sit here and
+  // was never rendered, which made this file look like it had the header's
+  // hydration bug when it did not.
 
   // Update the favicon in the document head when branding changes.
   useEffect(() => {

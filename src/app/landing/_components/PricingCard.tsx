@@ -78,28 +78,28 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
       <div className="flex flex-col flex-1 p-8 gap-6">
 
-        <h4 className="text-xl font-bold text-foreground">{name}</h4>
+        <h4 className="text-xl font-bold text-foreground dark:text-accent">{name}</h4>
 
         {/* Price — negotiated plans show what they are instead of a figure */}
         {monthlyPrice !== null ? (
           <div className="flex items-end gap-1 leading-none">
-            <span className="text-2xl font-bold text-foreground">£</span>
-            <span className="text-4xl md:text-5xl font-bold text-foreground">
+            <span className="text-2xl font-bold text-foreground dark:text-accent">£</span>
+            <span className="text-4xl md:text-5xl font-bold text-foreground dark:text-accent">
               {monthlyPrice.toLocaleString("en-GB")}
             </span>
             <span className="text-sm text-foreground/50 mb-1 font-serif">/mo</span>
           </div>
         ) : (
-          <p className="font-serif text-sm md:text-lg text-foreground/60 leading-relaxed">
+          <p className="font-serif text-sm md:text-lg text-foreground/60 dark:text-accent leading-relaxed">
             {description}
           </p>
         )}
 
         <ul className="flex flex-col gap-3 flex-1">
           {features.map((f) => (
-            <li key={f} className="flex items-start gap-2.5">
+            <li key={f} className="flex items-center gap-2.5">
               <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
-              <p className="font-serif text-sm md:text-lg text-foreground/65 leading-relaxed">
+              <p className="font-serif text-sm md:text-lg text-foreground/65 dark:text-accent/65 leading-relaxed">
                 {f}
               </p>
             </li>

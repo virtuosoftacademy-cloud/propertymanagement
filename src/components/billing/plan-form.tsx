@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, X, Users } from "lucide-react";
 import {
   createPlanFormSchema,
   slugify,
@@ -14,10 +21,34 @@ import {
 } from "@/lib/billing/plan-schema";
 import type { ManagerPlan } from "@/lib/billing/plans";
 
+/** A role the plan can be built on, from /api/billing/plans/available-roles. */
+interface AvailableRole {
+  name: string;
+  label: string;
+  description: string;
+  permissions: string[];
+  permissionCount: number;
+  features: string[];
+  userCount: number;
+  isPlan: boolean;
+  isActive: boolean;
+  /** False when the role cannot be promoted — shown greyed with `reason`. */
+  selectable: boolean;
+  reason: string | null;
+}
+
+/** What the plan is being built on, alongside the form's own values. */
+export interface PlanFormMeta {
+  /** Role name when building on an existing role; undefined when creating one. */
+  basedOnRole?: string;
+  /** The role's permissions, echoed back so a new role can be given them. */
+  permissions: string[];
+}
+
 interface PlanFormProps {
   /** Pass a plan to edit it; omit to create a new one. */
   plan?: ManagerPlan | null;
-  onSubmit: (values: PlanFormValues) => void;
+  onSubmit: (values: PlanFormValues, meta: PlanFormMeta) => void;
   onCancel: () => void;
   submitLabel?: string;
 }
@@ -68,6 +99,67 @@ export function PlanForm({
   const [errors, setErrors] = useState<FieldErrors>({});
   // Editing starts from a real ID, so never auto-slug over it from the name.
   const [idTouched, setIdTouched] = useState(isEdit);
+
+  // Roles the plan can be built on. Create mode only: an existing plan is
+  // already bound to its role, and re-basing it would move every account on it.
+  const [roles, setRoles] = useState<AvailableRole[]>([]);
+  const [selectedRole, setSelectedRole] = useState<string>("");
+
+  useEffect(() => {
+    if (isEdit) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch("/api/billing/plans/available-roles", {
+          credentials: "include",
+        });
+        const payload = await response.json().catch(() => null);
+        if (!cancelled && response.ok && payload?.success) {
+          setRoles(payload.data as AvailableRole[]);
+        }
+      } catch {
+        // Non-fatal: the picker is a shortcut, and the form still works
+        // without it by defining a brand-new role from scratch.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit]);
+
+  const role = roles.find((r) => r.name === selectedRole);
+
+  /**
+   * Adopt a role: its name becomes the plan id (they are the same thing), and
+   * its permissions become the feature list. Pricing is left alone — that is
+   * the part only a human can decide.
+   */
+  const chooseRole = (name: string) => {
+    setSelectedRole(name);
+
+    if (name === "__new__") {
+      setIdTouched(false);
+      setValues((prev) => ({ ...prev, id: slugify(prev.name) }));
+      return;
+    }
+
+    const picked = roles.find((r) => r.name === name);
+    if (!picked) return;
+
+    setIdTouched(true);
+    setValues((prev) => ({
+      ...prev,
+      id: picked.name,
+      name: prev.name.trim() ? prev.name : picked.label,
+      description: prev.description.trim()
+        ? prev.description
+        : picked.description || picked.label,
+      features: picked.features.length ? [...picked.features] : prev.features,
+    }));
+    setErrors({});
+  };
 
   const set = <K extends keyof PlanFormValues>(
     key: K,
@@ -136,7 +228,10 @@ export function PlanForm({
       return;
     }
 
-    onSubmit(result.data);
+    onSubmit(result.data, {
+      basedOnRole: role?.name,
+      permissions: role?.permissions ?? [],
+    });
   };
 
   const fieldError = (key: keyof PlanFormValues) =>
@@ -151,6 +246,79 @@ export function PlanForm({
         <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
           Identity
         </h3>
+
+        {/* Build on an existing role. A plan IS a role, so pricing up one you
+            already use is the common case — and it avoids a second role with
+            the same permissions under a different name. */}
+        {!isEdit && roles.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="plan-role">Based on role</Label>
+            <Select value={selectedRole} onValueChange={chooseRole}>
+              <SelectTrigger id="plan-role">
+                <SelectValue placeholder="Create a new role for this plan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__new__">
+                  Create a new role for this plan
+                </SelectItem>
+                {roles.map((option) => (
+                  <SelectItem
+                    key={option.name}
+                    value={option.name}
+                    disabled={!option.selectable}
+                  >
+                    {option.label} — {option.permissionCount} permission
+                    {option.permissionCount === 1 ? "" : "s"}
+                    {option.userCount > 0
+                      ? `, ${option.userCount} user${option.userCount === 1 ? "" : "s"}`
+                      : ""}
+                    {option.reason ? ` · ${option.reason}` : ""}
+                    {option.selectable && !option.isActive
+                      ? " · inactive"
+                      : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              Picking a role sets the plan ID and fills the features from what
+              that role can do. Leave it to define a brand-new role instead.
+            </p>
+
+            {/* Promoting a role applies the plan's unit limit and price to
+                everyone already holding it, so say who that is before the
+                admin fills in a price. */}
+            {role && role.userCount > 0 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                <Users className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" />
+                <p>
+                  <span className="font-medium">
+                    {role.userCount} account
+                    {role.userCount === 1 ? "" : "s"} already hold this role.
+                  </span>{" "}
+                  They move onto this plan when you save — its unit limit starts
+                  applying to them, and they appear on the billing screens. They
+                  are not charged; nobody is billed without going through
+                  checkout.
+                </p>
+              </div>
+            )}
+
+            {/* A retired role can be priced up, but saving brings it back into
+                use — worth saying, since it was deactivated on purpose. */}
+            {role && !role.isActive && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                <Users className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" />
+                <p>
+                  <span className="font-medium">
+                    This role is currently inactive.
+                  </span>{" "}
+                  Saving reactivates it and puts it on sale.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">

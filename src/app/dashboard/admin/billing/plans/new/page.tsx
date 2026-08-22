@@ -16,24 +16,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PlanForm } from "@/components/billing/plan-form";
 import { showSimpleError, showSimpleSuccess } from "@/lib/toast-notifications";
 
-/**
- * The plan id is the ROLE NAME, and role names are lowercase with underscores.
- * Derived from the display name so an admin never has to know that.
- */
-const slugify = (s: string) =>
-  s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 import type { PlanFormValues } from "@/lib/billing/plan-schema";
+import type { PlanFormMeta } from "@/components/billing/plan-form";
 
 export default function NewPlanPage() {
   const router = useRouter();
 
   const backToPlans = () => router.push("/dashboard/admin/billing/plans");
 
-  const handleSubmit = async (values: PlanFormValues) => {
+  const handleSubmit = async (values: PlanFormValues, meta: PlanFormMeta) => {
+    // The id is sent exactly as the form shows it. It used to be re-slugged
+    // from the name here, which silently discarded whatever the admin typed
+    // into the ID field — and would now also overwrite the role name a plan is
+    // being built on, breaking the link to that role.
     const response = await fetch("/api/billing/plans", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, id: slugify(values.name) }),
+      body: JSON.stringify({
+        ...values,
+        basedOnRole: meta.basedOnRole,
+        permissions: meta.permissions,
+      }),
     });
     const result = await response.json().catch(() => null);
 
@@ -46,7 +49,10 @@ export default function NewPlanPage() {
     }
 
     // The values are already validated and typed by the time they arrive here.
-    showSimpleSuccess("Plan added", `${values.name} has been created.`);
+    showSimpleSuccess(
+      meta.basedOnRole ? "Plan created from role" : "Plan added",
+      result?.message || `${values.name} has been created.`
+    );
     backToPlans();
   };
 

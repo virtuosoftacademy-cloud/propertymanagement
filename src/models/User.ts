@@ -645,8 +645,15 @@ UserSchema.virtual("tenancyDuration").get(function (this: UserDocument) {
 
 // Pre-save middleware to hash password
 UserSchema.pre("save", async function (this: UserDocument, next) {
-  // Only hash the password if it has been modified (or is new)
-  if (!this.isModified("password")) return next();
+  // Only hash the password if it has been modified (or is new).
+  //
+  // The `!this.password` half matters: an account can legitimately be created
+  // WITHOUT one — the billing webhook provisions a paying customer and emails
+  // them a set-password link rather than inventing a password for them. On a
+  // new document Mongoose counts an explicitly-passed `password: undefined` as
+  // modified, so without this the hook reached bcrypt.hash(undefined, 12) and
+  // threw "Illegal arguments: undefined, number", failing the whole save.
+  if (!this.isModified("password") || !this.password) return next();
 
   try {
     // Hash password with cost of 12

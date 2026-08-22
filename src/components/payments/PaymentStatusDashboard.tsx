@@ -158,7 +158,14 @@ export function PaymentStatusDashboard({
         );
         const json = await res.json();
         if (cancelled) return;
-        const list = res.ok && Array.isArray(json?.data) ? json.data : [];
+        // /api/invoices nests the array under data.invoices (data itself is
+        // {invoices, pagination}), not a bare array — this used to check
+        // Array.isArray(json?.data), which was never true, so this dashboard
+        // always summarised an empty list regardless of real invoices.
+        const list =
+          res.ok && Array.isArray(json?.data?.invoices)
+            ? json.data.invoices
+            : [];
         setInvoices(list);
         calculateSummary(list);
       } catch {
