@@ -168,6 +168,12 @@ export default function DashboardPage() {
   const user = session?.user;
   const userRole = user?.role;
   const isTenant = userRole === UserRole.TENANT;
+  // Managers are back in. They had been cut to admin-only because
+  // /api/dashboard/overview scoped its Property query but nothing derived from
+  // it — leases, tenants, maintenance, payments, the activity feed — so a
+  // manager saw the WHOLE portfolio's figures. That is fixed at the source
+  // now: every metric is restricted to the properties they created or were
+  // assigned, and admin stays exempt and sees everything.
   const isDashboardAuthorized =
     userRole === UserRole.ADMIN || userRole === UserRole.MANAGER;
 
@@ -790,11 +796,6 @@ export default function DashboardPage() {
                     {t("dashboard.charts.revenueExpenses.description")}
                   </CardDescription>
                 </div>
-                {/* A year <select> used to sit here with hardcoded 2026/2027/
-                    2028 options, no value and no onChange — it could not filter
-                    anything, because the API returns a fixed rolling 12 months
-                    with no year parameter. Removed rather than left as a
-                    control that does nothing. */}
                 <span className="text-muted-foreground text-sm">
                   Last 12 months
                 </span>

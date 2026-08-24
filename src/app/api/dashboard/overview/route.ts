@@ -1,14 +1,29 @@
 /**
  * PropertyPro - Portfolio Dashboard Overview API
  * Aggregates cross-domain metrics for the manager/owner dashboard
+ *
+ * SCOPING: every figure is restricted to the properties the caller created or
+ * was assigned (see lib/auth/property-scope). Admin — and anyone granted
+ * `property_view_all` — is exempt and sees the whole portfolio.
+ *
+ * Only the Property query used to be scoped. Everything derived from it —
+ * leases, tenants, maintenance, payments, the activity feed, upcoming tasks —
+ * queried its collection unfiltered, so a manager with a single property still
+ * saw the ENTIRE portfolio's occupancy, revenue and maintenance counts. The
+ * comment claiming these were "derived from this list" described an intent the
+ * code never implemented.
  */
 
+import mongoose from "mongoose";
 import {
   createSuccessResponse,
   handleApiError,
   withRoleAndDB,
 } from "@/lib/api-utils";
-import { applyPropertyScope } from "@/lib/auth/property-scope";
+import {
+  applyPropertyScope,
+  canViewAllProperties,
+} from "@/lib/auth/property-scope";
 import {
   UserRole,
   LeaseStatus,
@@ -78,6 +93,42 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 
       const totalProperties = properties.length;
 
+      // Everything below is derived from the scoped property list above.
+      //
+      // `unrestricted` is the admin / property_view_all case: spreading an
+      // empty object adds no filter, so those callers keep portfolio-wide
+      // figures. For everyone else this is `{ propertyId: { $in: [...] } }`,
+      // which correctly matches NOTHING when they own no properties — a
+      // manager with an empty portfolio should see zeros, not the company's.
+      const unrestricted = canViewAllProperties(user);
+      const propertyIds = properties.map((p: any) => p._id);
+      const inScope: Record<string, any> = unrestricted
+        ? {}
+        : { propertyId: { $in: propertyIds } };
+
+      // Tenants hang off a LEASE, not a property — User has no propertyId — so
+      // "my tenants" means whoever holds a lease on a property in scope.
+      const scopedTenantIds: mongoose.Types.ObjectId[] | null = unrestricted
+        ? null
+        : await Lease.distinct("tenantId", { ...inScope, deletedAt: null });
+
+      const userObjectId = mongoose.Types.ObjectId.isValid(user.id)
+        ? new mongoose.Types.ObjectId(user.id)
+        : null;
+
+      // Events may legitimately have no property (a personal reminder), so
+      // scoping them on propertyId alone would hide the caller's own entries.
+      const eventsInScope: Record<string, any> = unrestricted
+        ? {}
+        : {
+            $or: [
+              { propertyId: { $in: propertyIds } },
+              ...(userObjectId
+                ? [{ createdBy: userObjectId }, { organizer: userObjectId }]
+                : []),
+            ],
+          };
+
       let totalUnits = 0;
       let occupiedUnits = 0;
       let totalRent = 0;
@@ -117,10 +168,12 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const [activeLeasesCount, expiringLeasesCount, tenantStatusBuckets] =
         await Promise.all([
           Lease.countDocuments({
+            ...inScope,
             status: LeaseStatus.ACTIVE,
             deletedAt: null,
           }),
           Lease.countDocuments({
+            ...inScope,
             status: LeaseStatus.ACTIVE,
             endDate: { $gte: now, $lte: thirtyDaysFromNow },
             deletedAt: null,
@@ -130,6 +183,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
               $match: {
                 role: UserRole.TENANT,
                 deletedAt: null,
+                ...(scopedTenantIds ? { _id: { $in: scopedTenantIds } } : {}),
               },
             },
             {
@@ -168,6 +222,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const maintenanceBuckets = await MaintenanceRequest.aggregate([
         {
           $match: {
+            ...inScope,
             deletedAt: null,
           },
         },
@@ -243,6 +298,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const paymentStats = await Payment.aggregate([
         {
           $match: {
+            ...inScope,
             deletedAt: null,
           },
         },
@@ -414,6 +470,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const monthlyRevenueAgg = await Payment.aggregate([
         {
           $match: {
+            ...inScope,
             deletedAt: null,
             status: { $in: [PaymentStatus.PAID, PaymentStatus.COMPLETED] },
             $expr: {
@@ -439,6 +496,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const yearlyRevenueAgg = await Payment.aggregate([
         {
           $match: {
+            ...inScope,
             deletedAt: null,
             status: { $in: [PaymentStatus.PAID, PaymentStatus.COMPLETED] },
             $expr: {
@@ -467,6 +525,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const revenueByMonth = await Payment.aggregate([
         {
           $match: {
+            ...inScope,
             deletedAt: null,
             status: { $in: [PaymentStatus.PAID, PaymentStatus.COMPLETED] },
             $expr: {
@@ -503,6 +562,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       const maintenanceCostsByMonth = await MaintenanceRequest.aggregate([
         {
           $match: {
+            ...inScope,
             deletedAt: null,
             createdAt: { $gte: twelveMonthsAgo, $lte: now },
           },
@@ -559,7 +619,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // -----------------------------------------------------------------------
       const [recentPayments, recentMaintenance, recentLeases] =
         await Promise.all([
-          Payment.find({ deletedAt: null })
+          Payment.find({ ...inScope, deletedAt: null })
             .sort({ updatedAt: -1 })
             .limit(5)
             .select(
@@ -570,13 +630,13 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
               { path: "propertyId", select: "name" },
             ])
             .lean(),
-          MaintenanceRequest.find({ deletedAt: null })
+          MaintenanceRequest.find({ ...inScope, deletedAt: null })
             .sort({ updatedAt: -1 })
             .limit(5)
             .select("title priority status updatedAt propertyId")
             .populate({ path: "propertyId", select: "name" })
             .lean(),
-          Lease.find({ deletedAt: null })
+          Lease.find({ ...inScope, deletedAt: null })
             .sort({ updatedAt: -1 })
             .limit(5)
             .select("status startDate endDate updatedAt tenantId propertyId")
@@ -677,6 +737,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
         openHighPriorityMaintenance,
       ] = await Promise.all([
         Event.find({
+          ...eventsInScope,
           deletedAt: null,
           status: { $in: [EventStatus.SCHEDULED, EventStatus.CONFIRMED] },
           startDate: { $gte: now },
@@ -686,6 +747,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
           .select("title startDate priority type")
           .lean(),
         Lease.find({
+          ...inScope,
           status: LeaseStatus.ACTIVE,
           endDate: { $gte: now, $lte: thirtyDaysFromNow },
           deletedAt: null,
@@ -699,6 +761,7 @@ export const GET = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
           ])
           .lean(),
         MaintenanceRequest.find({
+          ...inScope,
           deletedAt: null,
           status: {
             $in: [MaintenanceStatus.SUBMITTED, MaintenanceStatus.ASSIGNED],

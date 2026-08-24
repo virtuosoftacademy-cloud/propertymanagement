@@ -48,10 +48,12 @@ function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailTaken, setEmailTaken] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setEmailTaken(false);
     setIsLoading(true);
 
     try {
@@ -75,6 +77,10 @@ function SignUpForm() {
       if (!res.ok || json?.success === false) {
         // The API puts the reason in `error`, not `message`.
         setError(json?.error || "Could not create your account");
+        // 409 is "this email is already taken" — the one failure the visitor
+        // can resolve themselves, so offer the way out rather than leaving
+        // them re-typing a form that will never succeed.
+        setEmailTaken(res.status === 409);
         return;
       }
 
@@ -97,6 +103,19 @@ function SignUpForm() {
       // send them to Checkout now — otherwise the plan they chose is
       // unreachable and they silently sit on Free.
       if (plan && plan !== "free") {
+        // Never start a payment we cannot attach to an account. Register
+        // returned 2xx, but if the response carried no id something went wrong
+        // enough that the webhook would have nothing to claim — better to stop
+        // here, with the account already created, than to take money for a
+        // subscription that cannot be linked to anyone.
+        const newUserId = json?.data?.user?._id ?? json?.data?.user?.id;
+        if (!newUserId) {
+          setError(
+            "Your account was created, but we could not start the payment. Please sign in and choose your plan again."
+          );
+          return;
+        }
+
         const checkout = await fetch("/api/billing/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -107,7 +126,7 @@ function SignUpForm() {
             planId: plan,
             cycle: "monthly",
             email,
-            userId: json?.data?.user?._id ?? json?.data?.user?.id,
+            userId: newUserId,
           }),
         });
         const checkoutJson = await checkout.json();
@@ -163,7 +182,24 @@ function SignUpForm() {
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription>
+                    {error}
+                    {emailTaken && (
+                      <>
+                        {" "}
+                        <Link
+                          href={
+                            plan
+                              ? `/auth/signin?plan=${encodeURIComponent(plan)}`
+                              : "/auth/signin"
+                          }
+                          className="font-medium underline"
+                        >
+                          Sign in
+                        </Link>
+                      </>
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
 

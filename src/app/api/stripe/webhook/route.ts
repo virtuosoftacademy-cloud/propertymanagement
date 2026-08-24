@@ -8,16 +8,28 @@ import Stripe from "stripe";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { triggerPaymentUpdate } from "../../payments/stream/route";
+import { resolveWebhookSecret } from "@/lib/stripe/webhook-secret";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
 });
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-
 export async function POST(request: NextRequest) {
   try {
+    // Read per-request rather than at module load: this also rejects the
+    // configuration where this endpoint and the subscription one share a
+    // signing secret, which would let each accept the other's events.
+    // See lib/stripe/webhook-secret.
+    const resolved = resolveWebhookSecret("rent");
+    if (resolved.error) {
+      return NextResponse.json(
+        { error: resolved.error.message },
+        { status: resolved.error.status }
+      );
+    }
+    const webhookSecret = resolved.secret!;
+
     const body = await request.text();
     const signature = request.headers.get("stripe-signature");
 

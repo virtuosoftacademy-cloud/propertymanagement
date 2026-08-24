@@ -168,10 +168,36 @@ export const POST = withDatabase(async (request: NextRequest) => {
     }
 
     try {
-      // Check if user already exists
-      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      // Check if user already exists — including SOFT-DELETED accounts.
+      //
+      // Uses the raw driver deliberately. The model's pre-find hook hides
+      // soft-deleted rows unless a query names `deletedAt`, so the old bare
+      // findOne() reported "no such user" for a deleted one; newUser.save()
+      // then hit the unique index on email and threw E11000, which the catch
+      // below rewrote into "already exists". The user saw a duplication error
+      // for an account that appears nowhere in the app, with no way forward.
+      //
+      // Mongoose query forms are not a safe fix here: `deletedAt: { $ne:
+      // undefined }` finds the deleted row but MISSES a live one (undefined is
+      // stripped from queries), which would silently stop detecting ordinary
+      // duplicates. The raw collection sees every document exactly once.
+      const existingUser = await User.collection.findOne({
+        email: email.toLowerCase(),
+      });
+
       if (existingUser) {
-        return createErrorResponse("User with this email already exists", 409);
+        // Two genuinely different situations, so say which one it is: one is
+        // "sign in instead", the other needs an admin.
+        if ((existingUser as any).deletedAt) {
+          return createErrorResponse(
+            "An account with this email was deleted. Please contact support to restore it.",
+            409
+          );
+        }
+        return createErrorResponse(
+          "An account with this email already exists. Please sign in instead.",
+          409
+        );
       }
 
       // Create new user

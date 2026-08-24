@@ -479,7 +479,7 @@ const navigationSections: NavSection[] = [
             title: "nav.settings.billing",
             href: "/dashboard/settings/subscription",
             icon: CreditCard,
-            roles: [UserRole.ADMIN, UserRole.MANAGER],
+            roles: [UserRole.MANAGER],
           },
         ],
       },

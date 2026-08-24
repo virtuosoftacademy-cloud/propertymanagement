@@ -31,16 +31,19 @@ import {
 } from "@/lib/invitation-utils";
 import { emailService } from "@/lib/email-service";
 import { getPlan, planForPriceId } from "@/lib/billing/plan-store";
+import { resolveWebhookSecret } from "@/lib/stripe/webhook-secret";
 
 export const dynamic = "force-dynamic";
 
 function appUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
+  const base =
     process.env.APP_URL ||
-    process.env.NEXTAUTH_URL ||
-    "http://localhost:3000"
-  );
+    "http://localhost:3000";
+
+  // Strip trailing slashes — see the matching helper in billing/checkout. The
+  // password-reset link below is emailed to a paying customer, so a malformed
+  // "https://host//auth/reset-password" is their first impression.
+  return base.replace(/\/+$/, "");
 }
 
 /** Stripe amounts are in minor units; our records are GBP major units. */
@@ -492,11 +495,20 @@ async function handleInvoiceFailed(invoice: Stripe.Invoice) {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET;
+  // Rejects the configuration where this endpoint and the tenant-rent one
+  // share a signing secret — see lib/stripe/webhook-secret.
+  const resolved = resolveWebhookSecret("subscription");
+  if (resolved.error) {
+    return NextResponse.json(
+      { error: resolved.error.message },
+      { status: resolved.error.status }
+    );
+  }
+  const secret = resolved.secret!;
   const apiKey = process.env.STRIPE_SECRET_KEY;
 
-  if (!secret || !apiKey) {
-    console.error("[billing] Stripe subscription webhook is not configured");
+  if (!apiKey) {
+    console.error("[billing] STRIPE_SECRET_KEY is not set");
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
 

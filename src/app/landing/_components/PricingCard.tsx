@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,45 +13,23 @@ export default function PricingCard({ plan }: PricingCardProps) {
   const { id, name, description, monthlyPrice, features, popular, custom } =
     plan;
 
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  /** Paid plans go through Stripe Checkout; the price is chosen server-side. */
-  const startCheckout = async () => {
-    setBusy(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: id, cycle: "monthly" }),
-      });
-      const result = await response.json().catch(() => null);
-
-      if (!response.ok || !result?.success || !result?.data?.url) {
-        setError(result?.error || "Could not start checkout. Please try again.");
-        setBusy(false);
-        return;
-      }
-
-      window.location.href = result.data.url;
-    } catch {
-      setError("Could not reach the payment service. Please try again.");
-      setBusy(false);
-    }
-  };
-
-  // Free needs no payment and Custom is negotiated, so neither goes to Stripe.
-  const isPaid = monthlyPrice !== null && monthlyPrice > 0 && !custom;
+  /**
+   * Every paid plan now goes through sign-up first.
+   *
+   * This card used to POST straight to /api/billing/checkout and hand the
+   * visitor to Stripe with no account, no email and no userId — leaving the
+   * webhook to invent an account afterwards from whatever address they typed
+   * on Stripe's page. A typo there created the account under the wrong email,
+   * and any failure during provisioning meant they had paid for nothing.
+   * /auth/signup?plan=<id> creates the account, then starts checkout with the
+   * id it just created; the checkout endpoint now refuses callers without one.
+   */
 
   const ctaLabel = custom
     ? "Talk to us"
     : monthlyPrice === 0
       ? "Start for free"
-      : busy
-        ? "Redirecting…"
-        : "Get started";
+      : "Get started";
 
   const ctaClass = cn(
     "w-full py-4 text-sm font-semibold text-center transition-opacity hover:opacity-85 disabled:opacity-60",
@@ -106,27 +83,13 @@ export default function PricingCard({ plan }: PricingCardProps) {
           ))}
         </ul>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        {isPaid ? (
-          <button
-            type="button"
-            onClick={startCheckout}
-            disabled={busy}
-            className={ctaClass}
-            style={ctaStyle}
-          >
-            {ctaLabel}
-          </button>
-        ) : (
-          <Link
-            href={custom ? "#contact" : `/auth/signup?plan=${id}`}
-            className={ctaClass}
-            style={ctaStyle}
-          >
-            {ctaLabel}
-          </Link>
-        )}
+        <Link
+          href={custom ? "#contact" : `/auth/signup?plan=${id}`}
+          className={ctaClass}
+          style={ctaStyle}
+        >
+          {ctaLabel}
+        </Link>
 
       </div>
     </div>

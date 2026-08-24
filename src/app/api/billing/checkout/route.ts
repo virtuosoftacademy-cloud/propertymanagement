@@ -1,18 +1,20 @@
 /**
  * PropertyPro - Subscription checkout
  *
- * Public by design: this is the "Get started" path, so the caller is a visitor
- * with no session. (It was reached from the landing page, which has since been
- * removed — the endpoint still expects an unauthenticated caller, so whatever
- * replaces that entry point can call it the same way.)
- * Stripe collects the email and the card
- * on its own hosted page — nothing sensitive is posted here, and the amount is
- * never taken from the request. The client sends a plan id; the price comes
- * from our own env-mapped Stripe Price, so a tampered body cannot buy Growth at
- * the Starter price.
+ * Unauthenticated, but NOT unidentified: the caller has just registered and is
+ * not signed in yet, so there is no session to read — but the account must
+ * already exist, and this refuses to create a Stripe session otherwise. Taking
+ * money before an account exists means a failed provisioning leaves a customer
+ * who has paid for nothing.
+ *
+ * Stripe collects the card on its own hosted page — nothing sensitive is posted
+ * here, and the amount is never taken from the request. The client sends a plan
+ * id; the price comes from our own Stripe Price, so a tampered body cannot buy
+ * Pro at the Free price.
  */
 
 import { NextRequest } from "next/server";
+import mongoose from "mongoose";
 import Stripe from "stripe";
 import { z } from "zod";
 import { createErrorResponse, createSuccessResponse } from "@/lib/api-utils";
@@ -34,12 +36,40 @@ const checkoutSchema = z.object({
 });
 
 function appUrl(): string {
-  return (
+  const base =
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     process.env.NEXTAUTH_URL ||
-    "http://localhost:3000"
-  );
+    "http://localhost:3000";
+
+  // Strip trailing slashes. Every caller appends "/path", so a value ending in
+  // "/" — which is what you get pasting a domain out of a browser or Vercel —
+  // produced "https://host//billing/welcome" in the Stripe success_url and in
+  // the emailed password-reset link.
+  return base.replace(/\/+$/, "");
+}
+
+/**
+ * The account this checkout belongs to, or null.
+ *
+ * Raw driver on purpose: the User model hides soft-deleted rows, and a deleted
+ * account must be reported as deleted rather than as "no account" — otherwise
+ * the caller is told to sign up, which then fails on the unique email index.
+ */
+async function findBuyer(
+  userId?: string,
+  email?: string
+): Promise<{ deletedAt?: Date | null } | null> {
+  const { User } = await import("@/models");
+  const or: any[] = [];
+
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    or.push({ _id: new mongoose.Types.ObjectId(userId) });
+  }
+  if (email) or.push({ email: email.toLowerCase() });
+  if (or.length === 0) return null;
+
+  return (await User.collection.findOne({ $or: or })) as any;
 }
 
 export async function POST(request: NextRequest) {
@@ -58,6 +88,31 @@ export async function POST(request: NextRequest) {
     }
 
     const { planId, cycle, email, userId } = parsed.data;
+
+    // No account, no payment.
+    //
+    // This endpoint used to start a Stripe session for anyone — logged out,
+    // no userId, no email — because the landing page's "Get started" button
+    // called it directly and left account creation to the webhook. That meant
+    // money could be taken before an account existed, and if provisioning then
+    // failed the customer had paid for nothing. Sign-up now happens first and
+    // passes the id it just created, so refusing here is what makes "an
+    // account exists before we charge" an actual guarantee rather than a
+    // convention the UI happens to follow.
+    const buyer = await findBuyer(userId, email);
+    if (!buyer) {
+      return createErrorResponse(
+        "Create your account before checking out, so we can attach the subscription to it.",
+        400
+      );
+    }
+    if (buyer.deletedAt) {
+      return createErrorResponse(
+        "This account has been deleted. Please contact support before subscribing.",
+        409
+      );
+    }
+
     const plan = await getPlan(planId);
 
     if (!plan) return createErrorResponse("Unknown plan", 400);
