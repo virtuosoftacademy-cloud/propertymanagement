@@ -24,6 +24,7 @@ import {
 } from "@/lib/auth/property-scope";
 import { calculatePropertyStatusFromUnits } from "@/utils/property-status-calculator";
 import mongoose from "mongoose";
+import { validateAssignedManager } from "@/lib/properties/assignable-manager";
 import { deleteFromR2 } from "@/lib/r2-server";
 import { isR2Url, extractObjectKey } from "@/lib/r2";
 import { NextResponse } from "next/server";
@@ -166,9 +167,9 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
 
       const updateData = validation.data;
 
-      // Assignment is an admin privilege: both managerId and assignedAgentId
-      // grant visibility of the property, so letting a non-admin set them would
-      // let them hand access to themselves or anyone else.
+      // Assignment is an admin privilege: managerId grants visibility of the
+      // property, so letting a non-admin set it would let them hand access to
+      // themselves or anyone else.
       //
       // This guard used to be dead code — propertyUpdateSchema omitted
       // ownerId/managerId, so Zod stripped them for EVERYONE (admins included)
@@ -177,7 +178,16 @@ export const PUT = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       if (!canViewAllProperties(user)) {
         delete (updateData as any).ownerId;
         delete (updateData as any).managerId;
-        delete (updateData as any).assignedAgentId;
+      } else if ("managerId" in updateData) {
+        // Admin is allowed to assign — but not to anyone. Same rule the
+        // property form applies to its dropdown, enforced here so a direct API
+        // call cannot bypass it. Clearing the field (null / "") stays allowed.
+        const check = await validateAssignedManager(
+          (updateData as any).managerId
+        );
+        if (!check.ok) {
+          return createErrorResponse(check.message!, 400);
+        }
       }
 
       // Handle units in unified architecture

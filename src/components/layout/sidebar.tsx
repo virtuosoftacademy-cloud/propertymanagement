@@ -714,8 +714,8 @@ export function Sidebar({ className }: SidebarProps) {
   // Compute current logo URL from display settings and theme
   const currentLogoUrl = useMemo(() => {
     // Always use default logos as fallback - this ensures logo always displays
-    const defaultLight = "/images/logo-light.png";
-    const defaultDark = "/images/logo-dark.png";
+    const defaultLight = "/images/logo-dark.png";
+    const defaultDark = "/images/logo-light.png";
 
     // Try to get custom logos from display settings, but fallback to defaults
     const branding = displaySettings?.branding;

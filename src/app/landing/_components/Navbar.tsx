@@ -78,8 +78,8 @@ export default function Navbar() {
    */
   const logoUrls = useMemo(() => {
     // Always fall back to the default logos so something always renders.
-    const defaultLight = "/images/logo-light.png";
-    const defaultDark = "/images/logo-dark.png";
+    const defaultLight = "/images/logo-dark.png";
+    const defaultDark = "/images/logo-light.png";
 
     // displaySettings first so an admin editing branding sees it update live;
     // publicBranding is what an anonymous visitor gets.
@@ -87,8 +87,8 @@ export default function Navbar() {
 
     return {
       light:
-        branding?.logoLight || publicBranding?.logoLight || defaultLight,
-      dark: branding?.logoDark || publicBranding?.logoDark || defaultDark,
+        branding?.logoDark || publicBranding?.logoLight || defaultLight,
+      dark: branding?.logoLight || publicBranding?.logoDark || defaultDark,
     };
   }, [displaySettings?.branding, publicBranding]);
 

@@ -63,10 +63,6 @@ type AgentOption = {
   specialties?: string[];
 };
 
-// ─── Assigned agent (HMO only, optional) ────────────────────────────────────
-// The agent dropdown only appears when the property type is HMO, and choosing
-// an agent is OPTIONAL. The dropdown writes the agent's id into
-// `assignedAgentId`; it's cleared when the type is not HMO.
 const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
   z.object({
     propertyOwnerName: z
@@ -81,7 +77,6 @@ const enhancedPropertySchema = (t: (key: string, options?: any) => string) =>
       .max(200),
     description: z.string().max(2000).optional(),
     type: z.nativeEnum(PropertyType),
-    assignedAgentId: z.string().optional(),
     // Admin-only. Decides who can see this property (see property-scope.ts);
     // the server ignores it from anyone else, so it is never sent by them.
     managerId: z.string().optional(),
@@ -169,8 +164,6 @@ interface EnhancedPropertyFormProps {
   isLoading?: boolean;
   mode?: "create" | "edit";
   propertyId?: string;
-  // Optional agents list from the parent. If omitted, the form fetches its own.
-  assignedAgent?: AgentOption[];
 }
 
 const ESSENTIAL_AMENITIES_AND_FEATURES = [
@@ -236,12 +229,8 @@ export function EnhancedPropertyForm({
   isLoading = false,
   mode = "create",
   propertyId,
-  assignedAgent = [],
 }: EnhancedPropertyFormProps) {
   const [showAlert, setShowAlert] = useState(false);
-
-  // Agents fetched by this form (same source/shape pattern as the maintenance form).
-  const [agents, setAgents] = useState<AgentOption[]>([]);
 
   // Managers assignable as the property's manager. Narrower than `agents`,
   // which also includes technicians and maintenance users.
@@ -249,8 +238,8 @@ export function EnhancedPropertyForm({
 
   /**
    * Assigning a property grants visibility of it, so only an admin may do it.
-   * The server enforces this independently — a non-admin's managerId and
-   * assignedAgentId are stripped on both create and update — this just avoids
+   * The server enforces this independently — a non-admin's managerId is
+   * stripped on both create and update — this just avoids
    * showing a control that would silently do nothing.
    */
   const { data: session } = useSession();
@@ -347,41 +336,34 @@ export function EnhancedPropertyForm({
           ? json.users
           : [];
 
-        const mapped: AgentOption[] = usersArray
-          .filter((u: any) => {
-            if (!u || (!u._id && !u.id)) return false;
-            const role = (u.role || "").toLowerCase();
-            if (role === "tenant") return false;
-            if (u.isActive === false) return false;
-            return (
-              role.includes("manager") ||
-              role.includes("technician") ||
-              role.includes("maintenance")
-            );
-          })
-          .map((u: any) => ({
-            id: u._id || u.id,
-            name:
-              `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
-              u.name ||
-              "",
-            email: u.email || "",
-            specialties: u.specialties || [],
-          }));
-
-        setAgents(mapped);
-
-        // Same response, narrower filter — managers only, for the manager
-        // assignment dropdown. Custom roles resolve to a base role server-side,
-        // but `role` here is the raw assigned name, so match on substring the
-        // same way the agent filter above does.
+        // Everyone assignable, from the same response: any active user who is
+        // neither an admin nor a tenant.
+        //
+        // Admins are excluded because assignment exists to give ONE non-admin
+        // visibility of a property (see property-scope.ts) — an admin already
+        // sees every property, so choosing one changes nothing while reading as
+        // though it restricted access. Tenants are the subject of a property,
+        // never its manager.
+        //
+        // Matching is on the raw role name because that is all the client has;
+        // custom roles resolve to a base role only on the server. The API is
+        // also called with excludeTenant=true, so the tenant check here is
+        // belt-and-braces. validateAssignedManager() on the server is the
+        // authority and resolves roles properly.
         setManagers(
           usersArray
             .filter((u: any) => {
               if (!u || (!u._id && !u.id)) return false;
               if (u.isActive === false) return false;
               const role = (u.role || "").toLowerCase();
-              return role.includes("manager") || role === "admin";
+              if (
+                role === "admin" ||
+                role === "tenant" ||
+                role === "agent"
+              ) {
+                return false;
+              }
+              return true;
             })
             .map((u: any) => ({
               id: u._id || u.id,
@@ -401,28 +383,7 @@ export function EnhancedPropertyForm({
     fetchAgents();
   }, []);
 
-  // On edit, the API may return assignedAgentId either as a plain id string or
-  // as a populated user object ({ _id|id, name|firstName/lastName, email }).
-  // Normalize it so the <Select> value matches an option id.
-  const initObj =
-    initialData?.assignedAgentId &&
-    typeof initialData.assignedAgentId === "object"
-      ? (initialData.assignedAgentId as any)
-      : null;
-
-  const initialAgentId = initObj
-    ? initObj.id || initObj._id || ""
-    : (initialData?.assignedAgentId as string | undefined) || "";
-
-  const initialAgentName = initObj
-    ? initObj.name ||
-      `${initObj.firstName || ""} ${initObj.lastName || ""}`.trim() ||
-      "Assigned agent"
-    : "";
-
-  const initialAgentEmail = initObj ? initObj.email || "" : "";
-
-  // managerId arrives populated or as a bare id, same as assignedAgentId above.
+  // managerId arrives populated or as a bare id.
   const initialManagerId =
     initialData?.managerId && typeof initialData.managerId === "object"
       ? (initialData.managerId as any).id ||
@@ -439,7 +400,6 @@ export function EnhancedPropertyForm({
       name: initialData?.name || "",
       description: initialData?.description || "",
       type: initialData?.type || PropertyType.APARTMENT,
-      assignedAgentId: initialAgentId,
       managerId: initialManagerId,
       hmoLicenseNumber: initialData?.hmoLicenseNumber || "",
       hmoLicenseIssueDate: initialData?.hmoLicenseIssueDate
@@ -473,36 +433,10 @@ export function EnhancedPropertyForm({
   const handleTypeChange = (value: PropertyType) => {
     setValue("type", value);
     if (value !== PropertyType.HMO) {
-      setValue("assignedAgentId", "");
       setValue("hmoLicenseNumber", "");
       setValue("hmoLicenseIssueDate", "");
       setValue("hmoLicenseExpiry", "");
     }
-  };
-
-  // Build the agent options from the fetched agents plus any passed via props,
-  // de-duplicated by id, and ensure the currently-assigned agent (on edit) is
-  // present so its name renders even before/without the list containing it.
-  const agentOptions: AgentOption[] = [];
-  const seenAgentIds = new Set<string>();
-  for (const a of [...agents, ...assignedAgent]) {
-    if (a?.id && !seenAgentIds.has(a.id)) {
-      seenAgentIds.add(a.id);
-      agentOptions.push(a);
-    }
-  }
-  if (initObj && initialAgentId && !seenAgentIds.has(initialAgentId)) {
-    agentOptions.unshift({
-      id: initialAgentId,
-      name: initialAgentName,
-      email: initialAgentEmail,
-    });
-    seenAgentIds.add(initialAgentId);
-  }
-
-  // Store the selected agent's id ("" clears it).
-  const handleAgentChange = (agentId: string) => {
-    setValue("assignedAgentId", agentId);
   };
 
   const handleAmenityToggle = (item: string) => {
@@ -557,10 +491,9 @@ export function EnhancedPropertyForm({
         images: images.map((img) => img.url),
       }));
 
-      // assignedAgentId is optional (HMO only) — omit it entirely when empty so
-      // the API isn't sent an empty string for an optional ObjectId field.
+      // managerId is optional — omit it entirely when empty so the API isn't
+      // sent an empty string for an optional ObjectId field.
       const {
-        assignedAgentId,
         managerId,
         hmoLicenseNumber,
         hmoLicenseIssueDate,
@@ -573,7 +506,6 @@ export function EnhancedPropertyForm({
         // Assignment fields are admin-only and the server strips them from
         // anyone else, so don't send them at all — avoids a confusing silent
         // no-op if a stale form value lingers.
-        ...(isAdmin && assignedAgentId ? { assignedAgentId } : {}),
         ...(isAdmin ? { managerId: managerId || null } : {}),
         ...(hmoLicenseNumber ? { hmoLicenseNumber } : {}),
         ...(hmoLicenseIssueDate ? { hmoLicenseIssueDate } : {}),
@@ -689,7 +621,7 @@ export function EnhancedPropertyForm({
             {isAdmin && (
               <div className="space-y-2 md:col-span-1">
                 <Label htmlFor="managerId">
-                  Assigned manager
+                  Assigned
                   <span className="ml-1 text-xs text-muted-foreground font-normal">
                     (optional)
                   </span>
@@ -703,7 +635,7 @@ export function EnhancedPropertyForm({
                   }
                 >
                   <SelectTrigger id="managerId">
-                    <SelectValue placeholder="Select a manager" />
+                    <SelectValue placeholder="Select a user" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
@@ -722,59 +654,8 @@ export function EnhancedPropertyForm({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Only this manager (and admins) will see this property.
+                  Only this user (and admins) will see this property.
                 </p>
-              </div>
-            )}
-
-            {/* Assigned agent — admin only, and only for HMO. Uses the same
-                "assign to" pattern as the maintenance form (Unassigned option +
-                name/email/specialties rows). */}
-            {isHmo && isAdmin && (
-              <div className="space-y-2 md:col-span-1">
-                <Label htmlFor="assignedAgentId">
-                  Assign to agent
-                  <span className="ml-1 text-xs text-muted-foreground font-normal">
-                    (optional)
-                  </span>
-                </Label>
-                <Select
-                  value={watchedValues.assignedAgentId || "UNASSIGNED"}
-                  onValueChange={(value) =>
-                    handleAgentChange(value === "UNASSIGNED" ? "" : value)
-                  }
-                >
-                  <SelectTrigger id="assignedAgentId">
-                    <SelectValue placeholder="Select an agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-                    {agentOptions.length > 0 ? (
-                      agentOptions.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          <div>
-                            <div className="font-medium">{agent.name}</div>
-                            {agent.email && (
-                              <div className="text-sm text-muted-foreground">
-                                {agent.email}
-                              </div>
-                            )}
-                            {agent.specialties &&
-                              agent.specialties.length > 0 && (
-                                <div className="text-xs text-muted-foreground">
-                                  {agent.specialties.join(", ")}
-                                </div>
-                              )}
-                          </div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        No agents available
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
               </div>
             )}
 

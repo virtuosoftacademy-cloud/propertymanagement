@@ -1,17 +1,5 @@
 "use client";
 
-/**
- * Your subscription — the account holder's own view.
- *
- * Distinct from /dashboard/admin/billing, which is the admin's ledger of every
- * client. This shows exactly one account (the caller's) and reads it from
- * /api/billing/me, which is scoped by userId server-side.
- *
- * The only thing it changes is whether the subscription renews — cancelling
- * and un-cancelling. Moving between plans still goes through Stripe Checkout,
- * so that stays a link out rather than a form.
- */
-
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {

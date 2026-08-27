@@ -249,11 +249,6 @@ const PropertySchema = new Schema<IProperty>(
       ref: "User",
       default: null,
     },
-    assignedAgentId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
     hmoLicenseNumber: {
       type: String,
       trim: true,
@@ -288,13 +283,9 @@ try {
   PropertySchema.index({ "address.zipCode": 1 });
   PropertySchema.index({ deletedAt: 1 });
   PropertySchema.index({ createdAt: -1 });
-  // CHANGE 3: index on assignedAgent for fast agent→property lookups
-  PropertySchema.index({ assignedAgentId: 1 });
   PropertySchema.index({ status: 1, type: 1 });
   PropertySchema.index({ ownerId: 1, status: 1 });
   PropertySchema.index({ managerId: 1, status: 1 });
-  // CHANGE 4: compound index — find all HMO properties for a given agent
-  PropertySchema.index({ assignedAgentId: 1, type: 1 });
   // HMO licence expiry — supports "licences expiring soon" compliance queries
   PropertySchema.index({ hmoLicenseExpiry: 1 });
 } catch {
@@ -335,11 +326,6 @@ PropertySchema.statics.findByOwner = function (ownerId: string) {
 
 PropertySchema.statics.findByManager = function (managerId: string) {
   return this.find({ managerId, deletedAt: null });
-};
-
-// CHANGE 5: new static — find all properties assigned to a specific agent
-PropertySchema.statics.findByAgent = function (agentId: string) {
-  return this.find({ assignedAgentId: agentId, deletedAt: null });
 };
 
 PropertySchema.statics.search = function (query: string) {
@@ -443,11 +429,8 @@ PropertySchema.pre("save", async function (next) {
     }
   });
 
-  // CHANGE 6: clear HMO-only fields when the property type is not HMO.
-  // (Previously a no-op — `this.assignedAgentId;` read the value and discarded
-  // it, so stale agent/licence data was never actually cleared.)
+  // Clear HMO-only fields when the property type is not HMO.
   if (this.isModified("type") && this.type !== PropertyType.HMO) {
-    this.assignedAgentId;
     this.hmoLicenseNumber;
     this.hmoLicenseIssueDate;
     this.hmoLicenseExpiry;
@@ -489,18 +472,6 @@ PropertySchema.pre("save", async function (next) {
     if (!manager) return next(new Error("Property manager not found"));
     if (!["admin", "manager"].includes(await effectiveRoleOf(manager.role)))
       return next(new Error("Invalid manager role"));
-  }
-
-  // CHANGE 7: validate assignedAgent when type is HMO
-  // Ensures the referenced user exists and has an appropriate role
-  if (this.isModified("assignedAgentId") && this.assignedAgentId && this.type === PropertyType.HMO) {
-    const User = mongoose.model("User");
-    const agent = await findByIdIncludingDeleted(User, this.assignedAgentId);
-    if (!agent) return next(new Error("Assigned agent not found"));
-    // Resolved, so a custom role that inherits from tenant is also refused —
-    // the raw comparison only caught the literal built-in "tenant".
-    if ((await effectiveRoleOf(agent.role)) === "tenant")
-      return next(new Error("Tenant cannot be assigned as an HMO agent"));
   }
 
   next();

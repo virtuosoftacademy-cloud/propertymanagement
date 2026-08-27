@@ -353,7 +353,6 @@ const propertyCreateBaseSchema = z.object({
     .default([]),
 
   ownerId: z.string().min(1, "Owner ID is required").optional(),
-  assignedAgentId: z.string().optional(),
   managerId: z.string().min(1, "Manager ID is required").optional(),
 
   // HMO compliance licence (UK) — HMO only, optional.
@@ -372,7 +371,7 @@ export const propertyCreateSchema =
  * Omitting it made Zod strip the field before the route's role check ever ran,
  * so an admin could not reassign a property's manager at all — the guard in
  * properties/[id]/route.ts was dead code. Authorisation is enforced there
- * instead: non-admins have `managerId` and `assignedAgentId` stripped from the
+ * instead: non-admins have `managerId` stripped from the
  * payload, because assignment grants visibility.
  *
  * `ownerId` stays omitted — it records who created the property and must not

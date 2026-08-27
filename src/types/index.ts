@@ -345,7 +345,6 @@ export interface IProperty extends Document {
 
   ownerId: Types.ObjectId;
   managerId?: Types.ObjectId;
-  assignedAgentId?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

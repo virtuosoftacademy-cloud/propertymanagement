@@ -10,9 +10,6 @@ import { UserRole } from "@/types";
 export default function DisplaySettingsPage() {
   const { t } = useLocalizationContext();
 
-  // Org-wide branding, theme and language — not per-user taste, so it is not
-  // a page every signed-in user should reach. Admins always; anyone else only
-  // if their role has been granted company_settings.
   return (
     <RequirePermission
       permission="company_settings"

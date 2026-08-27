@@ -181,8 +181,8 @@ export function DisplaySettings({
       currency: settings?.currency || "GBP",
       branding: settings?.branding
         ? {
-            logoLight: settings.branding.logoLight || "/images/logo-light.png",
-            logoDark: settings.branding.logoDark || "/images/logo-dark.png",
+            logoLight: settings.branding.logoLight || "/images/logo-dark.png",
+            logoDark: settings.branding.logoDark || "/images/logo-light.png",
             favicon: settings.branding.favicon || "/favicon.ico",
             primaryColor: settings.branding.primaryColor || "#188182",
             secondaryColor: settings.branding.secondaryColor || "#1F1F1F",
@@ -191,8 +191,8 @@ export function DisplaySettings({
             r2: settings.branding.r2 || {},
           }
         : {
-            logoLight: "/images/logo-light.png",
-            logoDark: "/images/logo-dark.png",
+            logoLight: "/images/logo-dark.png",
+            logoDark: "/images/logo-light.png",
             favicon: "/favicon.ico",
             primaryColor: "#188182",
             secondaryColor: "#1F1F1F",

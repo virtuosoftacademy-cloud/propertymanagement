@@ -6,7 +6,7 @@
  *
  * `Property` has no `createdBy` field — `ownerId` is set to the creating user
  * on every create (src/app/api/properties/route.ts), so `ownerId` *is*
- * "created by". Assignment is expressed by `managerId` or `assignedAgentId`.
+ * "created by". Assignment is expressed by `managerId`.
  *
  * The scope is driven by a PERMISSION, not a role check. Roles are
  * admin-creatable: `resolveUserRole()` maps a custom role onto a base role and
@@ -71,7 +71,6 @@ export function propertyScopeFilter(
     $or: [
       { ownerId: id }, // created it
       { managerId: id }, // assigned as manager
-      { assignedAgentId: id }, // assigned as agent
     ],
   };
 }
@@ -179,11 +178,9 @@ export function isPropertyInScope(
     return (v._id ?? v).toString();
   };
 
-  return [
-    property.ownerId,
-    property.managerId,
-    property.assignedAgentId,
-  ].some((field) => idOf(field) === user.id);
+  return [property.ownerId, property.managerId].some(
+    (field) => idOf(field) === user.id
+  );
 }
 
 /**

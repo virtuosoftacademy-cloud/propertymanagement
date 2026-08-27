@@ -91,7 +91,7 @@ const Footer = () => {
   const footerLogoSrc =
     displaySettings?.branding?.logoDark ||
     publicBranding?.logoDark ||
-    "/images/logo-dark.png";
+    "/images/logo-light.png";
 
   return (
     <footer className="relative bg-foreground dark:bg-background">

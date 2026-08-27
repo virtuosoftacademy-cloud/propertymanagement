@@ -23,6 +23,7 @@ import {
   propertyQuerySchema,
   validateSchema,
 } from "@/lib/validations";
+import { validateAssignedManager } from "@/lib/properties/assignable-manager";
 import { calculatePropertyStatusFromUnits } from "@/utils/property-status-calculator";
 import {
   applyPropertyScope,
@@ -311,14 +312,17 @@ export const POST = withRoleAndDB([UserRole.ADMIN, UserRole.MANAGER])(
       // true by construction rather than by the creator's own say-so.
       if (canViewAllProperties(user)) {
         if (propertyData.managerId) {
+          // Who may RECEIVE an assignment, as opposed to who may make one.
+          // Without this the "no admins" rule lived only in the property form's
+          // dropdown and a direct API call ignored it.
+          const check = await validateAssignedManager(propertyData.managerId);
+          if (!check.ok) {
+            return createErrorResponse(check.message!, 400);
+          }
           newPropertyData.managerId = propertyData.managerId;
-        }
-        if (propertyData.assignedAgentId) {
-          newPropertyData.assignedAgentId = propertyData.assignedAgentId;
         }
       } else {
         newPropertyData.managerId = user.id;
-        delete newPropertyData.assignedAgentId;
       }
 
       // Unified approach: units are embedded directly in the property document
