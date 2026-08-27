@@ -406,6 +406,13 @@ export interface ITenant extends Document {
   applicationDate: Date;
   moveInDate?: Date;
   moveOutDate?: Date;
+  /**
+   * Set when the tenant is registered with Stripe for rent payments. Defined on
+   * the schema and read by the Stripe routes, but was missing here — the field
+   * sat inside an unclosed `nino` block in the model, so it never registered as
+   * a real path and TypeScript never had cause to check it.
+   */
+  stripeCustomerId?: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

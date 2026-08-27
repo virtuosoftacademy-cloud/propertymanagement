@@ -110,6 +110,8 @@ const TenantSchema = new Schema<ITenant>(
             normalised
           );
         },
+        message: "Enter a valid UK National Insurance number",
+      },
     },
     employmentInfo: {
       type: EmploymentInfoSchema,
@@ -194,14 +196,18 @@ const TenantSchema = new Schema<ITenant>(
       type: Date,
       default: null,
     },
-  }},
+  },
   {
     timestamps: true,
     toJSON: {
       virtuals: true,
       transform: function (doc, ret) {
-        delete ret.__v;
-        delete ret.nino; // Never expose NINO in JSON
+        // Cast: with the schema now registering its real paths, Mongoose
+        // types `ret` with these non-optional, so a bare delete is a type
+        // error. Both deletions are deliberate — the NINO in particular must
+        // never leave the server in a JSON response.
+        delete (ret as any).__v;
+        delete (ret as any).nino;
         return ret;
       },
     },
