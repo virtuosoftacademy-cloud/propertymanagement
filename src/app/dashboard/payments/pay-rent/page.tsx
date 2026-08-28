@@ -38,10 +38,12 @@ import {
   Download,
   Banknote,
 } from "lucide-react";
-import { isOnlinePaymentEnabled } from "@/lib/payments/enabled-methods";
+// CARD PAYMENTS DISABLED (rent is cash only):
+// import { isOnlinePaymentEnabled } from "@/lib/payments/enabled-methods";
 import Link from "next/link";
 import { UserRole, PaymentStatus, PaymentType } from "@/types";
-import { StripePayment } from "@/components/payments/stripe-payment";
+// CARD PAYMENTS DISABLED (rent is cash only):
+// import { StripePayment } from "@/components/payments/stripe-payment";
 import { downloadInvoiceAsPDF, PrintableInvoice } from "@/lib/invoice-print";
 import { normalizeInvoiceForPrint } from "@/lib/invoice/invoice-shared";
 
@@ -992,11 +994,17 @@ function PaymentDialog({
           </Card>
 
           {/* Payment method.
-              Rent is cash-only for now, so there is nothing for the tenant to
-              submit here — they pay their manager in person and the manager
-              records it. The Stripe card form is still available and renders
-              automatically once a card method is added back to
-              ENABLED_PAYMENT_METHODS (src/lib/payments/enabled-methods.ts). */}
+              Rent is CASH ONLY — the tenant pays their manager in person and
+              the manager records it, so there is nothing to submit here.
+
+              The card form is commented out rather than deleted: restoring
+              online rent means uncommenting it AND adding a card method back
+              to ENABLED_PAYMENT_METHODS (src/lib/payments/enabled-methods.ts).
+              <StripePayment> itself went with the rest of the card
+              integration — recover it from git history at
+              src/components/payments/stripe-payment.tsx. */}
+
+          {/* CARD PAYMENTS DISABLED
           {isOnlinePaymentEnabled() ? (
             <div className="min-h-[200px]">
               <StripePayment
@@ -1012,22 +1020,23 @@ function PaymentDialog({
               />
             </div>
           ) : (
-            <Card>
-              <CardContent className="space-y-3 pt-6">
-                <div className="flex items-start gap-3">
-                  <Banknote className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
-                  <div className="space-y-1">
-                    <p className="font-medium">Cash payment</p>
-                    <p className="text-muted-foreground text-sm">
-                      Pay {formatCurrency(totalAmount)} in cash to your property
-                      manager. They will record it against this payment and it
-                      will show as paid here once they do.
-                    </p>
-                  </div>
+          */}
+
+          <Card>
+            <CardContent className="space-y-3 pt-6">
+              <div className="flex items-start gap-3">
+                <Banknote className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-medium">Cash payment</p>
+                  <p className="text-muted-foreground text-sm">
+                    Pay {formatCurrency(totalAmount)} in cash to your property
+                    manager. They will record it against this payment and it
+                    will show as paid here once they do.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <AlertDialogFooter>

@@ -17,6 +17,7 @@ import {
   isValidObjectId,
 } from "@/lib/api-utils";
 import { tenantPaymentProcessSchema, validateSchema } from "@/lib/validations";
+import { assertPaymentMethodEnabled } from "@/lib/payments/enabled-methods";
 
 // ============================================================================
 // POST /api/tenant/payments/[id]/pay - Process payment
@@ -95,6 +96,16 @@ export const POST = withRoleAndDB([UserRole.TENANT])(
         return createErrorResponse("Payment method is required", 400);
       }
 
+      // Rent is CASH ONLY. This used to hardcode the four card/bank methods
+      // below, which rejected the cash payments this endpoint actually
+      // receives as "Invalid payment method". ENABLED_PAYMENT_METHODS is the
+      // single source of truth, shared with the payment screens and the other
+      // payment-writing routes.
+      const methodNotAllowed = assertPaymentMethodEnabled(paymentMethod);
+      if (methodNotAllowed) {
+        return createErrorResponse(methodNotAllowed, 400);
+      }
+      /* CARD PAYMENTS DISABLED
       const validPaymentMethods = [
         "credit_card",
         "debit_card",
@@ -104,6 +115,7 @@ export const POST = withRoleAndDB([UserRole.TENANT])(
       if (!validPaymentMethods.includes(paymentMethod)) {
         return createErrorResponse("Invalid payment method", 400);
       }
+      */
 
       // Calculate total amount (including late fees)
       const totalAmount = payment.amount + (payment.lateFee || 0);
@@ -222,6 +234,10 @@ interface PaymentProcessingResult {
 async function processPayment(
   request: PaymentProcessingRequest
 ): Promise<PaymentProcessingResult> {
+  // CARD PAYMENTS DISABLED — cash is recorded, not authorised, so there is
+  // no gateway to call. The simulated latency and the 5% random decline
+  // below would otherwise fail roughly 1 in 20 cash records at random.
+  /*
   // Simulate payment processing delay
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -235,6 +251,7 @@ async function processPayment(
       error: "Payment declined by bank",
     };
   }
+  */
 
   // Generate mock transaction ID
   const transactionId = `txn_${Date.now()}_${Math.random()
@@ -251,27 +268,28 @@ async function processPayment(
   };
 }
 
-/**
- * Mock function to validate payment method details
- * In a real implementation, this would validate credit card numbers, bank accounts, etc.
- */
-function validatePaymentMethod(paymentMethod: string, details: any): boolean {
-  // Mock validation - always return true for demo
-  return true;
-}
-
-/**
- * Mock function to calculate processing fees
- * In a real implementation, this would calculate actual processor fees
- */
-function calculateProcessingFee(amount: number, paymentMethod: string): number {
-  const feeRates = {
-    credit_card: 0.029, // 2.9%
-    debit_card: 0.015, // 1.5%
-    bank_transfer: 0.005, // 0.5%
-    ach: 0.008, // 0.8%
-  };
-
-  const rate = feeRates[paymentMethod as keyof typeof feeRates] || 0.029;
-  return Math.round(amount * rate * 100) / 100; // Round to 2 decimal places
-}
+// CARD PAYMENTS DISABLED — card fee/validation helpers, never called:
+// /**
+//  * Mock function to validate payment method details
+//  * In a real implementation, this would validate credit card numbers, bank accounts, etc.
+//  */
+// function validatePaymentMethod(paymentMethod: string, details: any): boolean {
+//   // Mock validation - always return true for demo
+//   return true;
+// }
+//
+// /**
+//  * Mock function to calculate processing fees
+//  * In a real implementation, this would calculate actual processor fees
+//  */
+// function calculateProcessingFee(amount: number, paymentMethod: string): number {
+//   const feeRates = {
+//     credit_card: 0.029, // 2.9%
+//     debit_card: 0.015, // 1.5%
+//     bank_transfer: 0.005, // 0.5%
+//     ach: 0.008, // 0.8%
+//   };
+//
+//   const rate = feeRates[paymentMethod as keyof typeof feeRates] || 0.029;
+//   return Math.round(amount * rate * 100) / 100; // Round to 2 decimal places
+// }

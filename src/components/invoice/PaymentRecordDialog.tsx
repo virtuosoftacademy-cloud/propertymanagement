@@ -38,6 +38,7 @@ import {
   DEFAULT_PAYMENT_METHOD,
 } from "@/lib/payments/enabled-methods";
 import { toast } from "sonner";
+/* CARD PAYMENTS DISABLED — @stripe/* packages and the deleted StripePaymentForm.
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import StripePaymentForm from "@/components/payments/StripePaymentForm";
@@ -46,6 +47,7 @@ import StripePaymentForm from "@/components/payments/StripePaymentForm";
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
+*/
 
 const paymentSchema = z.object({
   amount: z.number().min(0.01, "Amount must be greater than 0"),
@@ -82,6 +84,7 @@ interface PaymentRecordDialogProps {
   onPaymentRecorded: () => void;
 }
 
+/* CARD PAYMENTS DISABLED — appearance config for the Stripe Elements form.
 const stripeAppearance = {
   theme: "stripe" as const,
   variables: {
@@ -94,6 +97,7 @@ const stripeAppearance = {
     borderRadius: "6px",
   },
 };
+*/
 import { formatCurrency } from "@/lib/utils/formatting";
 
 export default function PaymentRecordDialog({
@@ -103,13 +107,17 @@ export default function PaymentRecordDialog({
   onPaymentRecorded,
 }: PaymentRecordDialogProps) {
   const [submitting, setSubmitting] = useState(false);
+  // CARD PAYMENTS DISABLED — invoices are settled in cash and recorded by the
+  // manager, so the card branch never renders. Kept as a constant so the
+  // `!showStripeElements` guards below still read naturally.
+  const showStripeElements = false;
+  /* Card-payment state, disabled with the rest of the card integration:
   const [stripeInitializing, setStripeInitializing] = useState(false);
-  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(
-    null
-  );
+  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
   const [showStripeElements, setShowStripeElements] = useState(true);
   const stripeIntentAmountRef = React.useRef<number | null>(null);
   const [stripeInitError, setStripeInitError] = useState<string | null>(null);
+  */
 
   const form = useForm<PaymentForm>({
     resolver: zodResolver(paymentSchema),
@@ -129,27 +137,29 @@ export default function PaymentRecordDialog({
     }
   }, [invoice, form]);
 
+  /* CARD PAYMENTS DISABLED — debug effect over card-payment state.
   // Debug: Log clientSecret changes
   React.useEffect(() => {}, [
     stripeClientSecret,
     stripeInitializing,
     stripeInitError,
   ]);
+  */
 
-  // Reset Stripe-related state whenever the dialog closes
+  // Reset the form whenever the dialog closes. The card-payment state resets
+  // that used to live here went with the card integration.
   React.useEffect(() => {
     if (!open) {
-      setShowStripeElements(true);
-      setStripeClientSecret(null);
-      stripeIntentAmountRef.current = null;
       form.setValue("paymentMethod", DEFAULT_PAYMENT_METHOD as PaymentForm["paymentMethod"]);
-      setStripeInitError(null);
     }
   }, [open, form]);
 
+  /* CARD PAYMENTS DISABLED — only read by the card-payment logic above.
   const paymentMethod = form.watch("paymentMethod");
   const watchedAmount = form.watch("amount");
+  */
 
+  /* CARD PAYMENTS DISABLED — called the deleted /api/invoices/[id]/stripe-payment route.
   const initializeStripePayment = React.useCallback(
     async (
       amount: number,
@@ -221,7 +231,9 @@ export default function PaymentRecordDialog({
     },
     [invoice]
   );
+  */
 
+  /* CARD PAYMENTS DISABLED — effect that opened a card payment intent.
   // Initialize Stripe payment when needed
   React.useEffect(() => {
     // Determine if we should show Stripe elements
@@ -260,6 +272,7 @@ export default function PaymentRecordDialog({
     stripeInitializing,
     stripeInitError,
   ]);
+  */
 
   // const formatCurrency = (amount: number) => {
   //   return new Intl.NumberFormat("en-US", {
@@ -299,7 +312,7 @@ export default function PaymentRecordDialog({
           transactionId: "",
           notes: "",
         });
-        setStripeInitError(null);
+        // setStripeInitError(null);  // CARD PAYMENTS DISABLED
       } else {
         toast.error(result.error || "Failed to record payment");
       }
@@ -317,6 +330,7 @@ export default function PaymentRecordDialog({
     }
   };
 
+  /* CARD PAYMENTS DISABLED — handlers for the deleted /api/stripe/* routes.
   const handleStripePaymentSuccess = async (paymentIntentId: string) => {
     try {
       setSubmitting(true);
@@ -391,6 +405,7 @@ export default function PaymentRecordDialog({
     setStripeInitError(null);
     return initializeStripePayment(amountToUse, { silent: false });
   };
+  */
 
   if (!invoice) return null;
 
@@ -525,6 +540,7 @@ export default function PaymentRecordDialog({
                 />
               </div>
 
+              {/* CARD PAYMENTS DISABLED — the Stripe card form (rent/invoices are cash only).
               {showStripeElements && (
                 <div className="space-y-4">
                   <div className="border rounded-lg p-4 bg-muted/50">
@@ -574,6 +590,7 @@ export default function PaymentRecordDialog({
                   </div>
                 </div>
               )}
+              */}
 
               {!showStripeElements && (
                 <FormField

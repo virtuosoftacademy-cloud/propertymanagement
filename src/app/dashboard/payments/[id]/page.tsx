@@ -273,6 +273,9 @@ export default function PaymentDetailsPage({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* CARD PAYMENTS DISABLED — this linked to the card-only
+              /dashboard/payments/[id]/pay page, which was removed. A pending
+              payment is now settled in cash and recorded by the manager.
           {payment.status === PaymentStatus.PENDING && (
             <Link href={`/dashboard/payments/${payment._id}/pay`}>
               <Button size="sm" variant="outline">
@@ -281,6 +284,7 @@ export default function PaymentDetailsPage({
               </Button>
             </Link>
           )}
+          */}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

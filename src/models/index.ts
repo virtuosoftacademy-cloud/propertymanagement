@@ -7,7 +7,10 @@ export { default as Invoice } from "./Invoice";
 export { default as Payment, ensurePaymentIndexes } from "./Payment";
 export { default as PaymentNotification } from "./PaymentNotification";
 export { default as PaymentReceipt } from "./PaymentReceipt";
-export { default as RecurringPayment } from "./RecurringPayment";
+// CARD PAYMENTS DISABLED — RecurringPayment held Stripe auto-pay subscriptions
+// for rent. Rent is cash only, so the model was removed; restore it from git
+// history (src/models/RecurringPayment.ts) if online rent ever comes back.
+// export { default as RecurringPayment } from "./RecurringPayment";
 export { default as FinancialAction } from "./FinancialAction";
 export { default as MaintenanceRequest } from "./MaintenanceRequest";
 export { default as ComplianceReport } from "./ComplianceReport"
